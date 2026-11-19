@@ -851,6 +851,30 @@
   .gxe-edades span{ font-size:12px; color:var(--text-muted); }
   .gxe-edades .gxe-vieja b{ color:var(--danger-fg); }
   .gxe-franja{ margin-bottom:14px; }
+  .gxe-h4{ font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:14px 0 6px; }
+  .gxe-scroll{ overflow-x:auto; }
+  .gxe-tabla{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
+  .gxe-tabla th{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); text-align:end; padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .gxe-tabla td{ padding:8px; border-bottom:1px solid var(--border); text-align:end; }
+  .gxe-tabla th:first-child, .gxe-tabla td:first-child{ text-align:start; font-weight:600; }
+  .gxe-ley{ display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; margin-bottom:10px; }
+  .gxe-ley span{ display:inline-flex; gap:6px; align-items:center; }
+  .gxe-ley i{ width:18px; height:4px; border-radius:2px; display:inline-block; }
+  .gxe-svg{ width:100%; height:auto; display:block; }
+  .gxe-yrow{ display:grid; grid-template-columns:minmax(80px,140px) 1fr; gap:10px; align-items:center; font-size:13px; padding:7px 0; border-bottom:1px solid var(--border); }
+  .gxe-ybars{ display:flex; flex-direction:column; gap:3px; }
+  .gxe-ybar{ display:grid; grid-template-columns:36px 1fr 56px; gap:6px; align-items:center; font-size:12px; }
+  .gxe-ybar > span:first-child{ color:var(--text-muted); }
+  .gxe-ybar b{ text-align:end; font-variant-numeric:tabular-nums; }
+  .gxe-paso{ display:inline-flex; align-items:center; gap:6px; }
+  .gxe-paso button{ width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--ink); font:inherit; font-weight:800; cursor:pointer; }
+  .gxe-paso b{ min-width:26px; text-align:center; }
+  .gxe-chk{ display:flex; gap:8px; align-items:center; }
+  .gxe-nota{ color:var(--text-muted); cursor:help; }
+  .gxe-total{ display:flex; flex-wrap:wrap; gap:12px 24px; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+  .gxe-total > div{ display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; }
+  .gxe-total b{ font-size:20px; font-weight:800; }
+  @media (max-width:520px){ .gxe-yrow{ grid-template-columns:1fr; } }
   .gxe-gastos{ display:flex; flex-direction:column; margin-top:8px; }
   .gxe-gasto{ font-size:13.5px; display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:start; padding:9px 4px; border:0; border-top:1px solid var(--border); background:transparent; color:inherit; font:inherit; cursor:pointer; }
   .gxe-gasto:hover{ background:var(--surface-hover); }
@@ -26404,6 +26428,8 @@ function gastosSecciones(){
     badge: gastosDatos ? gastosDatos.rendiciones.filter(r => r.estado === "enviada" && (puedeAprobarRendicion(r) || gastosDe(r.id).some(g => g.estado === "observado"))).length + gastosDatos.movimientos.filter(m => m.estado === "pendiente").length : 0 });
   // «Resumen» (19/11): los números del equipo, sin nombres, para quien gestiona los gastos (admins y Finanzas).
   if(esGestor()) s.push({ key: "resumen", label: t("Resumen","Summary","Resumo","סיכום") });
+  // «Análisis» (19/11): por actividad, por persona, comparar años y el año que viene, con nombres, para decidir.
+  if(esGestor()) s.push({ key: "analisis", label: t("Análisis","Analysis","Análise","ניתוח") });
   return s;
 }
 function gastosTextos(key){
@@ -26423,6 +26449,16 @@ function gastosTextos(key){
         "<b>Spent</b> adds up the expenses you paid yourself in reports already approved; the ones in review are shown apart. <b>Received</b> is the money the organization gave you (an advance or a refund) and <b>returned</b>, what you gave back. A positive <b>balance</b> is what the organization owes you; negative, what you owe.<br><br>What you enter as received or returned stays <b>pending</b> until an admin confirms it. An activity's quick total doesn't change the balance.",
         "<b>Gasto</b> soma as despesas pagas por você em prestações já aprovadas; as que estão em revisão aparecem à parte. <b>Recebido</b> é o dinheiro que a organização te deu (um adiantamento ou um reembolso) e <b>devolvido</b>, o que você devolveu. O <b>saldo</b> positivo é o que a organização te deve; negativo, o que você deve.<br><br>O que você anota como recebido ou devolvido fica <b>pendente</b> até um administrador confirmar. O total rápido de uma atividade não muda a conta.",
         "<b>הוצאות</b> סוכם את ההוצאות ששילמתם בעצמכם בדוחות שכבר אושרו; אלה שבבדיקה מוצגות בנפרד. <b>התקבל</b> הוא הכסף שהארגון נתן לכם (מקדמה או החזר), ו<b>הוחזר</b> — מה שהחזרתם. <b>יתרה</b> חיובית היא מה שהארגון חייב לכם; שלילית — מה שאתם חייבים.<br><br>מה שרושמים כהתקבל או הוחזר נשאר <b>ממתין</b> עד שמנהל/ת מאשר/ת. הסכום המהיר של פעילות לא משנה את החשבון."),
+    },
+    analisis: {
+      lead: t("Para entender cuánto cuesta cada actividad, qué gastó cada persona y cómo viene el año que viene. Acá sí hay nombres: solo lo ven los administradores y Finanzas.",
+        "To understand what each activity costs, what each person spent and how next year looks. Names appear here: only admins and Finance see it.",
+        "Para entender quanto custa cada atividade, o que cada pessoa gastou e como vem o ano que vem. Aqui há nomes: só administradores e as Finanças veem.",
+        "כדי להבין כמה עולה כל פעילות, כמה הוציא כל אחד ואיך נראית השנה הבאה. כאן יש שמות: רק מנהלים וכספים רואים."),
+      ayuda: t("Todo sale de los gastos confirmados en actividades (la rutina del mes no entra). <b>Por actividad</b> y <b>Por persona</b> miran un año. <b>Comparar años</b> pone los años lado a lado, por defecto cortados en el mismo día. <b>Para el año que viene</b> estima cómo cierra este año y cuánto costaría el próximo, con la tendencia que dejen los años cargados, y arma un presupuesto con las actividades de la Agenda. Cada moneda va por separado: nunca se convierten ni se suman. Con pocos años cargados, la pantalla avisa qué le falta.",
+        "Everything comes from the confirmed expenses on activities (the monthly routine is left out). <b>By activity</b> and <b>By person</b> look at one year. <b>Compare years</b> puts the years side by side, by default cut at the same day. <b>For next year</b> estimates how this year closes and what the next would cost, with the trend the loaded years leave, and builds a budget with the activities in the Agenda. Each currency is shown on its own: they are never converted or added together. With few years loaded, the screen says what's missing.",
+        "Tudo vem das despesas confirmadas em atividades (a rotina do mês não entra). <b>Por atividade</b> e <b>Por pessoa</b> olham um ano. <b>Comparar anos</b> põe os anos lado a lado, por padrão cortados no mesmo dia. <b>Para o ano que vem</b> estima como este ano fecha e quanto custaria o próximo, com a tendência dos anos carregados, e monta um orçamento com as atividades da Agenda. Cada moeda vai separada: nunca são convertidas nem somadas. Com poucos anos carregados, a tela avisa o que falta.",
+        "הכול מבוסס על הוצאות מאושרות בפעילויות (השגרה החודשית לא נכללת). <b>לפי פעילות</b> ו<b>לפי אדם</b> מסתכלים על שנה. <b>השוואת שנים</b> מציגה את השנים זו לצד זו, כברירת מחדל נחתכות באותו יום. <b>לשנה הבאה</b> מעריך איך השנה נסגרת וכמה תעלה הבאה, לפי המגמה של השנים שנטענו, ובונה תקציב מהפעילויות שבלוח. כל מטבע מוצג בנפרד: אף פעם לא ממירים ולא מחברים. כשנטענו מעט שנים, המסך אומר מה חסר."),
     },
     resumen: {
       lead: t("Los números grandes de todo el equipo, sin nombres de personas. Solo los ven los administradores y Finanzas.",
@@ -26606,6 +26642,185 @@ function renderGastosResumen(){
     <section class="gxe-tarjeta"><h3>${t("Lo que espera aprobación","Waiting for approval","O que espera aprovação","מה שממתין לאישור")}</h3><p class="gxe-sub">${t("Por cuánto hace que se mandó","By how long ago it was sent","Há quanto tempo foi enviado","לפי כמה זמן עבר מאז השליחה")}</p>${edades}
       <p class="gxe-sub" style="margin-top:12px">${t("Sin nombres de personas: el detalle de cada una está en «Rendiciones» y «Cuenta corriente».","No people's names: each person's detail is in “Expense reports” and “Running balance”.","Sem nomes de pessoas: o detalhe de cada uma está em «Prestações» e «Conta corrente».","בלי שמות: הפירוט של כל אחד נמצא ב«דוחות הוצאות» וב«חשבון שוטף».")}</p></section>`;
 }
+// ---- Análisis (19/11/2026): por viaje, por persona, comparar años y el año que viene. Solo admins y Finanzas ----
+// Con nombres (es para entender y decidir). Se calcula en el navegador con lo que ya trae la base. Lo que guarda de la
+// pantalla (la vista, lo abierto, el escenario, el presupuesto armado) vive en gastosRes.ana: al cerrar sesión se olvida.
+const anaEstado = () => (gastosRes.ana = gastosRes.ana || { sub: "viaje", abiertas: new Set(), corte: true, esc: "tend", mv: 10, mp: 5, prec: "igual", imp: 10, plan: null, pais: "" });
+const nombreActividad = pid => { const p = getPostById(pid); return (p && p.title) || t("Actividad borrada","Deleted activity","Atividade apagada","פעילות שנמחקה"); };
+const paisDeActividad = pid => { const p = getPostById(pid); return (p && (p.scopes || []).map(x => x && x.country).find(Boolean)) || ""; };
+function agrupar(l, f){ const m = new Map(); l.forEach(x => { const k = f(x); if(!m.has(k)) m.set(k, []); m.get(k).push(x); }); return m; }
+const chipVs = (x, prom) => { const d = prom ? (x / prom - 1) * 100 : 0; return gxChip([(d >= 0 ? "+" : "−") + Math.abs(Math.round(d)) + "%", d > 15 ? "aviso" : d < -15 ? "bien" : "neutro"]); };
+const pcTxt = x => (x >= 0 ? "+" : "−") + Math.abs(Math.round(x * 100)) + "%";
+// Lo gastado en actividades (no en la rutina), con sus personas-día: la base de «cuánto cuesta una actividad por persona y día».
+function metricasDe(todos, anio, moneda, corte){
+  const hoy = todayISO().slice(5);
+  const l = todos.filter(x => x.moneda === moneda && x.anio === anio && (!corte || x.g.fecha.slice(5, 10) <= hoy));
+  const act = l.filter(x => x.r.postId), grupos = agrupar(act, x => x.r.postId + "|" + x.g.autor);
+  const diasPersona = [...grupos.values()].reduce((a, g) => a + diasDeActividad(getPostById(g[0].r.postId)), 0);
+  const acts = new Set(act.map(x => x.r.postId));
+  return { l, act, tot: sumaDe(l), totAct: sumaDe(act), acts: acts.size, personas: new Set(l.map(x => x.g.autor)).size, perAct: acts.size ? sumaDe(act) / acts.size : 0, perDia: diasPersona ? sumaDe(act) / diasPersona : 0 };
+}
+const tablaHtml = (cabezas, filas) => `<div class="gxe-scroll"><table class="gxe-tabla"><thead><tr>${cabezas.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${filas.map(f => `<tr>${f.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+function barrasLV(items){
+  const max = Math.max(1, ...items.map(i => i.v));
+  return `<div>${items.map(i => `<div class="gxe-fila"><span class="gxe-l">${esc(i.l)}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(i.v / max * 100).toFixed(1)}%"></span></span>${numeroHtml(i.v)}</div>`).join("")}</div>`;
+}
+// Una fila que se despliega (la misma tarjeta que «Rendiciones» y «Mis estadísticas»).
+function filaDesplegable(id, ico, titulo, detalle, chipHtml, total, cuerpo){
+  const A = anaEstado(), abierta = A.abiertas.has(id);
+  return `<div class="gx-grupo${abierta ? " gx-g-abierta" : ""}"><button type="button" class="gx-tarjeta gx-g-boton" data-action="gastos-ana-grupo" data-id="${esc(id)}" aria-expanded="${abierta}">
+      <span class="gx-g-flecha" aria-hidden="true">${abierta ? "▾" : isRTL() ? "◂" : "▸"}</span><span class="gx-t-ico" aria-hidden="true">${ico}</span>
+      <span class="gx-t-txt"><b>${esc(titulo)}</b><small>${detalle}</small></span><span class="gx-t-der">${chipHtml}<span class="gx-t-total">${esc(total)}</span></span></button>${abierta ? `<div class="gx-g-cuerpo">${cuerpo}</div>` : ""}</div>`;
+}
+const sinDatosAna = () => `<p class="setting-sub gx-nada">${t("Todavía no hay gastos confirmados en actividades para esto. Aparecen cuando se confirmen comprobantes de una actividad (o se importen los de años anteriores).","There are no confirmed expenses on activities for this yet. They show up once receipts of an activity are confirmed (or earlier years are imported).","Ainda não há despesas confirmadas em atividades para isto. Aparecem quando se confirmarem comprovantes de uma atividade (ou se importarem os de anos anteriores).","עדיין אין הוצאות מאושרות בפעילויות. הן יופיעו כשיאושרו קבלות של פעילות (או כשייובאו שנים קודמות).")}</p>`;
+
+function anaPorViaje(E){
+  const grupos = [...agrupar(E.sel.filter(x => x.r.postId), x => x.r.postId)].map(([pid, l]) => ({ pid, l, d: diasDeActividad(getPostById(pid)), n: new Set(l.map(x => x.g.autor)).size, tot: sumaDe(l) })).sort((a, b) => b.tot - a.tot);
+  if(!grupos.length) return sinDatosAna();
+  const prom = grupos.reduce((a, g) => a + g.tot / g.n, 0) / grupos.length;
+  return `<p class="gxe-sub">${t("Qué costó cada actividad y, al abrirla, qué gastó cada persona. El % compara con el promedio por persona de todas las actividades.","What each activity cost and, once open, what each person spent. The % compares with the per-person average of all activities.","Quanto custou cada atividade e, ao abrir, o que cada pessoa gastou. O % compara com a média por pessoa de todas as atividades.","כמה עלתה כל פעילות ובפתיחה, כמה הוציא כל אחד. האחוז משווה לממוצע לאדם בכל הפעילויות.")}</p>
+    <div class="gx-grupos">${grupos.map(g => {
+      const porP = [...agrupar(g.l, x => x.g.autor)].map(([e, l]) => [e, sumaDe(l)]).sort((a, b) => b[1] - a[1]);
+      const detalle = [esc(g.n === 1 ? t("1 persona","1 person","1 pessoa","אדם אחד") : t("{n} personas","{n} people","{n} pessoas","{n} אנשים",{ n: g.n })), g.d ? esc(g.d === 1 ? t("1 día","1 day","1 dia","יום אחד") : t("{n} días","{n} days","{n} dias","{n} ימים",{ n: g.d })) : "", esc(t("{m} por persona","{m} per person","{m} por pessoa","{m} לאדם",{ m: fmtMonto(E.moneda, redondo(g.tot / g.n)) }))].filter(Boolean).join(" · ");
+      const cuerpo = `<h4 class="gxe-h4">${t("De qué se compone","What it is made of","Do que se compõe","ממה זה מורכב")}</h4>${barrasPorTipo(g.l)}
+        <h4 class="gxe-h4">${t("Qué gastó cada persona","What each person spent","O que cada pessoa gastou","כמה הוציא כל אחד")}</h4>
+        ${tablaHtml([t("Persona","Person","Pessoa","אדם"), t("Total","Total","Total","סך הכול"), t("Por día","Per day","Por dia","ליום"), t("Frente al promedio de la actividad","Versus the activity's average","Frente à média da atividade","מול הממוצע של הפעילות")],
+          porP.map(([e, v]) => [esc(nombreDePersona(e)), esc(fmtMonto(E.moneda, v)), g.d ? esc(fmtMonto(E.moneda, redondo(v / g.d))) : "—", chipVs(v, g.tot / g.n)]))}`;
+      return filaDesplegable("v:" + g.pid, "🧳", nombreActividad(g.pid), detalle, chipVs(g.tot / g.n, prom), fmtMonto(E.moneda, g.tot), cuerpo);
+    }).join("")}</div>`;
+}
+function anaPorPersona(E){
+  const gente = [...agrupar(E.sel.filter(x => x.r.postId), x => x.g.autor)].map(([e, l]) => {
+    const por = agrupar(l, x => x.r.postId), dias = [...por.keys()].reduce((a, pid) => a + diasDeActividad(getPostById(pid)), 0), tot = sumaDe(l);
+    return { e, l, por, dias, tot, pd: dias ? tot / dias : 0 };
+  }).sort((a, b) => b.tot - a.tot);
+  if(!gente.length) return sinDatosAna();
+  const conDias = gente.filter(g => g.pd), prom = conDias.length ? conDias.reduce((a, g) => a + g.pd, 0) / conDias.length : 0;
+  return `<p class="gxe-sub">${t("Cuánto gastó cada persona y a qué ritmo. El % compara el gasto por día con el promedio del equipo: sirve para entender, no para juzgar, porque depende de adónde fue.","How much each person spent and at what pace. The % compares spending per day with the team average: it helps to understand, not to judge, because it depends on where they went.","Quanto cada pessoa gastou e em que ritmo. O % compara o gasto por dia com a média da equipe: serve para entender, não para julgar, porque depende de aonde foi.","כמה הוציא כל אחד ובאיזה קצב. האחוז משווה את ההוצאה ליום לממוצע הצוות: זה כדי להבין ולא לשפוט, כי זה תלוי לאן נסעו.")}</p>
+    <div class="gx-grupos">${gente.map(g => {
+      const detalle = [esc(g.por.size === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{ n: g.por.size })), g.dias ? esc(t("{m} por día","{m} per day","{m} por dia","{m} ליום",{ m: fmtMonto(E.moneda, redondo(g.pd)) })) : ""].filter(Boolean).join(" · ");
+      const cuerpo = `<h4 class="gxe-h4">${t("En qué gastó","What they spent on","Em que gastou","על מה הוציא")}</h4>${barrasPorTipo(g.l)}
+        <h4 class="gxe-h4">${t("Por actividad","By activity","Por atividade","לפי פעילות")}</h4>${barrasLV([...g.por].map(([pid, l]) => ({ l: nombreActividad(pid), v: sumaDe(l) })).sort((a, b) => b.v - a.v))}`;
+      return filaDesplegable("p:" + g.e, "👤", nombreDePersona(g.e), detalle, g.pd ? chipVs(g.pd, prom) : "", fmtMonto(E.moneda, g.tot), cuerpo);
+    }).join("")}</div>`;
+}
+function acumuladoSvg(todos, anios, moneda){
+  const W = 640, H = 230, L = 52, B = 26, T = 10, R = 12, colores = ["var(--text-muted)", "var(--celeste-dark)", "var(--ink)"].slice(-anios.length);
+  const mesHoy = Number(todayISO().slice(5, 7)) - 1, anioHoy = todayISO().slice(0, 4);
+  const ser = anios.map(y => { let acc = 0; const a = []; for(let m = 0; m < 12; m++){ if(y === anioHoy && m > mesHoy) break; acc += sumaDe(todos.filter(x => x.moneda === moneda && x.anio === y && Number(x.g.fecha.slice(5, 7)) - 1 === m)); a.push(acc); } return a; });
+  const max = Math.max(1, ...ser.map(a => a[a.length - 1])) * 1.05, X = m => L + m * (W - L - R) / 11, Y = v => H - B - v / max * (H - B - T);
+  const meses = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString(dateLocale(), { month: "short" }));
+  const grid = [0, 1, 2, 3, 4].map(i => { const v = max * i / 4; return `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="12" fill="var(--text-muted)">${esc(Math.round(v).toLocaleString("en-US"))}</text>`; }).join("");
+  const xs = meses.map((n, i) => `<text x="${X(i)}" y="${H - 8}" text-anchor="middle" font-size="12" fill="var(--text-muted)">${esc(n)}</text>`).join("");
+  const lineas = ser.map((a, i) => `<polyline fill="none" stroke="${colores[i]}" stroke-width="2.5" stroke-linejoin="round" points="${a.map((v, m) => X(m) + "," + Y(v)).join(" ")}"/><circle cx="${X(a.length - 1)}" cy="${Y(a[a.length - 1])}" r="4" fill="${colores[i]}"/>`).join("");
+  const leyenda = `<div class="gxe-ley">${anios.map((y, i) => `<span><i style="background:${colores[i]}"></i>${esc(y)} · ${esc(fmtMonto(moneda, redondo(ser[i][ser[i].length - 1])))}</span>`).join("")}</div>`;
+  return `${leyenda}<svg class="gxe-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Gasto acumulado mes a mes, por año","Cumulative spending by month, per year","Gasto acumulado mês a mês, por ano","הוצאה מצטברת לפי חודש, לפי שנה"))}">${grid}${xs}${lineas}</svg>`;
+}
+function anaAnios(E){
+  const A = anaEstado(), mon = E.moneda;
+  const conDatos = [...new Set(E.todos.filter(x => x.moneda === mon).map(x => x.anio))].sort(), anios = conDatos.slice(-3);
+  const controles = `<div class="gxe-ctl"><span class="gxe-et">${t("Comparar","Compare","Comparar","השוואה")}</span><div class="pref-chips" role="group" aria-label="${esc(t("Comparar","Compare","Comparar","השוואה"))}">
+      <button type="button" class="chip-toggle${A.corte ? " active" : ""}" data-action="gastos-ana-set" data-k="corte" data-v="true" aria-pressed="${A.corte}">${t("Hasta hoy (justo)","Up to today (fair)","Até hoje (justo)","עד היום (הוגן)")}</button>
+      <button type="button" class="chip-toggle${!A.corte ? " active" : ""}" data-action="gastos-ana-set" data-k="corte" data-v="false" aria-pressed="${!A.corte}">${t("Años completos","Full years","Anos completos","שנים שלמות")}</button></div></div>`;
+  if(anios.length < 2) return `${controles}<p class="setting-sub gx-nada">${t("Todavía hay gastos de un solo año. La comparación aparece cuando haya otro año cargado (por ejemplo, importando los anteriores).","There are expenses from only one year so far. The comparison shows up once another year is loaded (for example, by importing earlier ones).","Ainda há despesas de um só ano. A comparação aparece quando houver outro ano carregado (por exemplo, importando os anteriores).","יש הוצאות משנה אחת בלבד. ההשוואה תופיע כשתיטען שנה נוספת (למשל בייבוא שנים קודמות).")}</p>`;
+  const ms = anios.map(y => metricasDe(E.todos, y, mon, A.corte));
+  const filas = [[t("Gastado en total","Total spent","Gasto total","סך הוצאות"), m => m.tot, v => fmtMonto(mon, redondo(v)), false],
+    [t("Actividades","Activities","Atividades","פעילויות"), m => m.acts, v => String(v), true], [t("Personas que rindieron","People who reported","Pessoas que prestaram contas","אנשים שדיווחו"), m => m.personas, v => String(v), true],
+    [t("Costo de una actividad (equipo)","Cost of an activity (team)","Custo de uma atividade (equipe)","עלות פעילות (צוות)"), m => m.perAct, v => fmtMonto(mon, redondo(v)), false],
+    [t("Costo por persona y día","Cost per person per day","Custo por pessoa por dia","עלות לאדם ליום"), m => m.perDia, v => fmtMonto(mon, redondo(v)), false]];
+  const dlt = (x, y0, neutro) => { if(!y0) return ""; const r = x / y0 - 1; return gxChip([pcTxt(r), neutro ? "neutro" : r > 0.1 ? "aviso" : r < -0.1 ? "bien" : "neutro"]); };
+  const tablaAnios = tablaHtml([""].concat(anios), filas.map(([l, f, fm, neu]) => [esc(l)].concat(ms.map((m, i) => `${esc(fm(f(m)))} ${i ? dlt(f(m), f(ms[i - 1]), neu) : ""}`))));
+  const tipos = [...new Set(ms.flatMap(m => m.l.map(x => x.g.tipo || "")))];
+  const colA = ["var(--text-muted)", "var(--celeste-dark)", "var(--ink)"].slice(-anios.length);
+  const filasTipo = tipos.map(k => ({ l: k ? nombreTipoGasto(k) : t("Sin tipo","No type","Sem tipo","ללא סוג"), v: ms.map(m => sumaDe(m.l.filter(x => (x.g.tipo || "") === k))) })).sort((a, b) => b.v[b.v.length - 1] - a.v[a.v.length - 1]);
+  const maxT = Math.max(1, ...filasTipo.flatMap(r => r.v));
+  const porTipoAnio = filasTipo.map(r => `<div class="gxe-yrow"><span class="gxe-l">${esc(r.l)}</span><div class="gxe-ybars">${r.v.map((v, i) => `<div class="gxe-ybar"><span>${esc(anios[i])}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(v / maxT * 100).toFixed(1)}%;background:${colA[i]}"></span></span><b>${esc(Math.round(v).toLocaleString("en-US"))}</b></div>`).join("")}</div></div>`).join("");
+  const paises = [...new Set(ms.flatMap(m => m.act.map(x => paisDeActividad(x.r.postId))).filter(Boolean))].sort();
+  const pd = (m, pa) => { const a = m.act.filter(x => paisDeActividad(x.r.postId) === pa); if(!a.length) return 0; const dp = [...agrupar(a, x => x.r.postId + "|" + x.g.autor).values()].reduce((s2, g) => s2 + diasDeActividad(getPostById(g[0].r.postId)), 0); return dp ? sumaDe(a) / dp : 0; };
+  const porPais = paises.length ? `<section class="gxe-tarjeta"><h3>${t("Por destino","By destination","Por destino","לפי יעד")}</h3><p class="gxe-sub">${t("Costo por persona y día de actividad, año por año. Un guion: ese año no hubo actividad ahí.","Cost per person per activity day, year by year. A dash: no activity there that year.","Custo por pessoa por dia de atividade, ano a ano. Um traço: nesse ano não houve atividade ali.","עלות לאדם ליום פעילות, שנה אחר שנה. מקף: באותה שנה לא הייתה שם פעילות.")}</p>
+      ${tablaHtml([t("Destino","Destination","Destino","יעד")].concat(anios, [`${anios[0]} → ${anios[anios.length - 1]}`]), paises.map(pa => { const v = ms.map(m => pd(m, pa)); return [esc(pa)].concat(v.map(x => x ? esc(Math.round(x).toLocaleString("en-US")) : "–"), [v[0] && v[v.length - 1] ? dlt(v[v.length - 1], v[0]) : "–"]); }))}</section>` : "";
+  return `${controles}
+    <section class="gxe-tarjeta"><h3>${t("Año contra año","Year over year","Ano contra ano","שנה מול שנה")}</h3><p class="gxe-sub">${A.corte ? t("Los años cortados en el mismo día, así el año en curso no pierde contra años enteros.","The years cut at the same day, so the current year doesn't lose against full years.","Os anos cortados no mesmo dia, para que o ano em curso não perca contra anos inteiros.","השנים נחתכות באותו יום, כך שהשנה הנוכחית לא מפסידה מול שנים שלמות.") : t("Los años completos: el año en curso todavía no terminó.","Full years: the current year hasn't ended yet.","Os anos completos: o ano em curso ainda não terminou.","שנים שלמות: השנה הנוכחית עוד לא הסתיימה.")}</p>${tablaAnios}</section>
+    <div class="gxe-dos"><section class="gxe-tarjeta"><h3>${t("Ritmo del año","Pace of the year","Ritmo do ano","קצב השנה")}</h3><p class="gxe-sub">${t("Gasto acumulado mes a mes","Cumulative spending by month","Gasto acumulado mês a mês","הוצאה מצטברת לפי חודש")}</p>${acumuladoSvg(E.todos, anios, mon)}</section>
+    <section class="gxe-tarjeta"><h3>${t("Por tipo de gasto","By type of expense","Por tipo de despesa","לפי סוג הוצאה")}</h3><p class="gxe-sub">${esc(mon)}</p>${porTipoAnio}</section></div>${porPais}`;
+}
+// El costo típico de una actividad por destino, con lo gastado en el año base, por persona: pasaje, alojamiento por noche,
+// comida y transporte por día, y el resto por actividad.
+function costoTipicoPorPais(todos, anio, moneda){
+  const act = todos.filter(x => x.moneda === moneda && x.anio === anio && x.r.postId), por = {};
+  agrupar(act, x => x.r.postId + "|" + x.g.autor).forEach(l => {
+    const pid = l[0].r.postId, d = diasDeActividad(getPostById(pid)) || 1, pa = paisDeActividad(pid) || "—", c = k => sumaDe(l.filter(x => k.includes(x.g.tipo || "")));
+    (por[pa] = por[pa] || []).push({ pasaje: c(["pasaje"]), aloj: c(["alojamiento"]) / Math.max(1, d - 1), dia: c(["comida", "transporte"]) / d, otros: sumaDe(l) - c(["pasaje"]) - c(["alojamiento"]) - c(["comida", "transporte"]) });
+  });
+  const r = {};
+  Object.entries(por).forEach(([pa, a]) => { const av = k => a.reduce((x, y) => x + y[k], 0) / a.length; r[pa] = { pasaje: av("pasaje"), aloj: av("aloj"), dia: av("dia"), otros: av("otros"), n: a.length }; });
+  return r;
+}
+const estimarActividad = (c, dias, pers) => pers * (c.pasaje + c.aloj * Math.max(0, dias - 1) + c.dia * dias + c.otros);
+function planDeAgenda(anio){
+  return state.posts.filter(p => p.activityType !== "rutina" && !p.cancelled && String(p.startDate || p.date || "").slice(0, 4) === anio)
+    .sort((a, b) => String(a.startDate || a.date).localeCompare(String(b.startDate || b.date)))
+    .map(p => ({ titulo: p.title || "", pais: (p.scopes || []).map(x => x && x.country).find(Boolean) || "", dias: diasDeActividad(p) || 1, pers: Math.max(1, 1 + (p.participants || []).filter(x => x && x.email && String(x.email).toLowerCase() !== String(p.authorEmail || "").toLowerCase()).length), on: true }));
+}
+function anaFuturo(E){
+  const A = anaEstado(), mon = E.moneda, hoyY = todayISO().slice(0, 4), proxY = String(Number(hoyY) + 1);
+  const seg = (k, items) => `<div class="pref-chips" role="group">${items.map(([v, txt]) => `<button type="button" class="chip-toggle${String(A[k]) === String(v) ? " active" : ""}" data-action="gastos-ana-set" data-k="${k}" data-v="${v}" aria-pressed="${String(A[k]) === String(v)}">${esc(txt)}</button>`).join("")}</div>`;
+  const et = x => `<span class="gxe-et">${x}</span>`;
+  // La tendencia: con los años que haya, al mismo corte.
+  const anios = [String(Number(hoyY) - 2), String(Number(hoyY) - 1), hoyY], m = anios.map(y => metricasDe(E.todos, y, mon, true)), llenos = m.filter(x => x.totAct > 0);
+  const crec = (f) => { const a = []; for(let i = 1; i < m.length; i++) if(f(m[i - 1]) > 0 && f(m[i]) > 0) a.push(f(m[i]) / f(m[i - 1]) - 1); return a.length ? a.reduce((x, y) => x + y, 0) / a.length : null; };
+  const gP = crec(x => x.perDia), gV = crec(x => x.acts), actual = m[2];
+  const previo = metricasDe(E.todos, anios[1], mon, false), previoCorte = m[1];
+  const cierre = actual.totAct * (previoCorte.totAct > 0 && previo.totAct > 0 ? previo.totAct / previoCorte.totAct : 1);
+  const dv = A.esc === "tend" ? (gV || 0) : A.esc === "mio" ? A.mv / 100 : 0, dp = A.esc === "tend" ? (gP || 0) : A.esc === "mio" ? A.mp / 100 : 0;
+  const proy = cierre * (1 + dv) * (1 + dp);
+  const st = (k, v, l) => `<span class="gxe-paso"><span class="gxe-et">${l}</span><button type="button" data-action="gastos-ana-paso" data-k="${k}" data-d="-5" aria-label="${esc(t("Menos","Less","Menos","פחות"))}">−</button><b>${v > 0 ? "+" : ""}${v}%</b><button type="button" data-action="gastos-ana-paso" data-k="${k}" data-d="5" aria-label="${esc(t("Más","More","Mais","יותר"))}">+</button></span>`;
+  const desc = A.esc === "igual" ? t("Mismas actividades y mismos precios que este año.","Same activities and prices as this year.","Mesmas atividades e mesmos preços deste ano.","אותן פעילויות ואותם מחירים כמו השנה.")
+    : A.esc === "tend" ? t("Actividades {v} y precios {p}, como en los últimos años.","Activities {v} and prices {p}, as in recent years.","Atividades {v} e preços {p}, como nos últimos anos.","פעילויות {v} ומחירים {p}, כמו בשנים האחרונות.",{ v: gV === null ? "—" : pcTxt(gV), p: gP === null ? "—" : pcTxt(gP) })
+    : t("Actividades {v} y precios {p}, a tu manera.","Activities {v} and prices {p}, your way.","Atividades {v} e preços {p}, do seu jeito.","פעילויות {v} ומחירים {p}, בדרך שלך.",{ v: (A.mv > 0 ? "+" : "") + A.mv + "%", p: (A.mp > 0 ? "+" : "") + A.mp + "%" });
+  const hacia = actual.totAct > 0 ? `<section class="gxe-tarjeta"><h3>${t("Hacia dónde va","Where it's heading","Para onde vai","לאן זה הולך")}</h3><p class="gxe-sub">${t("Con los años cargados, al mismo corte, para que se pueda comparar","With the years loaded, at the same cut-off, so they can be compared","Com os anos carregados, no mesmo corte, para poder comparar","עם השנים שנטענו, באותו חיתוך, כדי שאפשר יהיה להשוות")}</p>
+    ${llenos.length < 2 ? `<p class="setting-sub gx-nada">${t("Para ver la tendencia hace falta al menos otro año cargado. Con un solo año se puede estimar el cierre y armar el presupuesto, pero no proyectar hacia dónde van los precios ni la cantidad de actividades.","To see the trend at least one more year must be loaded. With a single year you can estimate the close and build the budget, but not project where prices or the number of activities are heading.","Para ver a tendência é preciso ao menos outro ano carregado. Com um só ano dá para estimar o fechamento e montar o orçamento, mas não projetar para onde vão os preços nem a quantidade de atividades.","כדי לראות מגמה צריך לפחות עוד שנה אחת. עם שנה אחת אפשר להעריך את הסגירה ולבנות תקציב, אבל לא לחזות לאן מתקדמים המחירים וכמות הפעילויות.")}</p>` : ""}
+    <div class="gxe-tiles">${gxeTile(t("Costo por persona y día","Cost per person per day","Custo por pessoa por dia","עלות לאדם ליום"), montoHtml(mon, redondo(actual.perDia)), gP === null ? "" : pcTxt(gP) + " " + t("por año","per year","por ano","בשנה"))}
+      ${gxeTile(t("Actividades","Activities","Atividades","פעילויות"), actual.acts, gV === null ? "" : pcTxt(gV) + " " + t("por año","per year","por ano","בשנה"))}
+      ${gxeTile(t("{a} al cierre (estimado)","{a} at year end (estimate)","{a} no fechamento (estimado)","{a} בסוף השנה (הערכה)",{ a: hoyY }), montoHtml(mon, redondo(cierre)), t("al ritmo del año pasado","at last year's pace","no ritmo do ano passado","בקצב של השנה שעברה"))}
+      ${gxeTile(t("{a} proyectado","{a} projected","{a} projetado","{a} צפוי",{ a: proxY }), montoHtml(mon, redondo(proy)), desc, " gxe-aviso")}</div>
+    <div class="gxe-ctl" style="margin-top:14px">${et(t("Escenario","Scenario","Cenário","תרחיש"))}${seg("esc", [["igual", t("Igual que este año","Same as this year","Igual a este ano","כמו השנה")], ["tend", t("Con la tendencia","With the trend","Com a tendência","עם המגמה")], ["mio", t("A mi manera","My way","Do meu jeito","בדרך שלי")]])}
+      ${A.esc === "mio" ? st("mv", A.mv, t("Actividades","Activities","Atividades","פעילויות")) + st("mp", A.mp, t("Precios","Prices","Preços","מחירים")) : ""}</div>
+    <p class="gxe-sub">${t("Es una cuenta simple: el cierre estimado por la cantidad de actividades y por los precios. No sabe de cambios de agenda: para eso está el presupuesto de más abajo.","It's a simple calculation: the estimated close times the number of activities and the prices. It knows nothing about schedule changes: that's what the budget below is for.","É uma conta simples: o fechamento estimado pela quantidade de atividades e pelos preços. Não sabe de mudanças de agenda: para isso há o orçamento abaixo.","זה חישוב פשוט: הסגירה המוערכת כפול כמות הפעילויות והמחירים. הוא לא מכיר שינויים בלוח: בשביל זה יש את התקציב למטה.")}</p></section>` : "";
+  // Costo típico y presupuesto armable.
+  const C = costoTipicoPorPais(E.todos, hoyY, mon), paisesC = Object.keys(C).filter(k => k !== "—").sort((a, b) => estimarActividad(C[b], 5, 1) - estimarActividad(C[a], 5, 1));
+  const todosC = Object.values(C), prom = todosC.length ? ["pasaje", "aloj", "dia", "otros"].reduce((o, k) => (o[k] = todosC.reduce((x, y) => x + y[k], 0) / todosC.length, o), {}) : null;
+  const tipico = paisesC.length ? `<section class="gxe-tarjeta"><h3>${t("Costo típico por destino","Typical cost by destination","Custo típico por destino","עלות אופיינית לפי יעד")}</h3><p class="gxe-sub">${t("Promedio por persona, con lo gastado en {a}","Average per person, from what was spent in {a}","Média por pessoa, com o gasto em {a}","ממוצע לאדם, ממה שהוצא ב-{a}",{ a: hoyY })}</p>
+    ${tablaHtml([t("Destino","Destination","Destino","יעד"), t("Pasaje","Fare","Passagem","כרטיס"), t("Alojamiento / noche","Lodging / night","Hospedagem / noite","לינה / לילה"), t("Comida y transporte / día","Food and transport / day","Comida e transporte / dia","אוכל ותחבורה / יום"), t("Otros por actividad","Other per activity","Outros por atividade","אחר לפעילות"), t("Una actividad de 5 días","A 5-day activity","Uma atividade de 5 dias","פעילות של 5 ימים")],
+      paisesC.map(k => { const c = C[k], f = x => esc(Math.round(x).toLocaleString("en-US")); return [esc(k), f(c.pasaje), f(c.aloj), f(c.dia), f(c.otros), `<b>${f(estimarActividad(c, 5, 1))}</b>`]; }))}</section>` : "";
+  if(!A.plan) A.plan = planDeAgenda(proxY);
+  const fp = A.prec === "tend" && gP !== null ? 1 + gP : 1;
+  const filasP = A.plan.map((x, i) => { const c = C[x.pais] || prom, sinDato = !C[x.pais]; return { x, i, sinDato, est: c ? estimarActividad(c, x.dias, x.pers) * fp : 0 }; });
+  const base = filasP.filter(f => f.x.on).reduce((a, f) => a + f.est, 0), total = base * (1 + A.imp / 100);
+  const stp = (k, i, v, lab) => `<span class="gxe-paso"><button type="button" data-action="gastos-ana-plan" data-k="${k}-" data-i="${i}" aria-label="${esc(t("Menos {x}","Less {x}","Menos {x}","פחות {x}",{ x: lab }))}">−</button><b>${v}</b><button type="button" data-action="gastos-ana-plan" data-k="${k}+" data-i="${i}" aria-label="${esc(t("Más {x}","More {x}","Mais {x}","יותר {x}",{ x: lab }))}">+</button></span>`;
+  const paisesOp = paisesC.map(k => `<option value="${esc(k)}"${A.pais === k ? " selected" : ""}>${esc(k)}</option>`).join("");
+  const presup = `<section class="gxe-tarjeta"><h3>${t("Presupuesto de {a}","Budget for {a}","Orçamento de {a}","תקציב {a}",{ a: proxY })}</h3><p class="gxe-sub">${A.plan.length ? t("Sale de las actividades que ya están en la Agenda de {a}. Tildá, cambiá los días y las personas, o sumá otra, y mirá cuánto sale.","It comes from the activities already in the {a} Agenda. Tick, change the days and people, or add another one, and see the cost.","Vem das atividades que já estão na Agenda de {a}. Marque, mude os dias e as pessoas, ou some outra, e veja quanto dá.","מבוסס על הפעילויות שכבר נמצאות בלוח של {a}. סמנו, שנו ימים ואנשים או הוסיפו עוד אחת וראו כמה זה יוצא.",{ a: proxY }) : t("Todavía no hay actividades cargadas en la Agenda de {a}. Sumalas acá para estimar cuánto costarían.","There are no activities in the {a} Agenda yet. Add them here to estimate what they would cost.","Ainda não há atividades na Agenda de {a}. Some-as aqui para estimar quanto custariam.","עדיין אין פעילויות בלוח של {a}. הוסיפו אותן כאן כדי להעריך כמה יעלו.",{ a: proxY })}</p>
+    <div class="gxe-ctl">${et(t("Precios","Prices","Preços","מחירים"))}${seg("prec", [["igual", t("Como {a}","Like {a}","Como {a}","כמו {a}",{ a: hoyY })], ["tend", gP === null ? t("Con la tendencia (sin datos)","With the trend (no data)","Com a tendência (sem dados)","עם המגמה (אין נתונים)") : t("Con la tendencia ({p})","With the trend ({p})","Com a tendência ({p})","עם המגמה ({p})",{ p: pcTxt(gP) })]])}</div>
+    ${A.plan.length ? tablaHtml([t("Actividad","Activity","Atividade","פעילות"), t("Destino","Destination","Destino","יעד"), t("Días","Days","Dias","ימים"), t("Personas","People","Pessoas","אנשים"), t("Estimado","Estimate","Estimativa","הערכה"), ""],
+      filasP.map(({ x, i, sinDato, est }) => [`<label class="gxe-chk"><input type="checkbox" data-action="gastos-ana-plan" data-k="tog" data-i="${i}" ${x.on ? "checked" : ""} aria-label="${esc(t("Incluir «{n}»","Include “{n}”","Incluir «{n}»","לכלול את «{n}»",{ n: x.titulo || x.pais }))}"> ${esc(x.titulo || x.pais || t("Actividad","Activity","Atividade","פעילות"))}</label>`,
+        esc(x.pais || "—") + (sinDato && paisesC.length ? ` <span class="gxe-nota" title="${esc(t("Sin datos de ese destino: se usó el promedio","No data for that destination: the average was used","Sem dados desse destino: usou-se a média","אין נתונים על היעד: נעשה שימוש בממוצע"))}">≈</span>` : ""), stp("d", i, x.dias, t("días","days","dias","ימים")), stp("p", i, x.pers, t("personas","people","pessoas","אנשים")), x.on ? esc(fmtMonto(mon, redondo(est))) : "—",
+        `<button type="button" class="gx-link" data-action="gastos-ana-plan" data-k="del" data-i="${i}" aria-label="${esc(t("Quitar «{n}»","Remove “{n}”","Tirar «{n}»","הסרת «{n}»",{ n: x.titulo || x.pais }))}">✕</button>`])) : ""}
+    ${paisesC.length ? `<div class="gxe-ctl" style="margin-top:12px"><label class="gxe-et" for="gxAnaPais">${t("Sumar una actividad en","Add an activity in","Somar uma atividade em","הוספת פעילות ב")}</label><select id="gxAnaPais" class="gx-elige" data-gana="pais">${paisesOp}</select><button type="button" class="btn-secondary gx-btn-chico" data-action="gastos-ana-plan" data-k="add" data-i="0">+ ${t("Sumar","Add","Somar","הוספה")}</button></div>` : ""}
+    <div class="gxe-total"><div><span>${t("Reserva para imprevistos","Contingency reserve","Reserva para imprevistos","רזרבה לבלתי צפוי")}</span>${seg("imp", [[0, "0%"], [10, "10%"], [20, "20%"]])}</div>
+      <div><span>${t("Presupuesto total","Total budget","Orçamento total","סך התקציב")}</span><b>${esc(fmtMonto(mon, redondo(total)))}</b></div></div>
+    ${actual.totAct > 0 ? `<p class="gxe-sub">${t("Este año se estima gastar {m} en actividades.","This year is expected to cost {m} on activities.","Este ano deve-se gastar {m} em atividades.","השנה מוערך שיוצאו {m} על פעילויות.",{ m: fmtMonto(mon, redondo(cierre)) })}</p>` : ""}</section>`;
+  if(!hacia && !tipico && !A.plan.length) return sinDatosAna() + presup;
+  return `${hacia}${tipico}${presup}`;
+}
+function renderGastosAnalisis(){
+  const A = anaEstado(), E = estadisticasMias(gastosRes, true), { chipsAnio, chipsMon } = chipsDeEstadisticas(E, "gastos-res-anio", "gastos-res-moneda");
+  const subs = [["viaje", t("Por actividad","By activity","Por atividade","לפי פעילות")], ["persona", t("Por persona","By person","Por pessoa","לפי אדם")], ["anios", t("Comparar años","Compare years","Comparar anos","השוואת שנים")], ["futuro", t("Para el año que viene","For next year","Para o ano que vem","לשנה הבאה")]];
+  const barra = `<div class="gxe-ctl"><div class="pref-chips" role="group" aria-label="${esc(t("Vista del análisis","Analysis view","Vista da análise","תצוגת הניתוח"))}">${subs.map(([k, txt]) => `<button type="button" class="chip-toggle${A.sub === k ? " active" : ""}" data-action="gastos-ana-set" data-k="sub" data-v="${k}" aria-pressed="${A.sub === k}">${esc(txt)}</button>`).join("")}</div></div>`;
+  // El año solo cuenta en las dos primeras vistas; la moneda, en todas.
+  const ctl = (A.sub === "viaje" || A.sub === "persona" ? chipsAnio : "") + chipsMon;
+  if(!E.todos.length && A.sub !== "futuro") return `${barra}${sinDatosAna()}`;
+  return `${barra}${ctl}${A.sub === "persona" ? anaPorPersona(E) : A.sub === "anios" ? anaAnios(E) : A.sub === "futuro" ? anaFuturo(E) : anaPorViaje(E)}`;
+}
 // La franja de arriba de «Para aprobar»: cuántas esperan y hace cuánto (sin plata: acá solo se cuenta).
 function franjaDeEspera(){
   const ed = edadesDeEnviadas(), nm = nombresDeEdades();
@@ -26631,7 +26846,7 @@ function renderGastosView(){
     const ra = rendicionPorId(gastosAbierta);
     body = renderRendicionAbierta(sec === "aprobar" || (esGestor() && !!ra && ra.autor !== miCorreo()), sec === "aprobar");
   }
-  else body = sec === "resumen" ? renderGastosResumen() : sec === "estadisticas" ? renderGastosEstadisticas() : sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
+  else body = sec === "analisis" ? renderGastosAnalisis() : sec === "resumen" ? renderGastosResumen() : sec === "estadisticas" ? renderGastosEstadisticas() : sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
   return `<div class="admin-view gastos-view">
       <aside class="admin-menu" aria-label="${esc(titulo)}">
         <div class="admin-titulo">🧾 ${titulo}</div>${menu}
@@ -28964,6 +29179,20 @@ const GASTOS_ACCIONES = {
   // Desde «Mis estadísticas» se abre la rendición en la sección que le toca (esta pantalla no abre rendiciones).
   "gastos-est-abrir": async el => { const r = rendicionPorId(el.dataset.id); gastosSeccion = r && rendicionEditable(r) ? "rendir" : "rendiciones";
     gastosAbierta = el.dataset.id; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render(); scrollToTop(); },
+  "gastos-ana-set": async el => { const A = anaEstado(), k = el.dataset.k, v = el.dataset.v;
+    A[k] = k === "corte" ? v === "true" : (k === "imp" ? Number(v) : v); if(k === "sub") A.abiertas = new Set(); render();
+    const x = document.querySelector(`[data-action="gastos-ana-set"][data-k="${k}"][data-v="${CSS.escape(v)}"]`); if(x) x.focus(); },
+  "gastos-ana-grupo": async el => { const id = el.dataset.id, A = anaEstado().abiertas; if(A.has(id)) A.delete(id); else A.add(id); render();
+    const x = document.querySelector(`[data-action="gastos-ana-grupo"][data-id="${CSS.escape(id)}"]`); if(x) x.focus(); },
+  "gastos-ana-paso": async el => { const A = anaEstado(), k = el.dataset.k; A[k] = Math.max(-50, Math.min(100, A[k] + Number(el.dataset.d))); render();
+    const x = document.querySelector(`[data-action="gastos-ana-paso"][data-k="${k}"][data-d="${CSS.escape(el.dataset.d)}"]`); if(x) x.focus(); },
+  // El presupuesto armable: tildar, días, personas, quitar y sumar una actividad (solo en pantalla: no se guarda).
+  "gastos-ana-plan": async el => { const A = anaEstado(), i = Number(el.dataset.i), k = el.dataset.k, x = A.plan && A.plan[i];
+    if(k === "add"){ A.plan = (A.plan || []).concat([{ titulo: "", pais: A.pais || "", dias: 4, pers: 2, on: true }]); }
+    else if(x){ if(k === "tog") x.on = !x.on; else if(k === "d+") x.dias = Math.min(30, x.dias + 1); else if(k === "d-") x.dias = Math.max(1, x.dias - 1);
+      else if(k === "p+") x.pers = Math.min(30, x.pers + 1); else if(k === "p-") x.pers = Math.max(1, x.pers - 1); else if(k === "del") A.plan.splice(i, 1); }
+    render();
+    const q = k === "add" || k === "del" ? null : document.querySelector(`[data-action="gastos-ana-plan"][data-k="${k}"][data-i="${i}"]`); if(q) q.focus(); },
   "gastos-res-anio": async el => { gastosRes.anio = el.dataset.year; render();
     const x = document.querySelector(`[data-action="gastos-res-anio"][data-year="${CSS.escape(el.dataset.year)}"]`); if(x) x.focus(); },
   "gastos-res-moneda": async el => { gastosRes.moneda = el.dataset.m; render();
@@ -29167,6 +29396,11 @@ function gastosAlEscribir(el, evento){
     const S = selPara(gastosAbierta || "todas"), si = el.checked;
     seleccionables(S.rid).forEach(g => { if(si) S.ids.add(g.id); else S.ids.delete(g.id); });
     render(); volverA(el.id); return true;
+  }
+  // El destino de «Sumar una actividad» del presupuesto (Análisis): solo se guarda para el próximo «Sumar».
+  if(el.dataset.gana){
+    if(evento !== "change") return true;
+    anaEstado()[el.dataset.gana] = el.value; return true;
   }
   if(el.dataset.ghist){
     if(evento !== "change") return true;

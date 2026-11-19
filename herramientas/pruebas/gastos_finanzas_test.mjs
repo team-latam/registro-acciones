@@ -69,7 +69,7 @@ const vp = { width: 1280, height: 900 };
   eq("…y no tiene Administración (no es admin)", await p.$$eval('.user-menu [data-view="admin"]', l => l.length), 0);
   await p.keyboard.press("Escape");
   await irGastos(p);
-  eq("en Gastos: sus secciones, más «Para aprobar» y «Resumen»", await secciones(p), ["rendir", "rendiciones", "cuenta", "estadisticas", "aprobar", "resumen"]);
+  eq("en Gastos: sus secciones, más «Para aprobar», «Resumen» y «Análisis»", await secciones(p), ["rendir", "rendiciones", "cuenta", "estadisticas", "aprobar", "resumen", "analisis"]);
   eq("«Para aprobar» avisa lo que ella puede aprobar (la mandada de Ana; la suya no)", await textos(p, '#tabs button[data-view="gastos"]'), ["Gastos 1"]);
   await irSeccion(p, "rendiciones");
   eq("«Rendiciones»: ve las de todo el equipo (cinco)", await p.evaluate(() => document.querySelectorAll(".gx-grupo").length), 5);
