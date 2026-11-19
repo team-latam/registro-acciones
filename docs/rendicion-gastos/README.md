@@ -485,7 +485,7 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
   aparezca dentro de las opciones de la actividad, sea porque ya tiene una rendición hecha o porque se puede hacer la
   rendición. El título debe decir lo mismo, pero te lleva a una u otra parte de Gastos… Publicaciones que son de
   rutina… no llevan este acceso.» Eligió **abrirlo al equipo** (la recomendada) y pidió sumarlo también al «+».
-  **Hecho el 19/11:**
+  **Hecho el 19/11 y subido a `main` con su OK** («Sí, publicar»):
   - **Quién lo ve:** todo el que escribe en el sistema (integrantes y admins); un observador, no. En la base,
     `gastos_habilitado()` lo da por abierto si `gastos.abierto` no está en `false` (antes hacía falta un `true`).
     En Administración → Gastos hay dos interruptores: «Gastos» (apaga todo) y «Abierto al equipo» (si se apaga,
