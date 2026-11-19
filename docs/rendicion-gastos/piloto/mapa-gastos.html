@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa de Gastos en Toldot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>
+/* Concepto: un plano del sistema. Se elige un rol y se ve el menú tal cual lo vería esa persona; lo nuevo va marcado. */
+:root{
+  --bg:#f4f8f8; --card:#fff; --text:#0d2a2c; --muted:#4f6c6e; --line:#d8e4e4; --track:#e8f0f0;
+  --brand:#0d3b3e; --on-brand:#fff; --bar:#1a9fb8; --new:#1a7f94; --newbg:#d9f0f4;
+  --ok:#2e7d52; --warn:#a8741a; --bad:#b5452f; --warnbg:#f6ecd4;
+  --font:'Montserrat',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a1719; --card:#10282b; --text:#e3f0f0; --muted:#8fb0b2; --line:#1f3b3e; --track:#17383b;
+  --brand:#16494d; --on-brand:#e3f0f0; --bar:#4cc4d8; --new:#7fdbe9; --newbg:#123f46;
+  --ok:#6cc596; --warn:#e3b04f; --bad:#e8836c; --warnbg:#3a3114; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a1719; --card:#10282b; --text:#e3f0f0; --muted:#8fb0b2; --line:#1f3b3e; --track:#17383b;
+  --brand:#16494d; --on-brand:#e3f0f0; --bar:#4cc4d8; --new:#7fdbe9; --newbg:#123f46;
+  --ok:#6cc596; --warn:#e3b04f; --bad:#e8836c; --warnbg:#3a3114; color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:400 14px/1.55 var(--font);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+.wrap{max-width:980px;margin:0 auto}
+h1{font-size:22px;font-weight:800;letter-spacing:-.01em;padding-top:22px}
+.lead{color:var(--muted);margin:6px 0 20px;max-width:70ch}
+h2{font-size:17px;font-weight:800;margin:34px 0 4px}
+h2 small{display:block;font-size:12.5px;font-weight:500;color:var(--muted);margin-top:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;min-width:0;margin-top:12px}
+.seg{display:inline-flex;background:var(--track);border-radius:12px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{font:600 12.5px var(--font);border:0;background:transparent;color:var(--muted);padding:8px 14px;border-radius:10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--on-brand)}
+.seg button:focus-visible{outline:2px solid var(--bar);outline-offset:2px}
+.new{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--new);background:var(--newbg);border-radius:6px;padding:1px 6px;margin-inline-start:6px;vertical-align:middle}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--track);color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.lab{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+/* maqueta de la barra de arriba */
+.top{display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--brand);border-radius:12px;padding:8px}
+.top span{font-size:12.5px;font-weight:600;color:var(--on-brand);opacity:.7;padding:6px 11px;border-radius:8px}
+.top span.on{opacity:1;background:rgba(255,255,255,.16)}
+.top span.off{display:none}
+.top .who{margin-inline-start:auto;opacity:1;background:rgba(255,255,255,.1)}
+.menu{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:6px;font-size:12.5px;background:var(--bg)}
+.menu div{padding:5px 10px;border-radius:7px}
+.menu div.off{display:none}
+.side{display:flex;flex-direction:column;gap:2px}
+.side div{padding:9px 12px;border-radius:9px;border:1px solid transparent}
+.side div b{font-weight:700;font-size:13px}
+.side div small{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+.side div.n{border-color:var(--newbg);background:color-mix(in srgb,var(--newbg) 45%,transparent)}
+.side div.off{display:none}
+.phone{max-width:340px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--bg)}
+.phone .scr{padding:14px;min-height:96px;font-size:12.5px;color:var(--muted)}
+.bn{display:flex;justify-content:space-around;background:var(--card);border-top:1px solid var(--line);padding:8px 4px;font-size:11px;color:var(--muted);text-align:center}
+.bn span{flex:1}
+.sheet{margin:0 10px 10px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:6px;font-size:12.5px}
+.sheet div{padding:6px 10px}.sheet div.off{display:none}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:center;padding:8px;border-bottom:1px solid var(--line)}
+td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:center}
+th:first-child,td:first-child{text-align:start}
+td:first-child{font-weight:600}
+th.hl,td.hl{background:color-mix(in srgb,var(--newbg) 55%,transparent)}
+.y{color:var(--ok);font-weight:800}.no{color:var(--muted)}.mine{color:var(--warn);font-weight:700;font-size:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.p{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--card)}
+.p b{display:block;font-size:13.5px;margin-bottom:3px}
+.p span{color:var(--muted);font-size:13px}
+.tag{font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-inline-end:6px}
+.t-ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.t-mid{color:var(--warn);background:var(--warnbg)}
+.t-bad{color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent)}
+ol.steps{list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:10px}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:start}
+ol.steps li::before{content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--brand);color:var(--on-brand);font-weight:800;font-size:13px;display:grid;place-items:center}
+ol.steps li b{display:block}
+ol.steps li span{color:var(--muted);font-size:13px}
+.dec{display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
+.dec:last-child{border-bottom:0}
+.dec b{display:block}.dec span{color:var(--muted);font-size:13px}
+.rec{font-size:12px;font-weight:700;color:var(--ok);white-space:nowrap}
+ul.l{list-style:none;display:flex;flex-direction:column;gap:7px}
+ul.l li{padding-inline-start:16px;position:relative}
+ul.l li::before{content:"";position:absolute;inset-inline-start:0;top:.6em;width:6px;height:6px;border-radius:2px;background:var(--bar)}
+.note{font-size:12.5px;color:var(--muted);margin-top:10px}
+@media (max-width:520px){.dec{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+<h1>Cómo queda Gastos dentro de Toldot</h1>
+<p class="lead">Este plano muestra dónde va cada cosa y quién la ve, sobre el sistema tal como está hoy. Lo marcado como <span class="new" style="margin:0">nuevo</span> es lo único que se suma; todo lo demás queda como está. Elegí un rol y mirá.</p>
+
+<h2>1. El menú, según quién entra</h2>
+<div class="seg" id="roles" role="group" aria-label="Rol" style="margin-top:10px">
+  <button data-r="obs" aria-pressed="false">Observador</button>
+  <button data-r="int" aria-pressed="true">Integrante</button>
+  <button data-r="fin" aria-pressed="false">Finanzas</button>
+  <button data-r="adm" aria-pressed="false">Administrador</button>
+</div>
+<div class="card">
+  <div class="cols">
+    <div>
+      <div class="lab">En la compu: barra de arriba</div>
+      <div class="top"><span class="on">Inicio</span><span>Calendario</span><span>Países</span><span>Proyectos</span><span data-need="g">Gastos</span><span>Reportes</span><span class="who">Foto ▾</span></div>
+      <div class="menu"><div>⚙️ Mis preferencias</div><div data-need="a">🛠️ Administración <span class="chip">personas · tipos de gasto · interruptor</span></div></div>
+      <p class="note" id="aviso"></p>
+    </div>
+    <div>
+      <div class="lab">En el celular: barra de abajo</div>
+      <div class="phone"><div class="scr">Inicio · Calendario · ＋ · Países · <b>Más</b></div>
+        <div class="sheet"><div>📋 Proyectos</div><div data-need="g">🧾 Gastos</div><div>📊 Reportes</div><div>⚙️ Mis preferencias</div><div data-need="a">🛠️ Administración</div></div>
+        <div class="bn"><span>🏠<br>Inicio</span><span>📅<br>Calendario</span><span>＋</span><span>🗺️<br>Países</span><span>☰<br>Más</span></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="lab">Adentro de «Gastos»: el menú lateral</div>
+  <div class="side" id="side">
+    <div data-need="g"><b>Por rendir</b><small>Subir comprobantes, completar y mandar la rendición. Sin cambios.</small></div>
+    <div data-need="g"><b>Rendiciones</b><small>Cada persona ve las suyas; Finanzas y administradores, las de todo el equipo. Sin cambios.</small></div>
+    <div data-need="g"><b>Cuenta corriente</b><small>Saldo por moneda y movimientos. Sin cambios.</small></div>
+    <div class="n" data-need="g"><b>Mis estadísticas <span class="new">nuevo</span></b><small>Mis gastos por actividad, con salida al detalle y a cada comprobante. Comparado con el año pasado.</small></div>
+    <div data-need="f"><b>Para aprobar</b><small>Lo mandado, la plata por confirmar y lo observado. Suma una franja con los números de arriba: cuánto espera y hace cuánto.</small></div>
+    <div class="n" data-need="f"><b>Resumen <span class="new">nuevo</span></b><small>Pocos números grandes y sin nombres: gastado, se debe, por aprobar, pagado por la organización.</small></div>
+    <div class="n" data-need="f"><b>Análisis <span class="new">nuevo</span></b><small>Por viaje, por persona, comparar años y «Para el año que viene» con presupuesto. Acá sí hay nombres.</small></div>
+  </div>
+  <p class="note">En celular, las mismas secciones, una debajo de otra. Las tablas anchas pasan a tarjetas que se despliegan.</p>
+</div>
+
+<h2>2. Quién ve qué<small>Mismo dato, distinto alcance. «Lo suyo» quiere decir que cada persona ve solo lo que cargó.</small></h2>
+<div class="card scroll"><table id="mx"><thead><tr><th></th><th data-c="obs">Observador</th><th data-c="int">Integrante</th><th data-c="fin">Finanzas</th><th data-c="adm">Administrador</th></tr></thead><tbody>
+<tr><td>Cargar gastos y mandar rendiciones</td><td class="no">–</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td></tr>
+<tr><td>Ver mis gastos y mis estadísticas</td><td class="no">–</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td></tr>
+<tr><td>Ver rendiciones y cuentas de otras personas</td><td class="no">–</td><td class="no">–</td><td class="y">✔</td><td class="y">✔</td></tr>
+<tr><td>Observar y aprobar rendiciones</td><td class="no">–</td><td class="no">–</td><td class="y">✔ <span class="mine">no las suyas</span></td><td class="y">✔</td></tr>
+<tr><td>Confirmar plata recibida o devuelta, y anotar ajustes</td><td class="no">–</td><td class="no">–</td><td class="y">✔</td><td class="y">✔</td></tr>
+<tr><td>Resumen (números grandes, sin nombres)</td><td class="no">–</td><td class="no">–</td><td class="y">✔</td><td class="y">✔</td></tr>
+<tr><td>Análisis (por viaje, por persona, años, proyección)</td><td class="no">–</td><td class="no">–</td><td class="y">✔</td><td class="y">✔</td></tr>
+<tr><td>Reportes de actividades (como hoy)</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td></tr>
+<tr><td>Administración: personas, tipos de gasto, interruptor</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="y">✔</td></tr>
+</tbody></table></div>
+
+<h2>3. Dónde vive cada cosa que armamos en el piloto</h2>
+<div class="grid2" style="margin-top:12px">
+  <div class="p"><b>Mis gastos por actividad</b><span>Gastos → Mis estadísticas. Cada viaje se despliega y lleva a sus gastos y comprobantes.</span></div>
+  <div class="p"><b>Números grandes del equipo</b><span>Gastos → Resumen. Sin nombres. Solo Finanzas y administradores.</span></div>
+  <div class="p"><b>Por aprobar y su antigüedad</b><span>Arriba de Gastos → Para aprobar. Es trabajo pendiente, no un informe.</span></div>
+  <div class="p"><b>Costo de un viaje y gasto por persona</b><span>Gastos → Análisis → Por viaje y Por persona.</span></div>
+  <div class="p"><b>Comparar años y proyección</b><span>Gastos → Análisis → Comparar años y Para el año que viene.</span></div>
+  <div class="p"><b>Quién se debe y a quién</b><span>Sigue en Cuenta corriente, con nombres. Nunca en el Resumen.</span></div>
+</div>
+<div class="card"><div class="lab">Lo que NO se toca</div>
+<ul class="l"><li>Reportes de actividades, «Mi año», «Presentar», «Tendencias»: igual que hoy. <b>Gastos no entra en «Mi año»</b>, porque esa tarjeta se comparte.</li>
+<li>Por rendir, Rendiciones, Cuenta corriente, los PDF de entrega y el lector de comprobantes.</li>
+<li>El menú de arriba y el de celular: no se suma ninguna pestaña nueva. Todo cuelga de «Gastos».</li></ul></div>
+
+<h2>4. Principios de diseño que se aplican<small>Para no rehacer: cada decisión de pantalla sale de acá.</small></h2>
+<div class="grid2" style="margin-top:12px">
+  <div class="p"><b>Una pregunta, un lugar</b><span>Si la misma cifra se puede ver en dos sitios, termina distinta en uno. Por eso el Resumen no repite lo de Reportes.</span></div>
+  <div class="p"><b>De lo grande al detalle</b><span>Número, desglose, gasto, comprobante. Cada nivel se abre desde el anterior; ningún número queda suelto.</span></div>
+  <div class="p"><b>Lo que ya conocen</b><span>Mismo menú lateral, mismas tarjetas que se despliegan, mismos selectores de período que Reportes. Nada que aprender de nuevo.</span></div>
+  <div class="p"><b>Lo propio primero, lo ajeno con rol</b><span>Nadie ve gastos de otros por accidente. Quien tiene la vista de Finanzas la ve marcada.</span></div>
+  <div class="p"><b>Que diga qué incluye</b><span>Cada total aclara período, corte y moneda. Los dólares y la moneda local nunca se suman.</span></div>
+  <div class="p"><b>Datos que faltan, avisados</b><span>Sin 2025 cargado, la comparación lo dice y no inventa. Una pantalla vacía explica cómo llenarla.</span></div>
+  <div class="p"><b>Celular y compu cada uno a lo suyo</b><span>«Mis estadísticas» se piensa para el celular en viaje; el Análisis para la compu, con tablas que en celular pasan a tarjetas.</span></div>
+  <div class="p"><b>Accesible e idiomas desde el día uno</b><span>Cuatro idiomas con hebreo de derecha a izquierda, foco visible, y el estado nunca solo por color: lleva signo y texto.</span></div>
+</div>
+
+<h2>5. Probarlo con personas antes de construir<small>Es lo que más ahorra: se encuentra en el piloto lo que de otro modo se encontraría en el sistema real.</small></h2>
+<div class="card">
+<ol class="steps">
+<li><div><b>Integrante: «Mirá cuánto gastaste en Aruba y abrí un comprobante»</b><span>Meta: llegar en tres toques o menos desde Gastos.</span></div></li>
+<li><div><b>Integrante: «¿Cuánto te deben?»</b><span>Meta: se ve sin tocar nada.</span></div></li>
+<li><div><b>Finanzas: «¿Cuánto se debe en total y cuánto espera aprobación hace más de 30 días?»</b><span>Meta: se contesta mirando el Resumen, sin entrar a nada.</span></div></li>
+<li><div><b>Finanzas: «¿Cuánto costó el viaje a Jamaica de septiembre y quién gastó más?»</b><span>Meta: dos toques en el Análisis.</span></div></li>
+<li><div><b>Finanzas: «Armá un presupuesto 2027 con ocho actividades y 10% de imprevistos»</b><span>Meta: menos de dos minutos y sin ayuda.</span></div></li>
+<li><div><b>Finanzas: «¿Subieron los precios contra el año pasado?»</b><span>Meta: una sola vista.</span></div></li>
+</ol>
+<p class="note">Las hacen quien va a usar el rol, idealmente dos personas del equipo además de vos. Donde alguien dude, se ajusta el piloto, y recién después se programa.</p></div>
+
+<h2>6. Qué es barato de cambiar y qué es caro<small>Por eso lo caro se decide ahora, con el piloto en la mano.</small></h2>
+<div class="card">
+<div class="dec"><div><b><span class="tag t-ok">Barato</span>Textos, orden dentro de una pantalla, colores, qué números se muestran</b><span>Se cambia en minutos. Si hace falta, se hace después sin drama.</span></div></div>
+<div class="dec"><div><b><span class="tag t-mid">Medio</span>Mover o sumar una sección del menú, nuevos filtros</b><span>Toca pantallas, pruebas, recorrido de bienvenida y cuatro idiomas.</span></div></div>
+<div class="dec"><div><b><span class="tag t-bad">Caro</span>Roles y permisos, funciones de totales en la base, importar años</b><span>Toca la base y las reglas de privacidad, y se prueba en una base descartable. Esto se decide ahora.</span></div></div>
+</div>
+
+<h2>7. Lo que falta decidir<small>Con mi recomendación. Con esto cerrado, el plano deja de moverse.</small></h2>
+<div class="card">
+<div class="dec"><div><b>El nombre del rol nuevo</b><span>«Finanzas» es corto y se entiende en los cuatro idiomas.</span></div><span class="rec">Recomiendo: Finanzas</span></div>
+<div class="dec"><div><b>¿Finanzas aprueba sus propias rendiciones?</b><span>Quien carga no se aprueba a sí mismo; lo hace otra persona.</span></div><span class="rec">Recomiendo: no</span></div>
+<div class="dec"><div><b>¿El equipo ve gastos agrupados en Reportes?</b><span>Hoy cada uno ve lo suyo y Finanzas lo de todos. Sumar números del equipo en Reportes se puede dejar para después, si lo pide alguien.</span></div><span class="rec">Recomiendo: por ahora no</span></div>
+<div class="dec"><div><b>¿Los observadores ven algo de Gastos?</b><span>Hoy no ven la solapa. Que se mantenga.</span></div><span class="rec">Recomiendo: no</span></div>
+<div class="dec"><div><b>«Mis estadísticas» como ítem propio del menú lateral</b><span>Es más fácil de encontrar que una solapa escondida dentro de Cuenta corriente.</span></div><span class="rec">Recomiendo: ítem propio</span></div>
+<div class="dec"><div><b>Importar 2024, 2025 y 2026 desde el Sheet</b><span>Hace falta para comparar y proyectar. Directo del Sheet a la base, con las filas a la vista antes de guardar, sin pasar por el repo.</span></div><span class="rec">Decidido: sí</span></div>
+</div>
+
+<h2>8. En qué orden se construye<small>Cada parte se aprueba mirando su piloto, y se puede frenar al terminar cualquiera. Todo va a una rama, con capturas y tu OK antes de llegar a «main».</small></h2>
+<div class="card">
+<ol class="steps">
+<li><div><b>Cerrar decisiones y probar el piloto</b><span>Sin tocar el sistema. Es donde estamos.</span></div></li>
+<li><div><b>Mis estadísticas</b><span>Solo pantallas. No cambia permisos ni la base, así que es lo más seguro y lo primero que la gente nota.</span></div></li>
+<li><div><b>Rol Finanzas y Resumen</b><span>Cambia la base y los permisos, con sus pruebas de privacidad. «Para aprobar» suma su franja de números.</span></div></li>
+<li><div><b>Importar los años anteriores</b><span>Una sola vez, con revisión. Sin esto, el Análisis nace vacío.</span></div></li>
+<li><div><b>Análisis</b><span>Por viaje, por persona, comparar años y año que viene. Es la parte más grande y la que más depende de los datos importados.</span></div></li>
+</ol>
+<p class="note">Cada parte lleva sus pruebas automáticas, los textos en cuatro idiomas y el recorrido de bienvenida revisado. Eso es parte del costo de cada una.</p></div>
+</div>
+
+<script>
+const R = {
+  obs: { g: 0, f: 0, a: 0, nota: "El observador ve todo lo de actividades pero no escribe nada. No tiene la solapa Gastos." },
+  int: { g: 1, f: 0, a: 0, nota: "Carga y ve lo suyo. Gastos aparece con «Mis estadísticas» como único agregado." },
+  fin: { g: 1, f: 1, a: 0, nota: "Como un integrante, más la vista de todo el equipo para aprobar y analizar. Sin Administración." },
+  adm: { g: 1, f: 1, a: 1, nota: "Todo lo de Finanzas, más Administración (personas, tipos de gasto, interruptor)." }
+};
+function pintar(r) {
+  const x = R[r];
+  document.querySelectorAll("[data-need]").forEach(e => { const n = e.dataset.need; e.classList.toggle("off", !(n === "g" ? x.g : n === "f" ? x.f : x.a)); });
+  document.getElementById("aviso").textContent = x.nota;
+  document.querySelectorAll("#roles button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.r === r)));
+  document.querySelectorAll("#mx [data-c]").forEach(h => h.classList.toggle("hl", h.dataset.c === r));
+  const idx = ["obs", "int", "fin", "adm"].indexOf(r) + 2;
+  document.querySelectorAll("#mx tr").forEach(tr => [...tr.children].forEach((c, i) => c.classList.toggle("hl", i === idx - 1)));
+}
+document.getElementById("roles").addEventListener("click", e => { const b = e.target.closest("button"); if (b) pintar(b.dataset.r); });
+pintar("int");
+</script>
+
+</html>

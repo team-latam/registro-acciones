@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estadísticas de Gastos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>
+/* Concepto: tres capas sobre los mismos datos. Mis gastos (cada persona, con salida al detalle),
+   Resumen (números grandes, sin nombres) y Análisis (por viaje, por persona y año que viene). Paleta de Toldot. */
+:root{
+  --bg:#f4f8f8; --card:#fff; --text:#0d2a2c; --muted:#4f6c6e; --line:#d8e4e4; --track:#e8f0f0;
+  --brand:#0d3b3e; --on-brand:#fff; --bar:#1a9fb8;
+  --ok:#2e7d52; --warn:#a8741a; --bad:#b5452f;
+  --c1:#0d3b3e; --c2:#1a9fb8; --c3:#5aa469; --c4:#d19a2e; --c5:#c2563f; --c6:#7a6bb0; --c7:#8a9a9b;
+  --font:'Montserrat',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a1719; --card:#10282b; --text:#e3f0f0; --muted:#8fb0b2; --line:#1f3b3e; --track:#17383b;
+  --brand:#16494d; --on-brand:#e3f0f0; --bar:#4cc4d8;
+  --ok:#6cc596; --warn:#e3b04f; --bad:#e8836c;
+  --c1:#6fd3da; --c2:#3aa9c4; --c3:#7ec28b; --c4:#e3b04f; --c5:#e07a63; --c6:#a597d6; --c7:#a3b3b4; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a1719; --card:#10282b; --text:#e3f0f0; --muted:#8fb0b2; --line:#1f3b3e; --track:#17383b;
+  --brand:#16494d; --on-brand:#e3f0f0; --bar:#4cc4d8;
+  --ok:#6cc596; --warn:#e3b04f; --bad:#e8836c;
+  --c1:#6fd3da; --c2:#3aa9c4; --c3:#7ec28b; --c4:#e3b04f; --c5:#e07a63; --c6:#a597d6; --c7:#a3b3b4; color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:400 14px/1.5 var(--font);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:1000px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:20px 0 12px}
+header h1{font-size:20px;font-weight:800;letter-spacing:-.01em;flex:1;min-width:200px}
+header h1 small{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:2px}
+.proto{background:var(--card);border:1px dashed var(--line);color:var(--muted);border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:14px}
+.proto b{color:var(--text)}
+.seg{display:inline-flex;background:var(--track);border-radius:12px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{font:600 12.5px var(--font);border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--on-brand)}
+.seg button:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--bar);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-bottom:18px}
+.bar label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:6px}
+select{font:600 12.5px var(--font);background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+.rol{font-size:12px;color:var(--muted);margin:-6px 0 16px}
+.grid{display:grid;gap:14px}
+.tiles{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.tiles.big{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0}
+.tile .k{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.tile .v{font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.big .tile .v{font-size:40px}
+.u{font-size:.45em;font-weight:700;color:var(--muted);margin-inline-end:5px;letter-spacing:.04em}
+.tile .n{font-size:12px;color:var(--muted);margin-top:4px}
+.tile.alert .v{color:var(--warn)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;min-width:0}
+.card h2{font-size:15px;font-weight:800;margin-bottom:2px}
+.card .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));margin-top:14px}
+.mt{margin-top:14px}
+.rows{display:flex;flex-direction:column;gap:9px}
+.row{display:grid;grid-template-columns:minmax(80px,140px) 1fr auto;gap:10px;align-items:center;font-size:13px}
+.row .l{font-weight:600;overflow-wrap:anywhere}
+.row .t{background:var(--track);border-radius:6px;height:16px;overflow:hidden}
+.row .f{height:100%;border-radius:6px;background:var(--bar);display:block}
+.row .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:end;min-width:64px}
+.row .v small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.donut{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+.donut svg{width:170px;height:170px;flex:none}
+.legend{display:flex;flex-direction:column;gap:7px;flex:1;min-width:180px;font-size:13px}
+.legend div{display:flex;gap:8px;align-items:center}
+.legend i{width:11px;height:11px;border-radius:3px;flex:none}
+.legend b{margin-inline-start:auto;font-variant-numeric:tabular-nums}
+.cols{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:18px}
+.cols .c{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;font-size:10.5px;color:var(--muted)}
+.cols .c .b{width:100%;background:var(--bar);border-radius:5px 5px 0 0;min-height:2px}
+.cols .c .x{font-weight:700;color:var(--text);font-size:10px;margin-bottom:3px;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:end;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);text-align:end}
+th:first-child,td:first-child{text-align:start;font-weight:600}
+tfoot td{font-weight:800;border-bottom:0}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--track);color:var(--muted);white-space:nowrap}
+.chip.ok{color:var(--ok)}.chip.warn{color:var(--warn)}.chip.bad{color:var(--bad)}
+.note{font-size:12px;color:var(--muted);margin-top:12px}
+.age{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.age div{background:var(--track);border-radius:10px;padding:10px 12px}
+.age b{display:block;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.age span{font-size:11px;color:var(--muted)}
+.age .old b{color:var(--bad)}
+/* Una actividad que se despliega y lleva a sus gastos */
+details.trip{background:var(--card);border:1px solid var(--line);border-radius:14px}
+details.trip+details.trip{margin-top:10px}
+details.trip>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 12px;align-items:center;padding:14px 18px}
+details.trip>summary::-webkit-details-marker{display:none}
+details.trip>summary::before{content:"▸";color:var(--muted)}
+details.trip[open]>summary::before{content:"▾"}
+.trip .nm{font-weight:700;min-width:0}.trip .nm small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.trip .tot{font-weight:800;font-variant-numeric:tabular-nums;text-align:end}.trip .tot small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.trip .body{padding:4px 18px 18px;border-top:1px solid var(--line)}
+.trip .body h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 8px}
+.fake{display:inline-block;margin-top:12px;font:700 12.5px var(--font);color:var(--bar);border:1px dashed var(--line);border-radius:10px;padding:7px 12px}
+.insights{list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.insights li{padding-inline-start:16px;position:relative}
+.insights li::before{content:"";position:absolute;inset-inline-start:0;top:.55em;width:7px;height:7px;border-radius:2px;background:var(--bar)}
+.plan td:first-child{font-weight:600}
+.step{display:inline-flex;align-items:center;gap:6px}
+.step button{font:700 14px var(--font);width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
+.step span{min-width:18px;text-align:center}
+input[type=checkbox]{width:17px;height:17px;accent-color:var(--brand)}
+tr.off td{opacity:.4}
+.yrow{display:grid;grid-template-columns:minmax(90px,150px) 1fr;gap:10px;align-items:center;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
+.yrow .l{font-weight:600}
+.ybars{display:flex;flex-direction:column;gap:3px}
+.ybar{display:grid;grid-template-columns:34px 1fr 56px;gap:6px;align-items:center;font-size:11px}
+.ybar .t{height:9px;border-radius:5px;background:var(--track);overflow:hidden}
+.ybar .f{display:block;height:100%}
+.ybar .yl{color:var(--muted)}.ybar .yv{text-align:end;font-weight:700;font-variant-numeric:tabular-nums}
+.chart{width:100%;height:auto;display:block}
+.chart text{font-family:var(--font)}
+.leg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;margin-bottom:10px}
+.leg span{display:inline-flex;gap:6px;align-items:center}.leg i{width:18px;height:4px;border-radius:2px}
+@media (max-width:520px){.yrow{grid-template-columns:1fr}.row{grid-template-columns:90px 1fr auto}.big .tile .v{font-size:34px}
+  details.trip>summary{grid-template-columns:auto 1fr auto}details.trip>summary .chip{display:none}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Gastos · Estadísticas<small>Toldot · Team LatAm · piloto</small></h1>
+  <div class="seg" role="group" aria-label="Pantalla">
+    <button data-v="mias" aria-pressed="true">Mis gastos</button>
+    <button data-v="resumen" aria-pressed="false">Resumen</button>
+    <button data-v="analisis" aria-pressed="false">Análisis</button>
+  </div>
+</header>
+<div class="proto"><b>Piloto con datos y nombres inventados.</b> «Mis gastos» lo ve cada persona; «Resumen» y «Análisis» solo Finanzas y administradores. En «Mis gastos» cambiá la persona para ver cómo lo vería cada una. Los totales van en dólares; la moneda local va aparte, sin convertir. Los años 2024 y 2025 también son inventados.</div>
+<div class="bar">
+  <div><label>Período</label><span class="seg" role="group" aria-label="Período">
+    <button data-p="anio" aria-pressed="true">2026</button>
+    <button data-p="90" aria-pressed="false">Últimos 90 días</button>
+    <button data-p="mes" aria-pressed="false">Noviembre</button></span></div>
+  <div><label>Gráfico por tipo</label><span class="seg" role="group" aria-label="Gráfico">
+    <button data-e="barras" aria-pressed="true">Barras</button>
+    <button data-e="anillo" aria-pressed="false">Anillo</button></span></div>
+  <div id="verComo"><label for="selYo">Ver como</label><select id="selYo"></select></div>
+</div>
+<p class="rol" id="rol"></p>
+<main id="out"></main>
+</div>
+
+<script>
+/* ---------- Datos inventados (siempre iguales) ---------- */
+const HOY = new Date("2026-11-19T12:00:00");
+let sd = 7; const rnd = () => { sd |= 0; sd = sd + 0x6D2B79F5 | 0; let t = Math.imul(sd ^ sd >>> 15, 1 | sd); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const rng = (a, b) => Math.round(a + rnd() * (b - a));
+const pick = a => a[Math.floor(rnd() * a.length)];
+const TIPOS = ["Alojamiento", "Pasaje", "Comida", "Transporte", "Reunión", "Compra de material", "Suscripción"];
+const CONC = { Comida: ["Almuerzo", "Cena", "Desayuno"], Transporte: ["Taxi", "Uber", "Bus al aeropuerto"], Alojamiento: ["Hotel"], Pasaje: ["Vuelo ida y vuelta"],
+  "Reunión": ["Café con el equipo", "Almuerzo de reunión"], "Compra de material": ["Impresiones", "Cartelería"], "Suscripción": ["Zoom"] };
+const VIAJES = [
+  ["Curazao", "2026-01-12", 4, 150], ["Islas Caimán", "2026-02-20", 5, 190], ["República Dominicana", "2026-03-15", 6, 80],
+  ["Jamaica", "2026-04-22", 4, 95], ["Belice", "2026-06-08", 5, 85], ["Aruba", "2026-08-03", 5, 170],
+  ["Jamaica", "2026-09-14", 4, 95], ["Sint Maarten", "2026-10-19", 6, 140], ["Curazao", "2026-11-09", 4, 150]
+];
+const FY = { 2024: .88, 2025: .94, 2026: 1 };   // los precios fueron subiendo
+[["Curazao","2024-02-05",4,132],["Jamaica","2024-04-10",4,84],["República Dominicana","2024-05-20",6,70],["Aruba","2024-07-15",5,150],["Belice","2024-09-09",5,75],["Islas Caimán","2024-11-04",5,168],
+ ["Curazao","2025-01-20",4,141],["Islas Caimán","2025-03-03",5,178],["Jamaica","2025-04-14",4,89],["República Dominicana","2025-05-26",6,75],["Aruba","2025-07-21",5,160],["Belice","2025-08-25",5,80],["Sint Maarten","2025-10-06",6,130],["Jamaica","2025-12-01",4,89]].forEach(v => VIAJES.push(v));
+const GENTE = ["Ana", "Beto", "Carla", "Dani", "Eli"];
+const G = [];
+VIAJES.forEach(([pais, ini, dias, tarifa], vi) => {
+  GENTE.forEach((p, pi) => {
+    if (pi > 0 && rnd() < 0.35) return;
+    const k = p === "Dani" ? 1.25 : p === "Carla" ? .85 : 1;   // cada persona gasta un poco distinto
+    const d0 = new Date(ini + "T12:00:00"), yr = +ini.slice(0, 4);
+    const add = (tipo, usd, off) => {
+      const f = new Date(d0); f.setDate(f.getDate() + off);
+      const edad = Math.round((HOY - f) / 864e5);
+      let estado = "aprobado", reemb = true;
+      if (yr < 2026) { /* ya cerrado */ } else if (edad < 14) { estado = rnd() < .75 ? "mandada" : "abierta"; reemb = false; }
+      else if (edad < 40 && rnd() < .3) { estado = "mandada"; reemb = false; }
+      else if (rnd() < .22) reemb = false;
+      G.push({ viaje: vi, pais, persona: p, tipo, concepto: pick(CONC[tipo]), usd: Math.round(usd * k * FY[yr]), fecha: f, estado, pago: rnd() < .8 ? "persona" : "org", reemb });
+    };
+    add("Pasaje", rng(260, 720), -1);
+    add("Alojamiento", (dias - 1) * rng(tarifa * .8, tarifa * 1.2), 0);
+    for (let d = 0; d < dias; d++) {
+      add("Comida", rng(18, 48), d);
+      if (rnd() < .75) add("Transporte", rng(8, 36), d);
+    }
+    if (rnd() < .6) add("Reunión", rng(20, 70), 1);
+    if (rnd() < .25) add("Compra de material", rng(15, 90), 1);
+  });
+});
+[2024, 2025, 2026].forEach(y => { for (let m = 0; m < (y < 2026 ? 12 : 11); m++) GENTE.slice(0, 3).forEach(p => G.push({ viaje: -1, pais: "Rutina", persona: p, tipo: "Suscripción", concepto: "Zoom", usd: rng(10, 25), fecha: new Date(y, m, 5), estado: y === 2026 && m > 9 ? "mandada" : "aprobado", pago: "persona", reemb: y < 2026 || m < 9 })); });
+
+/* ---------- Estado y utilidades ---------- */
+const S = { v: "mias", p: "anio", e: "barras", sub: "viaje", yo: "Ana", imp: 10, corte: true, prec: "igual", esc: "tend", mv: 10, mp: 5 };
+const PLAN = [["Jamaica", 4, 4], ["Curazao", 4, 3], ["Aruba", 5, 3], ["República Dominicana", 6, 4], ["Belice", 5, 3], ["Sint Maarten", 6, 3], ["Islas Caimán", 5, 3], ["Curazao", 4, 3], ["Jamaica", 4, 3]].map(([pais, dias, pers]) => ({ pais, dias, pers, on: true }));
+const MES12 = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov"];
+const fmt = n => Math.round(n).toLocaleString("es-AR");
+const usd = n => "USD " + fmt(n);
+const sum = a => a.reduce((s, g) => s + g.usd, 0);
+const COL = i => `var(--c${(i % 7) + 1})`;
+const desde = () => S.p === "anio" ? new Date("2026-01-01") : S.p === "90" ? new Date(HOY - 90 * 864e5) : new Date("2026-11-01");
+const prevAnio = d => { const x = new Date(d); x.setFullYear(x.getFullYear() - 1); return x; };
+const enPeriodoPrev = g => g.fecha >= prevAnio(desde()) && g.fecha <= prevAnio(HOY);
+const enPeriodo = g => g.fecha >= desde() && g.fecha <= HOY;
+const porClave = (arr, k) => { const m = {}; arr.forEach(g => (m[g[k]] = m[g[k]] || []).push(g)); return m; };
+const chip = (t, c = "") => `<span class="chip ${c}">${t}</span>`;
+const fFecha = f => f.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+const nombreViaje = vi => VIAJES[vi][0] + " · " + fFecha(new Date(VIAJES[vi][1] + "T12:00:00"));
+const vsProm = (x, avg) => { const d = (x / (avg || 1) - 1) * 100; return chip((d > 0 ? "+" : "") + Math.round(d) + "%", d > 15 ? "warn" : d < -15 ? "ok" : ""); };
+const delta = (x, y0, neutro) => { if (!y0) return ""; const r = x / y0 - 1; return chip((r >= 0 ? "+" : "−") + Math.abs(Math.round(r * 100)) + "%", neutro ? "" : r > .1 ? "warn" : r < -.1 ? "ok" : ""); };
+const vsAnt = (x, y0) => delta(x, y0) ? delta(x, y0) + " frente al año pasado" : "";
+const estadoDe = a => a.some(g => g.estado === "abierta") ? chip("Abierta") : a.some(g => g.estado === "mandada") ? chip("En revisión", "warn") : chip("Aprobada", "ok");
+
+function barras(items) {
+  const max = Math.max(1, ...items.map(i => i.v));
+  return `<div class="rows">${items.map(i => `<div class="row"><span class="l">${i.l}</span>
+    <span class="t"><span class="f" style="width:${(i.v / max * 100).toFixed(1)}%${i.c ? ";background:" + i.c : ""}"></span></span>
+    <span class="v">${usd(i.v)}${i.s ? `<small>${i.s}</small>` : ""}</span></div>`).join("")}</div>`;
+}
+function anillo(items) {
+  const tot = items.reduce((s, i) => s + i.v, 0) || 1; let acc = 0;
+  const arcs = items.map((i, k) => { const p = i.v / tot * 100; const o = 25 - acc; acc += p;
+    return `<circle r="15.9155" cx="21" cy="21" fill="none" stroke="${COL(k)}" stroke-width="6" stroke-dasharray="${p.toFixed(2)} ${(100 - p).toFixed(2)}" stroke-dashoffset="${o.toFixed(2)}"/>`; }).join("");
+  return `<div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Distribución por tipo">${arcs}
+    <text x="21" y="21.5" text-anchor="middle" font-size="5" font-weight="800" fill="currentColor" font-family="inherit">${fmt(tot)}</text>
+    <text x="21" y="26" text-anchor="middle" font-size="2.6" fill="var(--muted)" font-family="inherit">USD</text></svg>
+    <div class="legend">${items.map((i, k) => `<div><i style="background:${COL(k)}"></i>${i.l}<b>${Math.round(i.v / tot * 100)}% · ${fmt(i.v)}</b></div>`).join("")}</div></div>`;
+}
+const tiposDe = arr => { const m = porClave(arr, "tipo"); return TIPOS.map(t => ({ l: t, v: sum(m[t] || []) })).filter(i => i.v > 0).sort((a, b) => b.v - a.v); };
+const porTipo = arr => S.e === "anillo" ? anillo(tiposDe(arr)) : barras(tiposDe(arr).map((i, k) => ({ ...i, c: COL(k) })));
+function mesAMes(arr) {
+  const v = Array(11).fill(0); arr.forEach(g => v[g.fecha.getMonth()] += g.usd);
+  const max = Math.max(1, ...v);
+  return `<div class="cols">${v.map((x, i) => `<div class="c"><span class="x">${x ? fmt(x) : ""}</span><div class="b" style="height:${(x / max * 100).toFixed(1)}%;opacity:${x ? 1 : .25}"></div><span>${MES[i]}</span></div>`).join("")}</div>`;
+}
+const tile = (k, v, n, cls = "") => `<div class="tile ${cls}"><div class="k">${k}</div><div class="v">${String(v).replace(/^USD /, '<span class="u">USD</span>')}</div>${n ? `<div class="n">${n}</div>` : ""}</div>`;
+const tablaGastos = a => `<div class="scroll"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>USD</th><th>Comprobante</th></tr></thead><tbody>
+  ${a.slice().sort((x, y) => x.fecha - y.fecha).map(g => `<tr><td>${fFecha(g.fecha)}</td><td>${g.concepto}</td><td>${g.tipo}</td><td>${fmt(g.usd)}</td><td>🧾</td></tr>`).join("")}</tbody></table></div>`;
+
+/* ---------- 1. Mis gastos: cada persona, con salida al detalle ---------- */
+function vistaMias() {
+  const mi = G.filter(g => g.persona === S.yo && enPeriodo(g));
+  const viajes = new Set(mi.filter(g => g.viaje >= 0).map(g => g.viaje));
+  const dias = [...viajes].reduce((s, i) => s + VIAJES[i][2], 0);
+  const meDeben = sum(G.filter(g => g.persona === S.yo && g.pago === "persona" && g.estado === "aprobado" && !g.reemb));
+  const lista = Object.entries(porClave(mi.filter(g => g.viaje >= 0), "viaje")).sort((a, b) => VIAJES[b[0]][1].localeCompare(VIAJES[a[0]][1])).map(([vi, a]) => {
+    const d = VIAJES[vi][2];
+    return `<details class="trip"><summary><span class="nm">${nombreViaje(vi)}<small>${d} días · ${a.length} gastos</small></span>${estadoDe(a)}<span class="tot">${usd(sum(a))}<small>${usd(sum(a) / d)} por día</small></span></summary>
+      <div class="body"><h3>En qué se fue</h3>${barras(tiposDe(a).map((i, k) => ({ ...i, c: COL(k) })))}
+      <h3>Los gastos de este viaje</h3>${tablaGastos(a)}<span class="fake">Abrir la rendición completa →</span></div></details>`;
+  }).join("");
+  const rut = mi.filter(g => g.viaje < 0);
+  return `
+  <div class="grid tiles">
+    ${tile("Gasto total", usd(sum(mi)), "lo que rendiste · " + vsAnt(sum(mi), sum(G.filter(g => g.persona === S.yo && enPeriodoPrev(g)))))}
+    ${tile("Viajes", viajes.size, "")}${tile("Días viajados", dias, "")}
+    ${tile("Te deben", usd(meDeben), "aprobado y todavía sin devolver", meDeben ? "alert" : "")}
+    ${tile("En revisión", usd(sum(mi.filter(g => g.estado === "mandada"))), "mandado, esperando aprobación")}
+  </div>
+  <div class="grid two">
+    <section class="card"><h2>En qué gastás</h2><p class="sub">Por tipo de gasto</p>${porTipo(mi)}</section>
+    <section class="card"><h2>Mes a mes</h2><p class="sub">USD por mes</p>${mesAMes(mi)}</section>
+  </div>
+  <section class="mt"><h2 style="font-size:15px;font-weight:800;margin-bottom:2px">Mis actividades</h2>
+    <p class="sub" style="font-size:12px;color:var(--muted);margin-bottom:12px">Tocá una para ver sus gastos y comprobantes</p>${lista || '<p class="note">Sin viajes en este período.</p>'}
+    ${rut.length ? `<details class="trip"><summary><span class="nm">Rutina y suscripciones<small>${rut.length} gastos</small></span>${estadoDe(rut)}<span class="tot">${usd(sum(rut))}</span></summary><div class="body">${tablaGastos(rut)}</div></details>` : ""}</section>`;
+}
+
+/* ---------- 2. Resumen: números grandes, sin nombres ---------- */
+function vistaResumen() {
+  const t = G.filter(enPeriodo);
+  const debida = G.filter(g => g.pago === "persona" && g.estado === "aprobado" && !g.reemb);
+  const porAprobar = G.filter(g => g.estado === "mandada");
+  const tv = t.filter(g => g.viaje >= 0), nv = new Set(tv.map(g => g.viaje)).size;
+  const org = sum(t.filter(g => g.pago === "org"));
+  const edad = g => Math.round((HOY - g.fecha) / 864e5);
+  const b = [porAprobar.filter(g => edad(g) <= 7), porAprobar.filter(g => edad(g) > 7 && edad(g) <= 30), porAprobar.filter(g => edad(g) > 30)];
+  const pais = Object.entries(porClave(t, "pais")).map(([l, a]) => ({ l, v: sum(a) })).sort((a, b) => b.v - a.v).slice(0, 6);
+  return `
+  <div class="grid tiles big">
+    ${tile("Gastado", usd(sum(t)), "todo el equipo · " + vsAnt(sum(t), sum(G.filter(enPeriodoPrev))))}
+    ${tile("Se debe a personas", usd(sum(debida)), "aprobado y sin devolver", "alert")}
+    ${tile("Por aprobar", usd(sum(porAprobar)), porAprobar.length + " gastos esperando")}
+    ${tile("Pagado por la organización", usd(org), Math.round(org / (sum(t) || 1) * 100) + "% del gasto")}
+  </div>
+  <div class="grid tiles mt">
+    ${tile("Viajes", nv, "en el período")}
+    ${tile("Costo promedio de un viaje", usd(sum(tv) / Math.max(1, nv)), "todo el equipo junto")}
+    ${tile("Personas que rindieron", new Set(t.map(g => g.persona)).size, "")}
+    ${tile("Rutina y suscripciones", usd(sum(t.filter(g => g.viaje < 0))), "fuera de viajes")}
+  </div>
+  <div class="grid two">
+    <section class="card"><h2>Por tipo de gasto</h2><p class="sub">Dónde se va la plata</p>${porTipo(t)}</section>
+    <section class="card"><h2>Por país</h2><p class="sub">Los seis con más gasto</p>${barras(pais)}</section>
+  </div>
+  <div class="grid two">
+    <section class="card"><h2>Mes a mes</h2><p class="sub">USD por mes</p>${mesAMes(t)}</section>
+    <section class="card"><h2>Lo que espera aprobación</h2><p class="sub">Por cuánto hace que se gastó</p>
+      <div class="age"><div><b>${fmt(sum(b[0]))}</b><span>USD · hasta 7 días</span></div><div><b>${fmt(sum(b[1]))}</b><span>USD · 8 a 30 días</span></div><div class="old"><b>${fmt(sum(b[2]))}</b><span>USD · más de 30 días</span></div></div>
+      <h2 style="margin-top:18px">Moneda local</h2><p class="sub">Sin convertir (ejemplo)</p>
+      <div class="rows"><div class="row" style="grid-template-columns:1fr auto"><span class="l">Pesos colombianos</span><span class="v">COP 3,1 M</span></div>
+      <div class="row" style="grid-template-columns:1fr auto"><span class="l">Pesos dominicanos</span><span class="v">DOP 412 mil</span></div></div>
+      <p class="note">El Resumen no muestra personas. Para ver quién gastó qué, está el Análisis.</p></section>
+  </div>`;
+}
+
+/* ---------- 3. Análisis: por viaje, por persona, año que viene ---------- */
+function vistaAnalisis() {
+  const sub = `<div class="seg" role="group" aria-label="Análisis" style="margin-bottom:16px">
+    <button data-sub="viaje" aria-pressed="false">Por viaje</button><button data-sub="persona" aria-pressed="false">Por persona</button><button data-sub="anios" aria-pressed="false">Comparar años</button><button data-sub="futuro" aria-pressed="false">Para el año que viene</button></div>`;
+  return sub + (S.sub === "viaje" ? analisisViaje() : S.sub === "persona" ? analisisPersona() : S.sub === "anios" ? analisisAnios() : analisisFuturo());
+}
+function analisisViaje() {
+  const t = G.filter(enPeriodo).filter(g => g.viaje >= 0);
+  const items = Object.entries(porClave(t, "viaje")).map(([vi, a]) => {
+    const pers = porClave(a, "persona"), n = Object.keys(pers).length, d = VIAJES[vi][2];
+    return { vi, a, pers, n, d, tot: sum(a), pp: sum(a) / n };
+  }).sort((x, y) => y.tot - x.tot);
+  const prom = items.reduce((s, i) => s + i.pp, 0) / (items.length || 1);
+  return `<p class="sub" style="font-size:12px;color:var(--muted);margin-bottom:12px">Qué costó cada viaje, y al abrirlo, qué gastó cada persona. El % compara con el promedio por persona de todos los viajes.</p>` +
+    items.map(i => `<details class="trip"><summary><span class="nm">${nombreViaje(i.vi)}<small>${i.n} personas · ${i.d} días · ${usd(i.pp)} por persona</small></span>${vsProm(i.pp, prom)}<span class="tot">${usd(i.tot)}<small>${usd(i.pp / i.d)} por persona y día</small></span></summary>
+      <div class="body"><h3>De qué se compone</h3>${barras(tiposDe(i.a).map((x, k) => ({ ...x, c: COL(k) })))}
+      <h3>Qué gastó cada persona</h3><div class="scroll"><table><thead><tr><th>Persona</th><th>Total</th><th>Por día</th><th>Frente al promedio del viaje</th></tr></thead><tbody>
+      ${Object.entries(i.pers).sort((x, y) => sum(y[1]) - sum(x[1])).map(([p, a]) => `<tr><td>${p}</td><td>${usd(sum(a))}</td><td>${usd(sum(a) / i.d)}</td><td>${vsProm(sum(a), i.tot / i.n)}</td></tr>`).join("")}</tbody></table></div></div></details>`).join("");
+}
+function analisisPersona() {
+  const t = G.filter(enPeriodo).filter(g => g.viaje >= 0);
+  const items = Object.entries(porClave(t, "persona")).map(([p, a]) => {
+    const vs = porClave(a, "viaje"), dias = Object.keys(vs).reduce((s, vi) => s + VIAJES[vi][2], 0);
+    return { p, a, vs, dias, tot: sum(a), pd: sum(a) / dias };
+  }).sort((x, y) => y.tot - x.tot);
+  const prom = items.reduce((s, i) => s + i.pd, 0) / (items.length || 1);
+  return `<p class="sub" style="font-size:12px;color:var(--muted);margin-bottom:12px">Cuánto gastó cada persona y a qué ritmo. El % compara el gasto por día de viaje con el promedio del equipo: sirve para entender, no para juzgar, porque depende de adónde fue.</p>` +
+    items.map(i => `<details class="trip"><summary><span class="nm">${i.p}<small>${Object.keys(i.vs).length} viajes · ${i.dias} días · ${usd(i.pd)} por día</small></span>${vsProm(i.pd, prom)}<span class="tot">${usd(i.tot)}</span></summary>
+      <div class="body"><h3>En qué gastó</h3>${barras(tiposDe(i.a).map((x, k) => ({ ...x, c: COL(k) })))}
+      <h3>Por viaje</h3>${barras(Object.entries(i.vs).map(([vi, a]) => ({ l: nombreViaje(vi), v: sum(a), s: usd(sum(a) / VIAJES[vi][2]) + " por día" })))}</div></details>`).join("");
+}
+/* costo típico por destino, con lo gastado en todo el año */
+function costoTipico() {
+  const m = {};
+  const grupos = porClave(G.filter(g => g.viaje >= 0 && g.fecha.getFullYear() === 2026), "viaje");
+  Object.entries(grupos).forEach(([vi, a]) => {
+    const d = VIAJES[vi][2], pais = VIAJES[vi][0];
+    Object.values(porClave(a, "persona")).forEach(ps => {
+      const s = t => sum(ps.filter(g => g.tipo === t));
+      (m[pais] = m[pais] || []).push({ pasaje: s("Pasaje"), aloj: s("Alojamiento") / Math.max(1, d - 1), dia: (s("Comida") + s("Transporte")) / d, otros: s("Reunión") + s("Compra de material") });
+    });
+  });
+  const r = {}; Object.entries(m).forEach(([p, a]) => { const av = k => a.reduce((s, x) => s + x[k], 0) / a.length; r[p] = { pasaje: av("pasaje"), aloj: av("aloj"), dia: av("dia"), otros: av("otros"), n: a.length }; });
+  return r;
+}
+const estimar = (c, dias, pers) => pers * (c.pasaje + c.aloj * (dias - 1) + c.dia * dias + c.otros);
+function analisisFuturo() {
+  const C = costoTipico(), tv = G.filter(g => g.viaje >= 0 && g.fecha.getFullYear() === 2026), tipos = tiposDe(tv), tot = sum(tv);
+  const porViaje = Object.entries(porClave(tv, "viaje")).map(([vi, a]) => ({ vi, pp: sum(a) / new Set(a.map(g => g.persona)).size, d: VIAJES[vi][2] })).sort((a, b) => b.pp - a.pp);
+  const caroDia = Object.entries(C).map(([p, c]) => ({ p, v: c.dia + c.aloj })).sort((a, b) => b.v - a.v)[0];
+  const pers = Object.entries(porClave(tv, "persona")).map(([p, a]) => ({ p, pd: sum(a) / [...new Set(a.map(g => g.viaje))].reduce((s, vi) => s + VIAJES[vi][2], 0) })).sort((a, b) => b.pd - a.pd);
+  const top2 = tipos.slice(0, 2);
+  const P = proyeccion(), fp = S.prec === "tend" ? 1 + P.gP : 1;
+  const filas = PLAN.map((x, i) => ({ ...x, i, est: C[x.pais] ? estimar(C[x.pais], x.dias, x.pers) * fp : 0 }));
+  const base = filas.filter(f => f.on).reduce((s, f) => s + f.est, 0), total = base * (1 + S.imp / 100);
+  const gastado = P.cierre;
+  return `
+  ${bloqueHacia(P)}
+  <section class="card mt"><h2>Lo que muestra este año</h2><p class="sub">Calculado con todos los gastos de 2026</p>
+    <ul class="insights">
+      <li>El viaje más caro por persona fue <b>${nombreViaje(porViaje[0].vi)}</b> (${usd(porViaje[0].pp)}); el más barato, <b>${nombreViaje(porViaje[porViaje.length - 1].vi)}</b> (${usd(porViaje[porViaje.length - 1].pp)}).</li>
+      <li><b>${top2[0].l}</b> y <b>${top2[1].l}</b> son el ${Math.round((top2[0].v + top2[1].v) / tot * 100)}% del gasto en viajes. Ahí está el margen para decidir.</li>
+      <li>El destino más caro por día (alojamiento, comida y transporte) es <b>${caroDia.p}</b>, con ${usd(caroDia.v)} por persona y día.</li>
+      <li>El mayor gasto por día de viaje es de <b>${pers[0].p}</b> (${usd(pers[0].pd)}) y el menor de <b>${pers[pers.length - 1].p}</b> (${usd(pers[pers.length - 1].pd)}).</li>
+    </ul></section>
+  <section class="card mt"><h2>Costo típico por destino</h2><p class="sub">Promedio por persona, con lo gastado este año</p>
+    <div class="scroll"><table><thead><tr><th>Destino</th><th>Pasaje</th><th>Alojamiento / noche</th><th>Comida y transporte / día</th><th>Otros por viaje</th><th>Un viaje de 5 días</th></tr></thead><tbody>
+    ${Object.entries(C).sort((a, b) => estimar(b[1], 5, 1) - estimar(a[1], 5, 1)).map(([p, c]) => `<tr><td>${p}</td><td>${fmt(c.pasaje)}</td><td>${fmt(c.aloj)}</td><td>${fmt(c.dia)}</td><td>${fmt(c.otros)}</td><td><b>${usd(estimar(c, 5, 1))}</b></td></tr>`).join("")}</tbody></table></div></section>
+  <section class="card mt"><h2>Presupuesto del año que viene</h2><p class="sub">Armalo con las actividades que pensás hacer. Tildá, cambiá los días y las personas, y mirá cuánto sale.</p>
+    <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:8px">Precios</label><span class="seg" role="group" aria-label="Precios"><button data-prec="igual" aria-pressed="false">Como 2026</button><button data-prec="tend" aria-pressed="false">Con la tendencia (${P.gP >= 0 ? "+" : ""}${Math.round(P.gP * 100)}%)</button></span></div>
+    <div class="scroll"><table class="plan"><thead><tr><th>Actividad</th><th>Días</th><th>Personas</th><th>Estimado</th></tr></thead><tbody>
+    ${filas.map(f => `<tr class="${f.on ? "" : "off"}"><td><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-chk="${f.i}" ${f.on ? "checked" : ""}> ${f.pais}</label></td>
+      <td><span class="step"><button data-plan="d-" data-i="${f.i}" aria-label="Menos días">−</button><span>${f.dias}</span><button data-plan="d+" data-i="${f.i}" aria-label="Más días">+</button></span></td>
+      <td><span class="step"><button data-plan="p-" data-i="${f.i}" aria-label="Menos personas">−</button><span>${f.pers}</span><button data-plan="p+" data-i="${f.i}" aria-label="Más personas">+</button></span></td>
+      <td>${usd(f.est)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td colspan="3">Reserva para imprevistos <span class="seg" role="group" aria-label="Reserva" style="margin-inline-start:8px"><button data-imp="0" aria-pressed="false">0%</button><button data-imp="10" aria-pressed="false">10%</button><button data-imp="20" aria-pressed="false">20%</button></span></td><td>${usd(base * S.imp / 100)}</td></tr>
+    <tr><td colspan="3">Presupuesto total</td><td>${usd(total)}</td></tr></tfoot></table></div>
+    <p class="note">Este año se estima gastar ${usd(gastado)} en viajes. El presupuesto armado es ${Math.round((total / gastado - 1) * 100) >= 0 ? "un " + Math.round((total / gastado - 1) * 100) + "% más" : "un " + Math.round((1 - total / gastado) * 100) + "% menos"}. En el sistema real, las actividades salen de la Agenda del año que viene y vos solo las ajustás.</p></section>`;
+}
+
+/* ---------- Comparar años y proyección ---------- */
+const YS = [2024, 2025, 2026];
+const YC = ["var(--c7)", "var(--c2)", "var(--c1)"];
+const enCorte = (g, y, c) => g.fecha.getFullYear() === y && (!c || g.fecha.getMonth() < 10 || (g.fecha.getMonth() === 10 && g.fecha.getDate() <= 19));
+function metricas(y, c = S.corte) {
+  const a = G.filter(g => enCorte(g, y, c)), tv = a.filter(g => g.viaje >= 0);
+  const grp = porClave(tv.map(g => ({ ...g, k: g.viaje + "|" + g.persona })), "k");
+  const dias = Object.values(grp).reduce((s, x) => s + VIAJES[x[0].viaje][2], 0);
+  const viajes = new Set(tv.map(g => g.viaje)).size;
+  return { y, a, tv, tot: sum(a), tvTot: sum(tv), viajes, personas: new Set(a.map(g => g.persona)).size, perViaje: sum(tv) / Math.max(1, viajes), perDia: sum(tv) / Math.max(1, dias) };
+}
+function proyeccion() {
+  const m = YS.map(y => metricas(y, true)), full = [metricas(2024, false), metricas(2025, false)];
+  const gP = ((m[1].perDia / m[0].perDia - 1) + (m[2].perDia / m[1].perDia - 1)) / 2;
+  const gV = ((m[1].viajes / m[0].viajes - 1) + (m[2].viajes / m[1].viajes - 1)) / 2;
+  const cierre = m[2].tvTot * (full[1].tvTot / m[1].tvTot);   // al ritmo del año pasado
+  const dv = S.esc === "tend" ? gV : S.esc === "mio" ? S.mv / 100 : 0, dp = S.esc === "tend" ? gP : S.esc === "mio" ? S.mp / 100 : 0;
+  return { m, full, gP, gV, cierre, dv, dp, p27: cierre * (1 + dv) * (1 + dp) };
+}
+const pc = x => (x >= 0 ? "+" : "−") + Math.abs(Math.round(x * 100)) + "%";
+function bloqueHacia(P) {
+  const { m, full } = P;
+  const st = (k, v, l) => `<span class="step"><span style="min-width:auto;margin-inline-end:4px;color:var(--muted);font-size:12px">${l}</span><button data-adj="${k}-" aria-label="Menos">−</button><span style="min-width:46px">${v > 0 ? "+" : ""}${v}%</span><button data-adj="${k}+" aria-label="Más">+</button></span>`;
+  const desc = S.esc === "igual" ? "Mismos viajes y mismos precios que este año." : S.esc === "tend" ? `Viajes ${pc(P.gV)} y precios ${pc(P.gP)}, como en los últimos años.` : `Viajes ${S.mv > 0 ? "+" : ""}${S.mv}% y precios ${S.mp > 0 ? "+" : ""}${S.mp}%, a tu manera.`;
+  return `<section class="card"><h2>Hacia dónde va</h2><p class="sub">Con 2024, 2025 y 2026 al mismo corte (hasta el 19 de noviembre), para que se pueda comparar</p>
+    <div class="grid tiles">
+      ${tile("Costo por persona y día", usd(m[2].perDia), `${fmt(m[0].perDia)} → ${fmt(m[1].perDia)} → ${fmt(m[2].perDia)} · ${pc(P.gP)} por año`)}
+      ${tile("Viajes por año", m[2].viajes, `${m[0].viajes} → ${m[1].viajes} → ${m[2].viajes} · ${pc(P.gV)} por año`)}
+      ${tile("2026 al cierre (estimado)", usd(P.cierre), "al ritmo del año pasado")}
+      ${tile("2027 proyectado", usd(P.p27), desc, "alert")}
+    </div>
+    <div class="bar" style="margin:16px 0 12px"><label>Escenario</label><span class="seg" role="group" aria-label="Escenario">
+      <button data-esc="igual" aria-pressed="false">Igual que 2026</button><button data-esc="tend" aria-pressed="false">Con la tendencia</button><button data-esc="mio" aria-pressed="false">A mi manera</button></span>
+      ${S.esc === "mio" ? st("mv", S.mv, "Viajes") + st("mp", S.mp, "Precios") : ""}</div>
+    ${barras([{ l: "2024", v: full[0].tvTot, c: "var(--c7)" }, { l: "2025", v: full[1].tvTot, c: "var(--c2)" }, { l: "2026 (estimado)", v: P.cierre, c: "var(--c1)" }, { l: "2027 (proyectado)", v: P.p27, c: "var(--c4)" }])}
+    <p class="note">Es una cuenta simple: el cierre estimado de 2026 por la cantidad de viajes y por los precios. No sabe de cambios de agenda: para eso está el presupuesto de más abajo.</p></section>`;
+}
+function tipoPorAnio(ms) {
+  const rows = TIPOS.map(t => ({ l: t, v: ms.map(m => sum(m.a.filter(g => g.tipo === t))) })).filter(r => r.v.some(x => x > 0));
+  const max = Math.max(1, ...rows.flatMap(r => r.v));
+  return rows.map(r => `<div class="yrow"><span class="l">${r.l}</span><div class="ybars">${r.v.map((x, i) => `<div class="ybar"><span class="yl">${YS[i]}</span><span class="t"><span class="f" style="width:${(x / max * 100).toFixed(1)}%;background:${YC[i]}"></span></span><span class="yv">${fmt(x)}</span></div>`).join("")}</div></div>`).join("");
+}
+function acumulado() {
+  const W = 640, H = 230, L = 48, B = 24, T = 10, R = 12;
+  const ser = YS.map(y => { let acc = 0; const a = []; for (let m = 0; m < 12; m++) { if (y === 2026 && m > 10) break; acc += sum(G.filter(g => g.fecha.getFullYear() === y && g.fecha.getMonth() === m)); a.push(acc); } return a; });
+  const max = Math.max(...ser.map(s => s[s.length - 1])) * 1.05;
+  const X = m => L + m * (W - L - R) / 11, Y = v => H - B - v / max * (H - B - T);
+  const grid = [0, 1, 2, 3, 4].map(i => { const v = max * i / 4; return `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(v)}</text>`; }).join("");
+  const xs = MES12.map((n, i) => `<text x="${X(i)}" y="${H - 7}" text-anchor="middle" font-size="10" fill="var(--muted)">${n}</text>`).join("");
+  const lines = ser.map((s, i) => `<polyline fill="none" stroke="${YC[i]}" stroke-width="2.5" stroke-linejoin="round" points="${s.map((v, m) => X(m) + "," + Y(v)).join(" ")}"/><circle cx="${X(s.length - 1)}" cy="${Y(s[s.length - 1])}" r="4" fill="${YC[i]}"/>`).join("");
+  return `<div class="leg">${YS.map((y, i) => `<span><i style="background:${YC[i]}"></i>${y} · ${usd(ser[i][ser[i].length - 1])}</span>`).join("")}</div>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gasto acumulado mes a mes, por año">${grid}${xs}${lines}</svg>`;
+}
+function analisisAnios() {
+  const ms = YS.map(y => metricas(y));
+  const filas = [["Gastado en total", m => m.tot, usd, false], ["Viajes", m => m.viajes, fmt, true], ["Personas que rindieron", m => m.personas, fmt, true],
+    ["Costo de un viaje (equipo)", m => m.perViaje, usd, false], ["Costo por persona y día de viaje", m => m.perDia, usd, false]];
+  const paises = [...new Set(VIAJES.map(v => v[0]))];
+  const pd = (m, p) => { const a = m.tv.filter(g => g.pais === p); if (!a.length) return 0; const grp = porClave(a.map(g => ({ ...g, k: g.viaje + "|" + g.persona })), "k"); return sum(a) / Object.values(grp).reduce((s, x) => s + VIAJES[x[0].viaje][2], 0); };
+  return `
+  <div class="bar"><label>Comparar</label><span class="seg" role="group" aria-label="Corte">
+    <button data-corte="true" aria-pressed="false">Hasta el 19 de noviembre (justo)</button><button data-corte="false" aria-pressed="false">Años completos</button></span></div>
+  <section class="card"><h2>Año contra año</h2><p class="sub">${S.corte ? "Los tres años cortados en el mismo día, así 2026 no pierde contra años enteros." : "Los años completos: 2026 todavía no terminó."}</p>
+    <div class="scroll"><table><thead><tr><th></th>${YS.map(y => `<th>${y}</th>`).join("")}</tr></thead><tbody>
+    ${filas.map(([l, f, fm, neu]) => `<tr><td>${l}</td>${ms.map((m, i) => `<td>${fm(f(m))} ${i ? delta(f(m), f(ms[i - 1]), neu) : ""}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>
+  <div class="grid two">
+    <section class="card"><h2>Ritmo del año</h2><p class="sub">Gasto acumulado mes a mes</p>${acumulado()}</section>
+    <section class="card"><h2>Por tipo de gasto</h2><p class="sub">USD, año por año</p>${tipoPorAnio(ms)}</section>
+  </div>
+  <section class="card mt"><h2>Por destino</h2><p class="sub">Costo por persona y día de viaje, año por año (el pasaje cuenta dentro del viaje)</p>
+    <div class="scroll"><table><thead><tr><th>Destino</th>${YS.map(y => `<th>${y}</th>`).join("")}<th>2024 → 2026</th></tr></thead><tbody>
+    ${paises.map(p => { const v = ms.map(m => pd(m, p)); return `<tr><td>${p}</td>${v.map(x => `<td>${x ? fmt(x) : "–"}</td>`).join("")}<td>${v[0] && v[2] ? delta(v[2], v[0]) : "–"}</td></tr>`; }).join("")}</tbody></table></div>
+    <p class="note">Un guion quiere decir que ese año no hubo viaje allá.</p></section>`;
+}
+
+/* ---------- Armado ---------- */
+const ROL = { mias: "Esta pantalla la ve cada persona, solo con lo suyo.", resumen: "La ven Finanzas y los administradores. Sin nombres de personas.", analisis: "La ven Finanzas y los administradores. Con nombres: es para entender y decidir." };
+function pintar() {
+  document.getElementById("out").innerHTML = S.v === "mias" ? vistaMias() : S.v === "resumen" ? vistaResumen() : vistaAnalisis();
+  document.getElementById("rol").textContent = ROL[S.v];
+  document.getElementById("verComo").hidden = S.v !== "mias";
+  document.querySelectorAll(".seg button").forEach(b => { const k = Object.keys(b.dataset)[0]; if (k && k in S) b.setAttribute("aria-pressed", String(String(S[k]) === b.dataset[k])); });
+}
+document.getElementById("selYo").innerHTML = GENTE.map(p => `<option>${p}</option>`).join("");
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return; const d = b.dataset;
+  if (d.v) S.v = d.v; if (d.p) S.p = d.p; if (d.e) S.e = d.e; if (d.sub) S.sub = d.sub; if (d.imp) S.imp = +d.imp; if (d.prec) S.prec = d.prec; if (d.esc) S.esc = d.esc; if (d.corte) S.corte = d.corte === "true";
+  if (d.adj) { const k = d.adj.slice(0, 2); S[k] = Math.max(-50, Math.min(100, S[k] + (d.adj.endsWith("+") ? 5 : -5))); }
+  if (d.plan) { const x = PLAN[+d.i], k = d.plan; if (k === "d+") x.dias = Math.min(14, x.dias + 1); if (k === "d-") x.dias = Math.max(2, x.dias - 1); if (k === "p+") x.pers = Math.min(10, x.pers + 1); if (k === "p-") x.pers = Math.max(1, x.pers - 1); }
+  if (d.v || d.p || d.e || d.sub || d.imp || d.plan || d.prec || d.esc || d.corte || d.adj) pintar();
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "selYo") { S.yo = e.target.value; pintar(); }
+  if (e.target.matches("[data-chk]")) { PLAN[+e.target.dataset.chk].on = e.target.checked; pintar(); }
+});
+pintar();
+</script>
+
+</html>

@@ -79,8 +79,9 @@ por lo de abajo).
 - La persona **manda la rendición** de una actividad entera; un admin la revisa, puede **observar** un gasto
   con un comentario (le llega un aviso **por la campanita y por correo**), la persona corrige y la vuelve a
   mandar, y el admin **aprueba todo junto**.
-- **Estadísticas:** todo el equipo ve los números grandes **agrupados** (por país, mes, tipo de actividad,
-  año), nunca el total de una actividad suelta; el admin ve también el total por actividad.
+- **Estadísticas:** ~~todo el equipo ve los números grandes agrupados~~ — **rediseñado el 19/11**: cada persona ve lo
+  suyo («Mis estadísticas») y Finanzas y los administradores ven todo (Resumen y Análisis). Ver «Estadísticas, rol
+  Finanzas y análisis» más abajo.
 
 **Google**
 - Los comprobantes quedan guardados **en el sistema y en Drive** (los dos frentes): primero en el sistema, y
@@ -101,7 +102,8 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
 2. Copia a Drive.
 3. Carga al Sheet, con aprobación.
 4. PDF de entrega.
-5. Abrirlo a más personas (**hecho el 19/11**: abierto a todo el equipo, punto 14), y las estadísticas.
+5. Abrirlo a más personas (**hecho el 19/11**: abierto a todo el equipo, punto 14), y las estadísticas (**diseñadas el
+   19/11**, con piloto y plano: ver «Estadísticas, rol Finanzas y análisis»; falta construirlas).
 
 ### Etapa 1, por partes
 
@@ -339,6 +341,80 @@ uno anota el suyo; va con las estadísticas (etapa 5).
 **Decidido después (15/11):** un admin **puede aprobar su propia** rendición (en la prueba el único que carga
 es el admin; al abrirlo al equipo se puede revisar que la apruebe otro). El **total rápido no mueve la cuenta
 corriente**: es para los números grandes, porque no dice quién puso la plata.
+
+## Estadísticas, rol Finanzas y análisis (decidido el 19/11/2026)
+
+**Estado: diseño cerrado, sin construir.** El piloto con las pantallas y el plano del menú están en
+[`piloto/`](./piloto/README.md) (datos inventados). Salió de una conversación con el usuario, que pidió tres
+cosas: que cada persona vea sus gastos **conectados con las actividades** (no solo números), que haya un nivel
+**financiero** que vea todo para entender y **decidir el año que viene**, y que se pueda **comparar con años
+anteriores** para proyectar. Y que se diseñe con criterio de uso para **no andar cambiando** después.
+
+### Tres niveles
+
+1. **Mis estadísticas** (cada persona, solo lo suyo): números grandes, en qué gasta, mes a mes y «Mis
+   actividades»: cada viaje se despliega y lleva a sus gastos y comprobantes. Con la variación contra el año pasado.
+2. **Resumen** (Finanzas y administradores, **sin nombres**): gastado, se debe a personas, por aprobar, pagado por la
+   organización; por tipo, por país y mes a mes; lo que espera aprobación por antigüedad.
+3. **Análisis** (Finanzas y administradores, **con nombres**): *Por viaje* (qué costó, de qué se compone, qué gastó
+   cada persona), *Por persona*, *Comparar años* (año contra año al mismo corte, ritmo acumulado, por tipo y por
+   destino) y *Para el año que viene* (tendencia, proyección con tres escenarios y un presupuesto que se arma con
+   actividades, días, personas, precios y reserva para imprevistos).
+
+### Dónde va (sin pestañas nuevas)
+
+Todo cuelga de **Gastos**, en su menú lateral: *Mis estadísticas* (todos), *Resumen* y *Análisis* (Finanzas y
+administradores). *Para aprobar* suma arriba una franja con lo pendiente y su antigüedad. **Reportes no se toca**,
+y **Gastos no entra en «Mi año»** (esa tarjeta se comparte). Los observadores no ven Gastos, como hoy.
+
+### El rol nuevo: Finanzas
+
+Un cuarto rol, entre Integrante y Administrador. Carga sus gastos como un integrante; ve las rendiciones y cuentas
+de todo el equipo; observa y aprueba (**no las suyas**); confirma plata recibida o devuelta y anota ajustes; ve el
+Resumen y el Análisis. **No** entra a Administración (personas, tipos de gasto, interruptor). Un administrador
+puede todo lo de Finanzas, más Administración. La matriz completa está en `piloto/mapa-gastos.html`.
+
+### Decisiones cerradas (19/11)
+
+- El nombre del rol es **Finanzas**.
+- Finanzas **no aprueba sus propias** rendiciones (el administrador sigue como hoy: lo decidido el 15/11 de que un
+  admin puede aprobar la suya se mantiene, y se revisa al abrirlo al equipo).
+- **Reportes no suma gastos** por ahora (no se cierra: se retoma si el equipo lo pide).
+- Los **observadores no ven** Gastos.
+- «Mis estadísticas» es un **ítem propio** del menú lateral de Gastos.
+- Se **importan 2024, 2025 y 2026** desde el Sheet del usuario (hace falta para comparar y proyectar). Directo del
+  Sheet a la base, mostrando las filas antes de guardar y **sin pasar por el repo** (tiene nombres y teléfonos).
+  Pendiente: ver en qué forma están 2024 y 2025 en el Sheet.
+- Los totales van **por moneda, sin convertir** (la conversión queda para más adelante).
+
+### Qué toca cada cosa (por qué se decidió ahora)
+
+- **Barato de cambiar:** textos, orden dentro de una pantalla, colores, qué números se muestran.
+- **Medio:** mover o sumar una sección del menú, filtros nuevos (pantallas, pruebas, recorrido de bienvenida, cuatro idiomas).
+- **Caro:** el rol y sus permisos (`members.role` hoy admite `admin`, `member`, `observer` en `supabase/01-tablas.sql`;
+  habría que sumar el nuevo y sus ayudantes en `02-politicas.sql` y `27-gastos.sql`), las **funciones de totales en
+  la base** (los gastos son privados: el Resumen y el Análisis no se pueden calcular en el navegador como Reportes,
+  sino con funciones que devuelvan solo totales) y la importación.
+
+### Orden de construcción
+
+Cada parte se aprueba mirando su piloto, va a la rama y llega a `main` solo con el OK del usuario y capturas.
+Cada una lleva sus pruebas, los textos en cuatro idiomas y el recorrido de bienvenida (`tourSteps()` /
+`TOUR_SIN_PASO`) revisado.
+
+1. ~~Cerrar decisiones y probar el piloto~~ (decisiones cerradas; falta que el usuario y dos personas del equipo hagan las pruebas de uso del plano).
+2. **Mis estadísticas:** solo pantallas, sin permisos nuevos ni cambios en la base.
+3. **Rol Finanzas y Resumen**, con las funciones de totales y sus pruebas de privacidad (`supabase/pruebas/`).
+4. **Importar los años anteriores.**
+5. **Análisis.**
+
+### Principios que se aplican (para no rehacer)
+
+Una pregunta, un solo lugar · de lo grande al detalle y ningún número suelto · reusar lo que ya conocen (menú lateral,
+tarjetas que se despliegan, selectores de período como Reportes) · lo propio primero y lo ajeno solo con rol, a la
+vista · cada total dice qué incluye (período, corte, moneda) y avisa si faltan datos · celular y compu cada uno a lo
+suyo (las tablas anchas pasan a tarjetas) · cuatro idiomas con hebreo de derecha a izquierda, foco visible y estado
+nunca solo por color.
 
 ## Lo que anotó el usuario al probarlo (desde el 18/11)
 
