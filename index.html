@@ -1078,6 +1078,7 @@
     .gx-ldestino{ max-width:none; }
   }
   .gx-campo [data-sug]{ border-color:var(--celeste-dark, var(--celeste)); background:var(--celeste-soft, var(--surface-alt)); }
+  .gx-duda-ok{ grid-column:1 / -1; font-size:12px; color:var(--warn-text); margin-top:-4px; }
   .gx-campo [data-duda]{ border-color:var(--warn-border); background:var(--warn-bg); }
   .gx-leer{ margin-top:4px; align-self:flex-start; }
   /* La cuenta corriente: una tarjeta por moneda. */
@@ -28278,6 +28279,8 @@ function renderGasto(){
   // Sin cartel de lo que completó el lector (lo pidió el usuario el 16/11, para ganar lugar): lo dicen las
   // marcas de cada campo (celeste, sugerido; amarillo, para revisar). Solo si «Leer» no encontró nada, una
   // línea chica bajo el comprobante.
+  // Lo dudoso que la persona todavía no tocó: con «Está bien» lo da por revisado sin tener que reescribirlo.
+  const dudasPend = editable ? dudasVistas.filter(k => ["moneda", "monto", "fecha", "tarjeta"].includes(k) && !(e.tocados && e.tocados.has(k))) : [];
   const nadaLeido = editable && e.leido && !leido.campos.length && !dudasVistas.length;
   const vecinos = vecinosDeGasto(g.id);
   // Lo que la persona ya tocó deja de verse como sugerido; el tipo que puso la predicción, sí se ve.
@@ -28345,6 +28348,7 @@ function renderGasto(){
               + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}>`)
               + `<small class="gx-pista">${t("En {m}: lo que te cobró el banco.","In {m}: what your bank charged you.","Em {m}: o que o banco te cobrou.","ב-{m}: מה שהבנק חייב אתכם.",{ m: esc(d.rendidoMoneda) })}</small>` : ""}
             ${usarCambio}
+            ${dudasPend.length ? `<div class="gx-duda-ok" role="status"><span>⚠️ ${esc(t("El lector no está seguro de: {l}.","The reader isn't sure about: {l}.","O leitor não tem certeza de: {l}.","הקורא לא בטוח לגבי: {l}.",{ l: dudasPend.map(k => nombreDeCampoGasto(k)).join(", ") }))}</span> <button type="button" class="gx-link" data-action="gasto-duda-ok">✓ ${t("Está bien","It's right","Está certo","זה נכון")}</button></div>` : ""}
           </div>
           ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}>`)}
           ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" class="gx-elige" data-gcampo="vinculo">${opcionesDeVinculo(g, d.vinculo)}</select>${pistaVaEn ? `<small class="gx-pista gx-pista-vaen">${esc(pistaVaEn)}</small>` : ""}`)}
@@ -28809,6 +28813,12 @@ const GASTOS_ACCIONES = {
   "gasto-hilo-ver": async () => { if(!gastoEdit) return; gastoEdit.verHilo = true; renderGasto(); const x = document.querySelector("#gastoBody .gx-hilo .gx-com"); if(x){ x.setAttribute("tabindex", "-1"); x.focus(); } },
   "gasto-ver-comprobante": async el => verComprobante(el.dataset.id),
   "gasto-leer": async () => leerGastoAbierto(),
+  "gasto-duda-ok": async () => {
+    const e = gastoEdit; if(!e) return;
+    const l = e.leido || (gastoPorId(e.id) && gastoPorId(e.id).lectura) || null;
+    (l && l.dudas || []).forEach(k => (e.tocados = e.tocados || new Set()).add(k));
+    renderGasto();
+  },
   "gasto-vecino": async el => irAGastoVecino(Number(el.dataset.dir) || 0),
   "gasto-tipo": async el => elegirEnVentana("tipo", el.dataset.tipo),
   "gasto-pago": async el => elegirEnVentana("pago", el.dataset.pago),
@@ -28942,6 +28952,19 @@ function gastosAlEscribir(el, evento){
 }
 document.getElementById("gastoOverlay").addEventListener("input", e => { if(gastoAlEscribir(e.target, false)) e.stopPropagation(); });
 // La ventana corta el aviso acá: el monto se acomoda antes, como en el resto de la pantalla.
+// Pasar por un campo dudoso del lector y salir sin cambiarlo es darlo por bueno (lo pidió el usuario el 19/11): deja
+// de marcarse y de preguntarse al confirmar. Escribir en él ya lo hacía; esto cubre el caso de que estaba bien.
+document.getElementById("gastoOverlay").addEventListener("focusout", ev => {
+  const el = ev.target, e = gastoEdit;
+  if(!e || !el || !el.hasAttribute || !el.hasAttribute("data-duda") || !el.dataset.gcampo) return;
+  el.removeAttribute("data-duda");
+  (e.tocados = e.tocados || new Set()).add(el.dataset.gcampo);
+  const aviso = document.querySelector("#gastoBody .gx-duda-ok");
+  if(!aviso) return;
+  const quedan = [...document.querySelectorAll("#gastoBody [data-duda][data-gcampo]")].map(x => x.dataset.gcampo);
+  if(!quedan.length) aviso.remove();
+  else { const sp = aviso.querySelector("span"); if(sp) sp.textContent = "⚠️ " + t("El lector no está seguro de: {l}.","The reader isn't sure about: {l}.","O leitor não tem certeza de: {l}.","הקורא לא בטוח לגבי: {l}.",{ l: quedan.map(k => nombreDeCampoGasto(k)).join(", ") }); }
+});
 document.getElementById("gastoOverlay").addEventListener("change", e => { acomodarMonto(e.target); if(gastoAlEscribir(e.target, true)) e.stopPropagation(); });
 gastoOverlay.addEventListener("click", e => { if(e.target === gastoOverlay) pedirCerrarGasto(); });
 gastoOverlay.addEventListener("keydown", e => {

@@ -723,6 +723,40 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- «Está bien» da por revisado lo dudoso del lector, sin reescribirlo (19/11) ---------------- */
+{
+  const base = datos({ prendido: true });
+  const g1 = base.gastos.find(g => g.id === "gx1");
+  Object.assign(g1, { concepto: "Uber a Reunión", tipo: "transporte", monto: 51.13, moneda: "MXN", lectura: { fuente: "lector", campos: ["monto", "moneda"], dudas: ["monto"] } });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p); await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("el monto dudoso se ve en amarillo y dice cuál es, con «Está bien»", await p.evaluate(() => [!!document.querySelector("#gxMonto[data-duda]"), !!document.querySelector('[data-action="gasto-duda-ok"]'),
+    (document.querySelector(".gx-duda-ok span") || {}).textContent]), [true, true, "⚠️ El lector no está seguro de: el monto."]);
+  await p.click('[data-action="gasto-duda-ok"]'); await p.waitForTimeout(150);
+  eq("tocar «Está bien» saca la marca y el aviso, y deja el monto como estaba", await p.evaluate(() => [!!document.querySelector("#gxMonto[data-duda]"), !!document.querySelector(".gx-duda-ok"), document.getElementById("gxMonto").value]), [false, false, "51.13"]);
+  await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
+  eq("y confirma sin volver a preguntar", await hasta(p, () => document.getElementById("confirmOverlay").hidden && window.__sb.tablas.gastos.find(g => g.id === "gx1").estado === "confirmado"), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
+/* ---------------- Pasar por un campo dudoso sin cambiarlo lo da por bueno (19/11) ---------------- */
+{
+  const base = datos({ prendido: true });
+  const g1 = base.gastos.find(g => g.id === "gx1");
+  Object.assign(g1, { concepto: "Uber a Reunión", tipo: "transporte", monto: 51.13, moneda: "MXN", lectura: { fuente: "lector", campos: ["monto", "moneda"], dudas: ["monto"] } });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p); await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  await p.focus("#gxMonto"); await p.press("#gxMonto", "Tab"); await p.waitForTimeout(100);
+  eq("pasar por el monto sin cambiarlo saca la marca y el aviso, y el monto sigue igual", await p.evaluate(() => [!!document.querySelector("#gxMonto[data-duda]"), !!document.querySelector(".gx-duda-ok"), document.getElementById("gxMonto").value]), [false, false, "51.13"]);
+  await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
+  eq("y confirma sin preguntar", await hasta(p, () => document.getElementById("confirmOverlay").hidden && window.__sb.tablas.gastos.find(g => g.id === "gx1").estado === "confirmado"), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Lo propio lo aprueba otro admin (D17) y lo observado se ve al devolver (D18), 19/11 ---------------- */
 {
   const base = datos({ prendido: true });
