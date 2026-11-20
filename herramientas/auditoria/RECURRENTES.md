@@ -649,3 +649,21 @@ un Cierre o un hito (Y10), no hay enlace para mandar un evento (Y11), sin conexi
 nada (Y12). *Por qué:* quien la arma la usa en la compu, con wifi y sin cortar. *Se detecta:*
 `masa` (Atrás, borrador, buscador). *Regla:* cada pedido de «cargar algo» se prueba **con una
 recarga en el medio**, y cada pantalla de «ver algo» con el botón Atrás.
+
+**Un botón que no responde al primer toque porque el diseño cambia cuando el campo pierde el
+foco.** «Publicar» de «Nuevo evento» en el celular: al apoyar el dedo, el campo suelta el foco,
+`html.teclado` se apaga, el cuadro cambia de relleno, de alto y de lugar, y el botón sube 29 a
+46 px antes de que el dedo se levante: el toque cae en otra parte y no pasa nada (Z1; era el
+T10 del 28/10). *Por qué:* el modo teclado cambia la disposición del diálogo, y las pruebas
+hacen clic con un mouse (que no mueve nada entre apoyar y levantar) y miden «entra sin
+desplazarse», no «responde». *Se detecta:* `masa` (un toque simulado con
+`page.touchscreen.tap`). *Regla:* lo que se toca en un celular se prueba **con un toque**, con el
+foco en un campo de texto; y nada de lo que está en el diálogo se mueve al soltar el foco (el
+modo teclado se apaga cuando el toque terminó, no antes).
+
+**Controles que nadie midió.** Hay una prueba del tamaño de la letra (`letra_minima_test`) y
+ninguna del tamaño de lo que se toca: «Me gusta» mide 19×36 y «Responder» 17×36, uno al lado
+del otro en cada tarjeta, y el nombre de una persona, 92×15 (Z2). *Por qué:* un botón de
+solo-ícono se achica al ancho del ícono, y el área de toque es el botón. *Se detecta:* `masa`.
+*Regla:* todo control del celular mide 24×24 como piso (WCAG 2.2) y apunta a 44; si el dibujo es
+más chico, el área de toque se agranda con relleno o un `::after` invisible.

@@ -175,6 +175,40 @@ for(const [nombre, armar] of ESCALAS){
   }
   await p.close();
 }
+/* ---------- 6. El celular con un dedo (toque simulado, no clic de mouse) ---------- */
+{ // 6a. Nuevo evento: título, lugar y «Publicar». Con un campo de texto con el foco, ¿el primer toque en Publicar llega?
+  for(const alto of [844, 661]){
+    const { p } = await entrar(b, "ana@team-latam.com", "Ana Pérez", { viewport: { width: 390, height: alto } });
+    await p.waitForTimeout(400);
+    await click(p, "#fabMain"); await click(p, '[data-action="new-evento"]'); await p.waitForTimeout(400);
+    await p.fill("#cTitle", "Visita a Salta"); await p.fill("#cPlaceQuery", "Salta"); await p.waitForTimeout(400);
+    await p.evaluate(() => document.querySelector('[data-action="pick-place"]').click()); await p.waitForTimeout(300);
+    await p.focus("#cPlaceQuery"); await p.waitForTimeout(300);
+    const c = await p.evaluate(() => { const r = document.querySelector('#postForm button[type="submit"]').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await p.touchscreen.tap(c.x, c.y); await p.waitForTimeout(1200);
+    const publicado = await p.evaluate(() => window.__sb.tablas.posts.some(x => /Salta/.test(x.title)));
+    if(!publicado) out.push(hallazgo("uso", "importante", "En el celular el primer toque en «Publicar» (Nuevo evento) no hace nada: el botón se corre cuando el campo pierde el foco", `390×${alto}`, "con un toque simulado; el botón sube entre 29 y 46 px al soltar el foco y el toque cae en otra parte (T10 del 28/10, hoy en cualquier alto)"));
+    await p.close();
+  }
+}
+{ // 6b. Tamaño de los controles en el Inicio del celular: WCAG 2.2 pide 24×24 como mínimo (y 44 es lo recomendado).
+  const { p } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 } });
+  await p.waitForTimeout(500);
+  const chicos = await p.evaluate(() => {
+    const m = new Map();
+    for(const e of document.querySelectorAll('button, a[href], input:not([type=hidden]), select, [role=button], [data-action]')){
+      const r = e.getBoundingClientRect(), cs = getComputedStyle(e);
+      if(!r.width || !r.height || cs.visibility === "hidden" || cs.display === "none" || e.closest("[hidden]") || e.classList.contains("skip-link")) continue;
+      if(e.tagName === "DIV" && e.querySelector("button, a, input")) continue;
+      if(Math.min(r.width, r.height) >= 24) continue;
+      const k = (e.dataset.action || e.className || e.tagName).toString().slice(0, 30), o = m.get(k) || { n: 0, w: Math.round(r.width), h: Math.round(r.height) }; o.n++; m.set(k, o);
+    }
+    return [...m.entries()].sort((a, z) => z[1].n - a[1].n).map(([k, v]) => `${k} ${v.w}×${v.h} (×${v.n})`);
+  });
+  if(chicos.length) out.push(hallazgo("accesibilidad", "medio", `Controles de menos de 24×24 px en el Inicio del celular: ${chicos.length} tipos`, "Inicio · 390px", chicos.slice(0, 5).join("; ")));
+  await p.close();
+}
+
 /* ---------- 5. Títulos largos de verdad (no palabras de 60 letras: un título como los del equipo) ---------- */
 { // Un evento con un título de ~80 letras en los próximos 30 días: ¿la columna del costado del Inicio sigue de 276 px, o estira y aprieta el Feed?
   const base = BASE();

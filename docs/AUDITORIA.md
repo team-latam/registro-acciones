@@ -108,10 +108,10 @@ Nada.
 
 | # | Qué | Opciones (la recomendada primero) |
 |---|---|---|
-| D20 | **¿Qué pasa si dos personas editan el mismo evento?** (Y2) | **A**: cada una guarda solo lo que cambió, y si la otra tocó lo mismo, se avisa. **B**: se avisa «alguien lo cambió mientras editabas» y se vuelve a abrir. **C**: dejar como está |
-| D21 | **¿Hacemos más liviana la página?** (Y3) | **A**: al publicar, se le sacan los comentarios y los espacios (no se cambia nada de cómo se escribe ni se prueba: lo que se prueba es lo publicado). **B**: además, Gastos en un archivo aparte que se baja al entrar a Gastos. **C**: dejar como está |
-| D22 | **¿De qué zona son las horas de un evento?** (Y4) | **A**: de Buenos Aires para todo (como hoy), pero escrito junto a la hora y en las tarjetas. **B**: la del país del evento (más cambios, Calendar lo acepta por evento). **C**: dejar como está |
-| D23 | **¿Qué hacemos con «Tendencias» cuando hay pocas actividades?** (Y5) | **A**: se muestra solo cuando el cambio es más grande que el azar, y si no alcanza dice «todavía hay pocos datos». **B**: se deja, con una nota «con pocas actividades un cambio de 2 o 3 puede ser azar». **C**: sacarla del Inicio y dejarla solo en Reportes |
+| D20 | ✅ 20/11: **A** (la recomendada). **¿Qué pasa si dos personas editan el mismo evento?** (Y2) | **A**: cada una guarda solo lo que cambió, y si la otra tocó lo mismo, se avisa. **B**: se avisa «alguien lo cambió mientras editabas» y se vuelve a abrir. **C**: dejar como está |
+| D21 | ✅ 20/11: **A** (la recomendada). **¿Hacemos más liviana la página?** (Y3) | **A**: al publicar, se le sacan los comentarios y los espacios (no se cambia nada de cómo se escribe ni se prueba: lo que se prueba es lo publicado). **B**: además, Gastos en un archivo aparte que se baja al entrar a Gastos. **C**: dejar como está |
+| D22 | ✅ 20/11: **A** (la recomendada). **¿De qué zona son las horas de un evento?** (Y4) | **A**: de Buenos Aires para todo (como hoy), pero escrito junto a la hora y en las tarjetas. **B**: la del país del evento (más cambios, Calendar lo acepta por evento). **C**: dejar como está |
+| D23 | ✅ 20/11: **A** (la recomendada). **¿Qué hacemos con «Tendencias» cuando hay pocas actividades?** (Y5) | **A**: se muestra solo cuando el cambio es más grande que el azar, y si no alcanza dice «todavía hay pocos datos». **B**: se deja, con una nota «con pocas actividades un cambio de 2 o 3 puede ser azar». **C**: sacarla del Inicio y dejarla solo en Reportes |
 | D24 | **¿Instalable en el celular y con algo sin conexión?** (Y12) | **A**: instalable (ícono, pantalla completa, más rápida), sin sin-conexión. **B**: lo de A, y poder ver la Agenda y lo próximo sin conexión. **C**: nada por ahora |
 
 ---
@@ -178,3 +178,49 @@ entra con su prueba, en rojo contra el código de antes, cuando el usuario diga 
 
 La página para el usuario, con capturas y las decisiones D20–D24 con su recomendación:
 https://claude.ai/artifact/7aJtRBkkMyoyrdkub6xjtj (privada).
+
+---
+
+## Agregado: la pasada de UX (20/11/2026, a pedido del usuario) — código Z
+
+Pedido del usuario, al terminar lo de arriba: «¿no te parece que pueden haber más cosas para
+cambiar? ¿Cosas de UX?». Tenía razón: la primera pasada miró sobre todo datos, volumen y
+funcionamiento, y casi no miró la entrada, la espera de aprobación, Países, la Agenda, Gastos,
+el menú «Más», los formularios, el tamaño de los botones ni el vocabulario. Esta pasada los mira,
+con capturas, con un toque simulado (no un clic de mouse) y midiendo. Las decisiones siguen:
+**D25** en adelante.
+
+### Importante
+
+| # | Qué | Por qué | Quién |
+|---|---|---|---|
+| Z1 | **En el celular, el primer toque en «Publicar» de «Nuevo evento» no hace nada.** Con un campo de texto con el foco (el «Dónde», por ejemplo), `html.teclado .modal{…}` (índice, ~5142) cambia el relleno, el alto y la posición del cuadro al soltar el foco: el botón sube entre 29 y 46 px entre que se apoya el dedo y se levanta, y el toque cae en otra parte. Probado con un toque simulado en 844, 740, 661 y 600 px de alto: **nunca publica al primer toque**; con el mouse en la compu, sí. La rutina de una línea y «Responder» andan. Es el **T10 del 28/10** («sin verificar en un teléfono»): se reproduce siempre y a cualquier alto, no solo en pantalla corta. Sigue sin verificarse en un teléfono de verdad (D8) | Es el botón principal del flujo principal: se toca, no pasa nada, y no hay mensaje. Se toca de nuevo y anda: parece que el sistema se colgó | Claude (con una prueba con `touchscreen.tap`) |
+
+### Medio
+
+| # | Qué | Por qué | Quién |
+|---|---|---|---|
+| Z2 | **Ninguna prueba mide el tamaño de lo que se toca.** En el Inicio del celular, 26 de 100 controles miden menos de 44 px y 8 menos de 24: «Me gusta» 19×36 y «Responder» 17×36 (juntos, en cada tarjeta), el nombre de una persona 92×15, «📄 2/3» 63×21, «⋯» 40×30, «ver quién dio Me gusta» 19×36. En Reportes, 15 filas de 336×15 que se tocan para ver esas actividades; en el Calendario, las flechas 34×32 y «+ Nuevo evento» 96×23; «¿Cómo funciona?» 116×15; los tres botones de la cabecera 36×36. WCAG 2.2 AA pide 24×24 (o espacio alrededor) y 44 es lo recomendado | Es lo que más se toca en un teléfono, con un dedo, en movimiento. Agrandar el área de toque con relleno invisible no cambia cómo se ve | Claude |
+| Z3 | **La misma cosa se llama de cinco maneras.** En los 3.247 textos en español: *actividad* 139 veces, *evento* 98, *posteo* 63, *registro* 34, *rutina* 23. Y la pantalla de inicio es «Inicio» en la pestaña y «Feed» en cuatro textos («Ver en el Feed», «se filtra el Feed», «Sale al Feed al instante»): «Feed» es una palabra en inglés que nadie del equipo usa. «Países» tiene adentro las ciudades, las zonas, el mapa y la Agenda de teléfonos | Alguien nuevo no sabe si «posteo», «registro» y «actividad» son lo mismo; el recorrido de bienvenida lo cuenta de una manera y la pantalla de otra | **usuario** (D25) |
+| Z4 | **Nadie le avisa a quien pidió acceso que ya lo aprobaron.** Los correos que existen son: pedido (al admin), posteo, respuesta, paso, gasto, rendición, informe y prueba; ninguno es «ya podés entrar». La pantalla de espera dice «se actualiza sola» (solo si la deja abierta) y «Suele tardar menos de un día». Tampoco dice a quién escribirle | Quien pide entrar cierra la pestaña y no vuelve. Es la primera impresión del sistema | **usuario** (D26) |
+
+### Bajo
+
+| # | Qué | Quién |
+|---|---|---|
+| Z5 | **La barra de abajo del celular es solo íconos de emoji** (casa, calendario, mapa, ≡), sin una palabra. El del Calendario dibuja siempre «17 de julio» (es el dibujo del emoji) y «Países» es un mapa. Proyectos, Gastos y Reportes están a dos toques, detrás de «Más» (Gastos es lo que se usa en un viaje). Los emoji también cambian de dibujo según el aparato | **usuario** (D27) |
+| Z6 | La casilla «No pasarlo a Google Calendar» de «Nuevo evento» está redactada al revés: se tilda para **apagar** algo, y lo normal es tildar para prender. Mejor «Solo en Toldot» | Claude |
+| Z7 | Lo que se vio y está bien, para no tocarlo: la entrada (una sola acción, «¿Es tu primera vez?» en una línea, idiomas a mano), «Rechazada» con «Pedir acceso de nuevo», la Agenda con el botón verde de WhatsApp, la «Lectura rápida» de cada país, Proyectos con «Marcar cumplido» en el mismo lugar, y los toques para cargar: **una rutina, 2; un evento con lugar, 6** (el +, «Nuevo evento», título, lugar, elegir el lugar, Publicar) | Se deja |
+
+### Para el usuario
+
+| # | Qué | Opciones (la recomendada primero) |
+|---|---|---|
+| D25 | **¿Cómo le decimos a lo que carga el equipo?** (Z3) | **A**: «actividad» para todo (rutina, visita, curso… son tipos de actividad), «Inicio» y nunca «Feed», y «posteo» desaparece de las pantallas. **B**: solo cambiar «Feed» por «Inicio». **C**: dejar como está |
+| D26 | **¿Le mandamos un correo a quien pidió acceso cuando lo aprueban?** (Z4) | **A**: sí, uno corto: «Ya podés entrar», con el botón a la app (a la dirección con la que pidió, la de Google). **B**: no; la pantalla de espera dice «el administrador te avisa» y quién es. **C**: dejar como está |
+| D27 | **¿Le ponemos palabras a la barra de abajo del celular?** (Z5) | **A**: sí, el nombre debajo de cada ícono (Inicio, Calendario, Países, Más) y un dibujo propio para el calendario. **B**: dejar los íconos solos |
+
+### Herramientas y patrones
+
+`masa.mjs` suma dos comprobaciones del celular: el primer toque en «Publicar» (Z1) y los controles de
+menos de 24×24 px en el Inicio (Z2). Dos patrones nuevos en `RECURRENTES.md`.
