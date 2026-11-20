@@ -441,6 +441,23 @@ enlaces ni IDs** (el repo es público; los datos entran a la base directo, nunca
 - **Impacto en la cuenta corriente:** lo histórico ya se saldó; si se importa como aprobado y de bolsillo, inventaría deudas.
   Hace falta marcar lo importado como histórico (afuera de la cuenta y de «Se debe», adentro de las estadísticas).
 
+### Los años anteriores: 2022 a 2025 (20/11/2026)
+
+Cada año tiene su carpeta (comprobantes por mes, con subcarpetas por viaje y una «Rutina») y **una planilla anual de la
+misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el formato cambiando de año en año**:
+
+- **2025:** Google Sheet, solapas ENE25 a DIC25, 13 columnas (desde mitad de año, 14: aparece «Cuenta»). Montos «$25,155.00»
+  (coma de miles, punto de decimales). Los tipos incluyen valores que el sistema no tiene (p. ej. telefonía celular).
+- **2024 y 2023:** archivos **Excel (.xlsx)**, no Google Sheets; pesan unas diez veces más (más columnas o más detalle). Todavía no se leyeron.
+- **2022:** Google Sheet con solapas de marzo a diciembre. **Las primeras tienen solo 9 columnas** (sin «Actividad», con el
+  monto antes que la moneda); más adelante se suman Actividad, Procesado, Cotización y Subtotal. Fechas «2/03/2022» y montos
+  «$1.500,00» (punto de miles, coma de decimales: al revés que en 2025). Hay solapas dobles («JUN22-bis y JUL»).
+- **Lo que esto exige del importador:** reconocer las columnas **por su nombre, no por su posición**; entender cada formato de
+  fecha y de número (y avisar cuando dude); tolerar columnas que faltan; mapear los tipos que no existen en el sistema
+  (decidir con el usuario si se suman o se agrupan); y que el administrador revise la vista previa de cada solapa antes de guardar.
+- **Los comprobantes** de cada año están en carpetas por mes con el nombre «D-M-AAAA - Concepto - Actividad» (ya es la
+  convención del sistema), pero **no se importan** por ahora: solo los montos.
+
 ## Lo que anotó el usuario al probarlo (desde el 18/11)
 
 Lo fue dejando mientras revisaba la versión publicada. **Hecho el 18/11 en una tanda** (en la rama; va a `main` con su
