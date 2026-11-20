@@ -416,6 +416,31 @@ vista · cada total dice qué incluye (período, corte, moneda) y avisa si falta
 suyo (las tablas anchas pasan a tarjetas) · cuatro idiomas con hebreo de derecha a izquierda, foco visible y estado
 nunca solo por color.
 
+## Importar los gastos de 2026 desde las planillas: lo que se vio (20/11/2026)
+
+El usuario compartió la carpeta de control de gastos de 2026. **Solo se anota el formato: nada de nombres, montos,
+enlaces ni IDs** (el repo es público; los datos entran a la base directo, nunca por acá).
+
+- **Cómo está armada:** una subcarpeta por persona, y en cada una una planilla «Rendición de gastos» con **una solapa por
+  mes** (ENE26…DIC26) y las carpetas mensuales con los comprobantes. Una de las cinco está vacía (pesa igual que el
+  modelo en blanco). Hay además una planilla de sueldos que **no se abrió ni se toca**.
+- **Columnas:** Fecha, Concepto, Actividad, Tipo, Cuenta, Procesado, Moneda, Monto, Cotización, Subtotal ARS, Forma de pago,
+  Quién pagó, Factura, Observaciones; a la derecha, totales por moneda y por quién pagó (se ignoran: se recalculan).
+- **«Actividad» es el tipo de actividad** (Rutina, Curso, Visita, Seminario…), **no la actividad concreta**: a qué viaje
+  pertenece una fila hay que deducirlo por la fecha y la Agenda. «Rutina» sí va a la rutina del mes.
+- **Moneda:** ARS o USD. Los gastos en otra moneda vienen en dólares y **la moneda original está escrita en
+  Observaciones** («Gasto por BZD 38.22.-», «Gasto por CLP 13.599.-», «Gasto por MEX 2,834.00.-»), con separadores de
+  miles y decimales distintos según la fila y códigos mal escritos (MEX por MXN). Hay que leerlo con cuidado y marcar lo dudoso.
+- **Quién pagó:** una sigla (la tarjeta de la organización) o el nombre de la persona. Forma de pago: tarjeta, efectivo,
+  transferencia. En Observaciones, qué tarjeta.
+- **Cada persona escribe distinto:** la fecha («6-1-2026» y «25.01.26»), el nombre («Iván» y «Ivan»), la actividad.
+  El lector tiene que aguantar eso y mostrar lo que entendió antes de guardar.
+- **Posibles repetidos:** una planilla trae gastos pagados con la tarjeta de la organización de viajes de otra
+  persona; hay que confirmar que no estén también en la planilla de esa persona.
+- **2024 y 2025 no están en esta carpeta:** hay carpetas viejas con planillas por viaje, de otros formatos.
+- **Impacto en la cuenta corriente:** lo histórico ya se saldó; si se importa como aprobado y de bolsillo, inventaría deudas.
+  Hace falta marcar lo importado como histórico (afuera de la cuenta y de «Se debe», adentro de las estadísticas).
+
 ## Lo que anotó el usuario al probarlo (desde el 18/11)
 
 Lo fue dejando mientras revisaba la versión publicada. **Hecho el 18/11 en una tanda** (en la rama; va a `main` con su
