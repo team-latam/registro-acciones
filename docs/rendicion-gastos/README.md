@@ -474,6 +474,17 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
   **no crea actividades**; la rendición lleva su lugar y sus fechas (con el país), se enlaza a la actividad de la Agenda si ya existe,
   y quien pagó de otra persona usa «otra persona de la actividad». Ver el mensaje de esa fecha para las opciones.
 
+### Importador: decisiones confirmadas una por una (20/11/2026)
+
+- **Actividad de un viaje:** depende del viaje (cada caso se mira en la vista previa).
+- **Dudas:** si hay duda, se le pregunta; nada se carga sin su OK.
+- **Repetidos:** se comparan las dos copias y se pregunta solo si no coinciden.
+- **Gastos que pagó otra persona:** se cargan a nombre del usuario (Benny); los empleados, cuando tengan cuenta.
+- **Octubre–noviembre de 2026:** nada ya cargado en la app; se importan y el usuario marca cuáles ya se devolvieron. Antes del 1/10/2026 la cuenta corriente arranca en cero (no hay deuda de años anteriores).
+- **Tipos nuevos:** se pregunta por cada uno en la vista previa.
+- **Cómo reconocer filas de otros:** por la columna «Cuenta» (Empleados); donde no existe o está vacía (2022, principios de 2025, algunas pestañas de 2026), **se cargan todas a nombre del usuario**, sin marcarlas.
+- **Primera prueba real:** septiembre de 2026 (tiene un viaje); después el resto de 2026 y los años anteriores.
+
 ## Lo que anotó el usuario al probarlo (desde el 18/11)
 
 Lo fue dejando mientras revisaba la versión publicada. **Hecho el 18/11 en una tanda** (en la rama; va a `main` con su
