@@ -6,8 +6,9 @@
 > `registro-acciones`.
 
 SPA de una sola página (`index.html`) sin backend propio ni build step:
-HTML + CSS + JS (`<script type="module">` inline) que se edita y publica tal
-cual. El backend es **Supabase** (Postgres + Auth con Google + Storage, ver
+HTML + CSS + JS (`<script type="module">` inline) que se edita tal cual. Al
+publicar solo se le achican los espacios y comentarios y se le ponen las huellas
+de la CSP (`herramientas/publicar/README.md`); el fuente no cambia. El backend es **Supabase** (Postgres + Auth con Google + Storage, ver
 `supabase/README.md`) más la API de Google Calendar. Firebase fue la base
 hasta el 3 de octubre de 2026: quedó cerrado y fuera del código, y la rama
 `firebase-v1` que guardaba cómo era la borró el usuario el 5/10/2026 (lo
@@ -121,9 +122,9 @@ respecto de lo último que pegó.
 ./herramientas/pruebas/correr.sh
 ```
 
-Corre **todas** las pruebas de `index.html` (más de 4.000 comprobaciones; la
+Corre **todas** las pruebas de `index.html` (más de 5.000 comprobaciones; la
 carga de la página y la app entera contra un Supabase de mentira), de a
-cuatro, en unos 6 minutos, y muestra solo lo que falla y el total (el
+cuatro, en unos 10 minutos, y muestra solo lo que falla y el total (el
 detalle queda en `herramientas/pruebas/salida/ultima.txt`; `DETALLE=1` lo
 muestra). **Tiene que terminar en verde antes de cada commit que toque la
 app**: todas, siempre (lo decidió el usuario el 24/10/2026, D12). GitHub las
@@ -166,5 +167,11 @@ vuelve a correr antes de publicar y un push en rojo no se publica, pero
   con la navegación real (compu y celular, integrante, observador y admin)
   y falla si una pantalla queda sin paso; lo que no puede ver es que una
   pantalla existente cambie de función, y eso es de quien hace el cambio.
+- **Cómo se llaman las cosas** (decisión D25 del usuario, 20/11/2026): lo que
+  carga el equipo es una **«actividad»** (rutina, visita, curso… son *tipos* de
+  actividad); la pantalla de entrada es **«Inicio»**, nunca «Feed»; y «posteo»
+  no aparece en ninguna pantalla (sí en el código y en la base). Un texto nuevo
+  lo respeta en los cuatro idiomas. Lo de «registro de actividad» (quién entró y
+  qué hizo cada persona) es otra cosa y se llama así.
 - **Commits en español**, explicando el "por qué" del cambio, no sólo el
   "qué".

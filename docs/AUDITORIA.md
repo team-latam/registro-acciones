@@ -88,7 +88,7 @@ Nada.
 
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
-| Y4 | ~~**Las horas de un evento no dicen en qué zona están.** Todo evento con hora se crea en Calendar con la zona del calendario compartido (hoy Argentina, GMT-3, `zonaDelCalendario()`), sea cual sea el lugar; el formulario y las tarjetas muestran «09:00–17:00» sin más. Una visita en Ciudad de México cargada con la hora de allá queda 3 horas corrida para los invitados de Calendar; para alguien en Israel, «15:00» de una reunión virtual es ambiguo. Verificado en el código; **no probado con una invitación real de Calendar**.~~ ✅ 20/11 (D22-A): el formulario dice «🕘 Hora de Buenos Aires, la del Calendar del equipo» (`#cZonaHoraria`, con la zona del calendario compartido) y la hora de cada tarjeta lo dice al pasar el dedo. No se cambió qué zona usa Calendar. `app_dom_test` | Es un equipo repartido en varios países y husos; el 6/10 (I5) se arregló que la hora no cambie sola, no que se sepa de qué zona es. | **usuario** (D22) |
+| Y4 | ~~**Las horas de un evento no dicen en qué zona están.** Todo evento con hora se crea en Calendar con la zona del calendario compartido (hoy Argentina, GMT-3, `zonaDelCalendario()`), sea cual sea el lugar; el formulario y las tarjetas muestran «09:00–17:00» sin más. Una visita en Ciudad de México cargada con la hora de allá queda 3 horas corrida para los invitados de Calendar; para alguien en Israel, «15:00» de una reunión virtual es ambiguo. Verificado en el código; **no probado con una invitación real de Calendar**.~~ ✅ 20/11 (D22-A): el formulario dice «🕘 Hora de Buenos Aires, la del Calendar del equipo» (`#cZonaHoraria`, con la zona del calendario compartido) y la hora de cada tarjeta lo dice al pasar el dedo. No se cambió qué zona usa Calendar: la nota nombra la del calendario compartido y, si todavía no se leyó, la del aparato (la misma con la que se crea el evento). `zona_horaria_test` | Es un equipo repartido en varios países y husos; el 6/10 (I5) se arregló que la hora no cambie sola, no que se sepa de qué zona es. | **usuario** (D22) |
 | Y5 | ~~**«Tendencias» muestra cambios que son puro azar** con el volumen del equipo. Se pusieron 12, 24, 40 y 80 actividades al azar (sin ninguna tendencia por construcción) en 12 equipos de cada tamaño: **la tarjeta aparece en 11 de 12 y en 12 de 12** y siempre trae algo como «Chile 4 → 0 *se apagó*» o «Visita 6 → 3 ▼ −3». Los mínimos de hoy (8 actividades en 180 días; 3 en un tramo) están pensados para otro volumen.~~ ✅ 20/11 (D23-A): «Tendencias» muestra un cambio de lugar o de tipo solo si es mayor que el azar (z ≥ 3) y, si no hay ninguno, dice «Nada cambió más de lo que podría ser azar» o «Todavía hay pocos datos para hablar de tendencias». Con 12 equipos al azar por tamaño pasó de **12 de 12 con cambios inventados a 0 de 12**. `tendencias_azar_test` (y `tendencias_test`, con la exigencia anterior apagada para seguir probando lo suyo) | Alguien puede decidir «retomar Chile» por una diferencia de tres actividades. | **usuario** (D23) |
 | Y6 | ~~**Reportes cuenta como «sin actividad» los meses de antes de que el equipo usara el sistema.** Con un equipo que empezó en octubre: «Sugerencias para 2027 — No hubo actividad en enero, febrero, marzo, abril, mayo, junio, julio, agosto y septiembre: conviene planificar algo para esos meses», nueve barras en cero en «Mes a mes» y «Solo el 0% de las actividades tiene participantes».~~ ✅ 20/11: los meses sin actividad se cuentan desde el primer mes con algo cargado, y sin ningún participante dice «Ninguna actividad tiene participantes cargados» en vez de «Solo el 0 %». `reportes_sugerencias_test` | Recomienda planificar meses que ya pasaron, y hace parecer que el equipo estuvo parado. | Claude |
 | Y7 | ~~**Administración › Personas dice «Nunca entró» (y suma a «Inactivos») de alguien que entró hace 12 días** cuando el registro de actividad tiene más de 1.000 acciones nuevas: la app carga solo las últimas 1.000 (`subscribeRecent(1000)`) y de ahí saca el último ingreso de cada uno. Probado con 1.500 acciones más nuevas. No hay una columna de «última vez» en la base.~~ ✅ 20/11: `supabase/28-ultimas-entradas.sql` (`ultimas_entradas()`, solo admin, devuelve un correo y una fecha) y la app la pide aparte; ya no depende de las últimas 1.000 acciones. `ultima_entrada_test` (1.500 acciones más nuevas) y `supabase/pruebas/69-ultimas-entradas.sql` (6 comprobaciones: solo admin, sin nombres ni detalles) | Con 25 a 30 personas activas, 1.000 acciones son menos de un mes: la pantalla empieza a mentir justo cuando más hace falta. | Claude |
@@ -107,7 +107,7 @@ Nada.
 | Y15 | ~~Falsas alarmas de las herramientas: 12 «teléfonos» (los números de los dibujos SVG del logo) y cuatro textos~~ ✅ 20/11: `seguridad` ya no mira dibujos ni identificadores de ceros; las demás, en `conocidos.json` con su porqué | Claude |
 | Y16 | ~~Una dirección inventada con el dominio de verdad del equipo (la de «Fabi Finanzas») en tres pruebas de Gastos. La regla pide `@x.com`~~ ✅ 20/11: las tres pruebas de Gastos usan una dirección con `@x.com` | Claude |
 | Y17 | ~~`firmar()` pide **todas** las direcciones de adjuntos en una sola llamada (`createSignedUrls`, sin partir): con miles de adjuntos, la primera carga en un aparato nuevo es un pedido muy grande. **No verificado contra la base real** (la de mentira no lo modela); mirarlo si el medidor de «Copia de seguridad» pasa de unos pocos cientos de MB~~ ✅ 20/11: `firmar()` pide las direcciones en pedidos de hasta `FIRMAS_POR_PEDIDO` (no una llamada con todos los adjuntos); `sb_test`. Contra la base real sigue sin verificarse | Claude, cuando haga falta |
-| Y18 | Lo de siempre y ya anotado: `diasEntre` y `csvDeTabla` sin usar; 12 anchos de pantalla en el CSS; funciones largas (`crearSupabaseStore`, `textoDelPdf`, `renderFichaLugar`). Nada nuevo | Se deja anotado |
+| Y18 | Lo de siempre y ya anotado: ~~`diasEntre` y `csvDeTabla` sin usar~~ ✅ 20/11 (borradas; ver código W); 12 anchos de pantalla en el CSS; funciones largas (`crearSupabaseStore`, `textoDelPdf`, `renderFichaLugar`). Lo que queda no se toca: juntar los anchos cambia el diseño entre ellos y partir las funciones es riesgo sin ganancia para quien usa el sistema | Se deja anotado |
 
 ### Para el usuario
 
@@ -139,13 +139,15 @@ Nada.
 
 ## Operación (para tenerlo a la vista)
 
-- **El peso**: 748 KB comprimidos (Y3). Cargar en un celular 4 veces más lento, el primer
-  posteo a los 0,94 s; 6 veces, 1,48 s; la compu, 0,24 s.
+- **El peso**: la página que se publica baja **515 KB** comprimidos (el fuente pesa 755; Y3 y código W), bajo el límite de
+  600. Cargar en un celular 4 veces más lento, el primer posteo a los 0,94 s; 6 veces, 1,52 s; la compu, 0,23 s.
+  `codigo.mjs` lo mide en cada auditoría.
 - **Vence**: `RESPALDOS_TOKEN` 5/10/2027; `SUPABASE_ACCESS_TOKEN` 30/9/2027.
-- **Workflows**: «Publicar el sitio» salió verde para `9769ab8`; el anterior (`e454d7b`)
-  quedó rojo por una etiqueta de Gastos y se corrigió en el siguiente. Calendar, copias,
-  resúmenes y «¿Está arriba?», en verde.
-- **Ramas**: `main` y la de esta sesión.
+- **Workflows**: «Publicar el sitio» salió verde para `fc8b9cc` (20/11, 21:23 UTC), ya con la página achicada. El intento
+  anterior (`fc32a80`) no salió por una prueba de tiempos de Gastos que solo falla en GitHub (se arregló en la app y en la
+  prueba; `RECURRENTES.md`) y siguió en línea la versión anterior. «Base de datos» aplicó `28` y `29` en Supabase. Calendar, copias
+  y resúmenes, en verde.
+- **Ramas**: `main` y la de esta sesión (el usuario puede borrarla).
 - **Un solo admin**: la lista de Personas muestra un solo admin. Las aprobaciones de
   cuentas, las rendiciones propias (D17) y compartir Calendar dependen de una persona.
   Conviene que haya un segundo admin; lo decide el usuario (no hace falta código).
@@ -155,6 +157,11 @@ Nada.
 - **Un teléfono de verdad** (D8, T10): el teclado, la cámara, «Atrás» y los borradores se
   probaron en un Chromium con el tamaño del celular, no en un iPhone ni en un Android.
 - **Una invitación real de Calendar con la hora de otro país** (Y4): está en el código.
+- **El correo «Ya podés entrar» (Z4) por Resend, de verdad**: las pruebas cubren lo que la app pide, lo que la base decide y
+  cómo se arma el correo en cuatro idiomas, pero desde acá no se manda un correo real. La primera vez que se apruebe a alguien,
+  conviene mirar que le llegue.
+- **Las funciones SQL `28` y `29` en la base real**: se aplicaron (el workflow «Base de datos» salió verde), pero «Verificar los
+  permisos» (a mano, solo lee) todavía no se corrió contra ellas.
 - **La base real** (nunca se toca desde acá): cuánto ocupa el bucket, cuántos eventos tiene
   el registro de actividad hoy, si hay actividad en los meses de antes de octubre.
 - **Los límites del plan gratis de Supabase para el tiempo real**: cada persona abre 18
