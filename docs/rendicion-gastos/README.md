@@ -483,6 +483,8 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
 - **Octubre–noviembre de 2026:** nada ya cargado en la app; se importan y el usuario marca cuáles ya se devolvieron. Antes del 1/10/2026 la cuenta corriente arranca en cero (no hay deuda de años anteriores).
 - **Tipos nuevos:** se pregunta por cada uno en la vista previa.
 - **Cómo reconocer filas de otros:** por la columna «Cuenta» (Empleados); donde no existe o está vacía (2022, principios de 2025, algunas pestañas de 2026), **se cargan todas a nombre del usuario**, sin marcarlas.
+- **Viajes y Agenda:** se propone el enlace con la actividad de la Agenda (fechas lado a lado) y el usuario confirma; sin coincidencia, rendición histórica con lugar, país y fechas, sin crear nada en la Agenda.
+- **Rutina:** una rendición por mes con todo lo de rutina («Rutina septiembre»).
 - **Primera prueba real:** septiembre de 2026 (tiene un viaje); después el resto de 2026 y los años anteriores.
 
 ## Lo que anotó el usuario al probarlo (desde el 18/11)
