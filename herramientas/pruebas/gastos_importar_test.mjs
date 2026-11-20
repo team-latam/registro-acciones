@@ -39,7 +39,7 @@ const LIBRO = [["Work Expenses and Salary"], ["Date", "Type", "Description", "Cu
   ["2026-09-08", "Salary", "Sueldo inventado", "USD", 4321, "no entra"],
   ["2026-10-15", "Received for expenses", "Fondos de prueba", "USD", 20, ""]];
 // Dos archivos de mentira: el que empieza con «m» es el libro; el otro, la planilla de rendiciones.
-const XLSX_FALSO = `window.XLSX = { read: buf => new Uint8Array(buf)[0] === 109 ? { SheetNames: ["Summary", "Transactions"], Sheets: { Summary: [["Resumen"]], Transactions: ${JSON.stringify(LIBRO)} } }
+const XLSX_FALSO = `window.__importarEncendido = true; window.XLSX = { read: buf => new Uint8Array(buf)[0] === 109 ? { SheetNames: ["Summary", "Transactions"], Sheets: { Summary: [["Resumen"]], Transactions: ${JSON.stringify(LIBRO)} } }
   : { SheetNames: ["SEP26", "Resumen"], Sheets: { SEP26: ${JSON.stringify(SEP)}, Resumen: ${JSON.stringify(RESUMEN)} } }, utils: { sheet_to_json: ws => ws } };`;
 
 const datos = () => {
@@ -54,6 +54,14 @@ const datos = () => {
 const b = await abrirNavegador();
 const vp = { width: 1280, height: 1000 };
 const elegir = async (p, libro) => { const [fc] = await Promise.all([p.waitForEvent("filechooser"), p.click('[data-action="gastos-imp-archivo"]')]); await fc.setFiles({ name: libro ? "libro.xlsx" : "gastos.xlsx", mimeType: "application/vnd.ms-excel", buffer: Buffer.from(libro ? "m" : "x") }); await p.waitForTimeout(300); };
+
+{
+  // Apagado (20/11, pedido del usuario): sin el interruptor de las pruebas, ni un admin ve «Importar».
+  const { p } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos() });
+  await irGastos(p);
+  eq("apagado: ni un admin ve «Importar» en Gastos", (await secciones(p)).includes("importar"), false);
+  await p.close();
+}
 
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos(), iniciar: XLSX_FALSO });

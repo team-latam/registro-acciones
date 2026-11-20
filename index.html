@@ -26909,9 +26909,14 @@ function gastosSecciones(){
   // «Análisis» (19/11): por actividad, por persona, comparar años y el año que viene, con nombres, para decidir.
   if(esGestor()) s.push({ key: "analisis", label: t("Análisis","Analysis","Análise","ניתוח") });
   // «Importar» (20/11): cargar lo de años anteriores desde las planillas; solo un admin (Finanzas no importa).
-  if(isAdmin()) s.push({ key: "importar", label: t("Importar","Import","Importar","ייבוא") });
+  // Apagado el 20/11 a pedido del usuario («por ahora no lo quiero ver»): la pantalla y la base siguen, solo no se ofrece.
+  // Para volver a prenderlo: IMPORTAR_ENCENDIDO = true.
+  if(isAdmin() && importarEncendido()) s.push({ key: "importar", label: t("Importar","Import","Importar","ייבוא") });
   return s;
 }
+const IMPORTAR_ENCENDIDO = false;
+// window.__importarEncendido lo prende solo en las pruebas de la pantalla (herramientas/pruebas/gastos_importar_test.mjs).
+function importarEncendido(){ return IMPORTAR_ENCENDIDO || window.__importarEncendido === true; }
 function gastosTextos(key){
   return ({
     rendir: {
@@ -27336,7 +27341,7 @@ function renderGastosView(){
     const ra = rendicionPorId(gastosAbierta);
     body = renderRendicionAbierta(sec === "aprobar" || (esGestor() && !!ra && ra.autor !== miCorreo()), sec === "aprobar");
   }
-  else body = sec === "importar" ? renderGastosImportar() : sec === "analisis" ? renderGastosAnalisis() : sec === "resumen" ? renderGastosResumen() : sec === "estadisticas" ? renderGastosEstadisticas() : sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
+  else body = sec === "importar" && importarEncendido() ? renderGastosImportar() : sec === "analisis" ? renderGastosAnalisis() : sec === "resumen" ? renderGastosResumen() : sec === "estadisticas" ? renderGastosEstadisticas() : sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
   return `<div class="admin-view gastos-view">
       <aside class="admin-menu" aria-label="${esc(titulo)}">
         <div class="admin-titulo">🧾 ${titulo}</div>${menu}
