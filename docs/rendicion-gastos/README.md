@@ -458,6 +458,22 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
 - **Los comprobantes** de cada año están en carpetas por mes con el nombre «D-M-AAAA - Concepto - Actividad» (ya es la
   convención del sistema), pero **no se importan** por ahora: solo los montos.
 
+### La carpeta «Registro» y el punto de la rendición como actividad (20/11/2026)
+
+- **«Registro»** tiene una carpeta por año (2017 a 2026) y, adentro de cada una, Visitas, Seminarios, Actividades, Reuniones y
+  el Control de Gastos. **Cada visita es una carpeta «Lugar, País - d/m a d/m»** con su subcarpeta «Gastos» (comprobantes y una
+  **planilla de rendición propia de ese viaje**), el Formulario de viaje, el Formulario de cierre y un documento de comentarios.
+- **La planilla de un viaje tiene otro formato que la anual:** moneda «ARG» u «Otro» con **cotización y total en dólares** (no
+  la moneda original en Observaciones), una caja de resumen al costado, y en «Quién pagó» **los otros participantes** que gastaron
+  en la actividad. O sea: una rendición de actividad reúne gastos de **varias personas** y, para lo histórico, **hace de registro de
+  la actividad misma** (lugar, fechas) aunque la actividad nunca se cargó en la Agenda.
+- **El usuario pidió cuidado con esto (decisión pendiente).** Una rendición puede (a) funcionar como la actividad en sí o (b) ser
+  de los involucrados que gastaron en ella. Riesgos vistos: **los mismos gastos aparecen dos veces** (en la planilla anual y en la
+  del viaje); **crear actividades históricas en la Agenda** movería Reportes, «Lugares sin actividad» y el Calendar compartido; y hoy
+  el Análisis solo agrupa por actividad de la Agenda (`postId`), así que **lo histórico quedaría afuera**. Propuesta: lo histórico
+  **no crea actividades**; la rendición lleva su lugar y sus fechas (con el país), se enlaza a la actividad de la Agenda si ya existe,
+  y quien pagó de otra persona usa «otra persona de la actividad». Ver el mensaje de esa fecha para las opciones.
+
 ## Lo que anotó el usuario al probarlo (desde el 18/11)
 
 Lo fue dejando mientras revisaba la versión publicada. **Hecho el 18/11 en una tanda** (en la rama; va a `main` con su
