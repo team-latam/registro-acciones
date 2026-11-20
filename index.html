@@ -866,6 +866,9 @@
   .gxe-fila{ grid-template-columns:minmax(70px,130px) 1fr var(--nw,10ch) !important; }
   .gxe-fila .gx-val{ min-width:0; }
   .gxe-c b{ font-size:12px; }
+  /* Doce columnas de ~30 px no alcanzan para una etiqueta cada una: las de los meses pares suben un renglón y cada etiqueta tiene dos columnas de ancho. */
+  .gxe-meses{ padding-top:18px; box-sizing:content-box; }
+  .gxe-c:nth-child(even) b{ position:relative; top:-16px; }
   .gxe-ybar{ grid-template-columns:36px 1fr 6ch !important; }
   .gxe-tabla td{ vertical-align:top; }
   .gxe-tabla .gx-chip{ display:flex; width:max-content; margin:3px 0 0 auto; }
@@ -25721,12 +25724,12 @@ function nombreTipoGasto(k){
 // miles, punto para los centavos, siempre dos decimales, en cualquier idioma de la app.
 const NUM_CONTABLE = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const numContable = n => (n < 0 ? "-" : "") + NUM_CONTABLE.format(Math.abs(n));
-// Para los gráficos, donde un número entero de 10 dígitos no entra: 2.9K, 115K, 1.3M. Las tablas y los totales llevan el número entero.
+// Para los gráficos, donde un número entero de 10 dígitos no entra: 2.9K, 120K, 1.3M (hasta 4 caracteres, así las etiquetas no se rozan aunque la letra sea más ancha). Las tablas y los totales llevan el número entero.
 function compacto(n){
   n = Number(n) || 0; const a = Math.abs(n), s = n < 0 ? "-" : "";
   if(a < 1000) return s + String(Math.round(a));
   const [d, suf] = a < 1e6 ? [1e3, "K"] : a < 1e9 ? [1e6, "M"] : [1e9, "B"];
-  return s + String(parseFloat((a / d).toPrecision(3))) + suf;
+  return s + String(parseFloat((a / d).toPrecision(2))) + suf;
 }
 // El ancho (en caracteres) de la columna de montos de una lista de barras: así todas las filas dejan la barra del mismo largo.
 const anchoNum = vals => Math.max(5, ...vals.map(v => numContable(Number(v) || 0).length)) + 1;

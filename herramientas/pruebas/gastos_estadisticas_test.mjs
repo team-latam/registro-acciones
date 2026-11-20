@@ -134,7 +134,7 @@ const gastos = [
     await irEstadisticas(p);
     eq(`${nombre}: con montos de miles de millones, cada número entra en su recuadro`, await p.evaluate(() => [...document.querySelectorAll(".gxe-tile .gx-val")].every(v => { const t = v.closest(".gxe-tile").getBoundingClientRect(), x = v.getBoundingClientRect(); return x.right <= t.right - 8 && x.left >= t.left; })), true);
     eq(`${nombre}: los montos de las barras quedan dentro de su tarjeta`, await p.evaluate(() => [...document.querySelectorAll(".gxe-fila .gx-num")].every(v => v.getBoundingClientRect().right <= v.closest(".gxe-tarjeta").getBoundingClientRect().right)), true);
-    eq(`${nombre}: las etiquetas de «Mes a mes» no se pisan`, await p.evaluate(() => { const l = [...document.querySelectorAll(".gxe-c b")].map(e => e.getBoundingClientRect()).filter(r => r.width); return l.every((r, i) => !i || r.left >= l[i - 1].right - 1); }), true);
+    eq(`${nombre}: las etiquetas de «Mes a mes» no se pisan (ni de lado ni de arriba a abajo)`, await p.evaluate(() => { const l = [...document.querySelectorAll(".gxe-c b")].map(e => e.getBoundingClientRect()).filter(r => r.width); return l.every((a, i) => l.every((c, k) => i === k || a.right <= c.left || c.right <= a.left || a.bottom <= c.top || c.bottom <= a.top)); }), true);
     eq(`${nombre}: sin desborde horizontal`, await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true);
     eq(`${nombre}: sin errores de página`, errores, []);
     await p.close();
