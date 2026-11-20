@@ -18,7 +18,7 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if
 const RAIZ = __aRuta(new URL("../..", import.meta.url));
 const src = fs.readFileSync(process.env.INDEX || RAIZ + "index.html", "utf8");
 const g = hacerGrab(src);
-const trozos = ["impNorm", "IMP_CORTE", "impNumero", "impIso", "impFecha", "IMP_MESES", "impMesDeHoja", "impMonedaOriginal", "IMP_SIN_CENTAVOS", "IMP_COLUMNAS", "impLeerHoja", "impLeerMovimientos", "impDias", "impFirma", "impArmar", "impParaLaBase"];
+const trozos = ["impNorm", "IMP_CORTE", "impNumero", "impIso", "impFecha", "IMP_MESES", "impMesDeHoja", "impMonedaOriginal", "IMP_SIN_CENTAVOS", "IMP_COLUMNAS", "impLeerHoja", "impLeerMovimientos", "IMP_VACIAS", "impPalabras", "impDias", "impFirma", "impArmar", "impParaLaBase"];
 const A = new Function(`${trozos.map(n => g(n)).join("\n")}\nreturn { impNumero, impFecha, impMesDeHoja, impMonedaOriginal, impLeerHoja, impLeerMovimientos, impArmar, impParaLaBase, impNorm };`)();
 
 // Montos
@@ -60,7 +60,7 @@ const T = ["Concepto", "Fecha", "Monto", "Moneda", "Tipo", "Actividad", "Cuenta"
 const hoja = (filas, extra = []) => [["Rendición de prueba"], [], T, ...filas, ...extra];
 const SEP = hoja([
   ["Taxi aeropuerto", "10-9-2026", 40, "USD", "Transporte", "Visita", "", "Tarjeta", "ORG", "Si", ""],
-  ["Hotel", "11-9-2026", 300, "USD", "Alojamiento", "Visita", "", "Tarjeta", "ORG", "Si", ""],
+  ["Hotel en Montevideo", "11-9-2026", 300, "USD", "Alojamiento", "Visita", "", "Tarjeta", "ORG", "Si", ""],
   ["Cena", "12-9-2026", 45.5, "USD", "Comida", "Visita", "", "Efectivo", "", "No", "Gasto por MEX 2,834.00.-"],
   ["Cena sola", "30-9-2026", "$1.500,00", "ARS", "Comida", "Rutina", "", "Efectivo", "", "Si", ""],
   ["Suscripción", "5-9-2026", 20, "USD", "Software nuevo", "Rutina", "", "Tarjeta", "ORG", "Si", ""],
@@ -117,6 +117,23 @@ eq("la rutina es la del mes de la SOLAPA, no de la fecha de la fila", A.impArmar
 eq("desde agosto de 2026 corre la cuenta corriente: un viaje de agosto no es histórico, uno de julio sí", [A.impArmar(A.impLeerHoja(hoja([["x", "5-8-2026", 5, "USD", "Comida", "Visita", "", "", "", "Si", ""]]), "AGO26").filas, { mapaTipo: { comida: "comida" }, mapaPago: {}, posts: [], existentes: [] }).rends[0].historica,
   A.impArmar(A.impLeerHoja(hoja([["x", "5-7-2026", 5, "USD", "Comida", "Visita", "", "", "", "Si", ""]]), "JUL26").filas, { mapaTipo: { comida: "comida" }, mapaPago: {}, posts: [], existentes: [] }).rends[0].historica], [false, true]);
 
+// El enlace con la Agenda: por el NOMBRE (y las fechas), no por las fechas solas
+const FILAS_CZ = [["Pasaje a Curazao Ida", "5-8-2026", 900, "USD", "Pasaje", "Visita", "", "", "", "Si", ""], ["Taxi", "13-8-2026", 50, "USD", "Transporte", "Visita", "", "", "", "Si", ""],
+  ["Hotel en Curazao", "16-8-2026", 590, "USD", "Alojamiento", "Visita", "", "", "", "Si", ""], ["Cena", "17-8-2026", 30, "USD", "Comida", "Visita", "", "", "", "Si", ""]];
+const mt = { pasaje: "pasaje", transporte: "transporte", alojamiento: "alojamiento", comida: "comida" };
+const postsCZ = [{ id: "p_scl", title: "Santiago de Chile", activityType: "visita", startDate: "2026-08-13", endDate: "2026-08-14", lugares: "Chile Santiago" },
+  { id: "p_cur", title: "Curazao", activityType: "visita", startDate: "2026-08-13", endDate: "2026-08-17", lugares: "Curazao" }];
+const armarCZ = (posts, libro = []) => A.impArmar(A.impLeerHoja(hoja(FILAS_CZ), "AGO26").filas, { mapaTipo: mt, mapaPago: {}, posts, existentes: [], libro }).rends[0];
+eq("el viaje a Curazao se enlaza con «Curazao» (el nombre coincide), no con «Santiago de Chile» que cae el mismo día", armarCZ(postsCZ).postId, "p_cur");
+eq("si en la Agenda solo está «Santiago de Chile» ese día, NO se enlaza: queda sugerida por las fechas, para que lo decida el admin", [armarCZ([postsCZ[0]]).postId, armarCZ([postsCZ[0]]).sugerida], ["", "p_scl"]);
+eq("sin nada que se parezca, ni enlace ni sugerencia", [armarCZ([]).postId, armarCZ([]).sugerida], ["", ""]);
+const libroCZ = [{ moneda: "USD", monto: 1570, descripcion: "Curaçao (13-17 Aug)" }, { moneda: "USD", monto: 405.08, descripcion: "August Routine" }];
+const cz = armarCZ([postsCZ[0]], libroCZ);
+eq("el libro, con el mismo total, le da el nombre al viaje y el lugar (sin las fechas entre paréntesis)", [cz.libroNombre, cz.lugar], ["Curaçao (13-17 Aug)", "Curaçao"]);
+eq("«Curaçao» del libro y «Curazao» de la Agenda son la misma palabra", armarCZ([postsCZ[1]], libroCZ).postId, "p_cur");
+eq("una línea de rutina del libro no se le pone a un viaje aunque el total coincida", armarCZ([], [{ moneda: "USD", monto: 1570, descripcion: "August Routine" }]).libroNombre, "");
+eq("un viaje sin ningún nombre en común, de otro lugar el mismo día, queda sugerido", armarCZ([{ id: "p_mdq", title: "Curso Básico en Montevideo", activityType: "curso", startDate: "2026-08-13", endDate: "2026-08-17", lugares: "Uruguay" }]).sugerida, "p_mdq");
+
 // Armado
 const mapaTipo = { transporte: "transporte", alojamiento: "alojamiento", comida: "comida", pasaje: "pasaje" }; // «Software nuevo» sin elegir
 const posts = [{ id: "p_mvd", title: "Visita a Montevideo", activityType: "visita", startDate: "2026-09-09", endDate: "2026-09-13" },
@@ -127,7 +144,7 @@ const R = A.impArmar(H.filas, { mapaTipo, mapaPago: { org: "organizacion" }, pos
 eq("lo dudoso, aparte: el tipo sin elegir, la fecha que no se entiende, la de otro mes y el monto raro", R.dudosas.map(x => [x.concepto, x.dudas]), [["Suscripción", ["tipo"]], ["Sin fecha", ["fecha"]], ["Fecha de otro mes", ["fecha_fuera_de_la_hoja"]], ["Monto raro", ["monto"]]]);
 eq("tres rendiciones: la rutina y dos viajes con fechas que se pisan (un bloque cada uno)", R.rends.map(r => [r.clave, r.gastos.length]), [["rutina|2026-09-01", 1], ["viaje|SEP26|0|visita", 4], ["viaje|SEP26|1|visita", 1]]);
 const viaje = R.rends.find(r => r.clave === "viaje|SEP26|0|visita");
-eq("«Cuenta = Empleados» no deja una fila afuera (la columna no cambia de quién es el gasto)", viaje.gastos.map(x => x.concepto), ["Taxi aeropuerto", "Hotel", "Cena", "Pasaje de Iván"]);
+eq("«Cuenta = Empleados» no deja una fila afuera (la columna no cambia de quién es el gasto)", viaje.gastos.map(x => x.concepto), ["Taxi aeropuerto", "Hotel en Montevideo", "Cena", "Pasaje de Iván"]);
 eq("el viaje: fechas, enlace propuesto con la Agenda (no con la rutina) y totales por moneda", [viaje.desde, viaje.hasta, viaje.postId, viaje.totales], ["2026-09-10", "2026-09-14", "p_mvd", { USD: 465.5 }]);
 eq("septiembre ya cuenta en la cuenta corriente (corre desde el 1/8/2026)", R.rends.map(r => r.historica), [false, false, false]);
 eq("quién pagó: la sigla es la tarjeta de la organización, lo vacío es de bolsillo", viaje.gastos.map(x => x.pago), ["organizacion", "organizacion", "persona", "organizacion"]);
@@ -139,7 +156,7 @@ const firmaTaxi = ["2026-09-10", "taxi aeropuerto", 40, "USD"].join("|");
 const R2 = A.impArmar(H.filas, { mapaTipo: { ...mapaTipo, "software nuevo": "suscripcion" }, mapaPago: {}, posts: [], existentes: [firmaTaxi] });
 eq("lo que ya estaba cargado no se repite", R2.repetidas.map(x => x.concepto), ["Taxi aeropuerto"]);
 const R3 = A.impArmar([...H.filas, H.filas[1]], { mapaTipo, mapaPago: {}, posts: [], existentes: [] });
-eq("un gasto repetido en la misma planilla tampoco", R3.repetidas.map(x => x.concepto), ["Hotel"]);
+eq("un gasto repetido en la misma planilla tampoco", R3.repetidas.map(x => x.concepto), ["Hotel en Montevideo"]);
 
 // Del 1/8/2026 en adelante no es histórico; y los viajes lejanos no se mezclan
 const OCT = hoja([["Taxi", "3-10-2026", 10, "USD", "Transporte", "Visita", "", "", "", "Si", ""], [null, null, null, null, null, null, null, null, null, null, null], ["Taxi 2", "20-10-2026", 12, "USD", "Transporte", "Visita", "", "", "", "Si", ""]]);

@@ -832,6 +832,13 @@
   .gx-imp-ctl label.gx-imp-chk{ flex-direction:row; align-items:center; gap:8px; font-weight:400; min-height:40px; }
   .gx-imp-chk input{ width:18px; height:18px; min-height:0; flex:none; }
   .gx-imp-fuera{ opacity:.55; }
+  .gx-imp-fechas{ margin:0 0 8px; font-size:13px; color:var(--text-muted); overflow-wrap:anywhere; }
+  .gx-imp-sug{ margin:0 0 10px; font-size:13px; color:var(--warn-text); }
+  .gx-imp-det{ margin-top:10px; font-size:13px; }
+  .gx-imp-det summary{ cursor:pointer; font-weight:600; }
+  .gx-imp-tabla{ width:100%; border-collapse:collapse; margin-top:6px; }
+  .gx-imp-tabla td{ padding:4px 8px 4px 0; border-top:1px solid var(--border); vertical-align:top; overflow-wrap:anywhere; }
+  .gx-imp-tabla .gx-imp-m{ text-align:end; white-space:nowrap; }
   .gx-imp-duda{ margin:0 0 12px; padding-inline-start:20px; font-size:13px; display:flex; flex-direction:column; gap:4px; }
   .gx-imp-suma{ margin:6px 0 14px; }
   .gx-imp-tanda{ justify-content:space-between; }
@@ -25397,6 +25404,13 @@ function impLeerMovimientos(filas){
   }
   return out;
 }
+// Palabras que sirven para reconocer un lugar por su nombre (sin las de siempre: «pasaje», «hotel», «cena»…). La z y la c se
+// igualan para que «Curazao» y «Curaçao», o «Belize» y «Belice», sean la misma palabra.
+const IMP_VACIAS = new Set(["visita", "curso", "seminario", "reunion", "pasaje", "hotel", "aeropuerto", "taxi", "cena", "almuerzo", "desayuno", "cafe", "uber", "ida", "vuelta",
+  "viaje", "para", "gasto", "gastos", "personas", "persona", "compra", "centro", "jabad", "chabad", "casa", "tarjeta", "noches", "impuesto", "supermercado", "snack", "bebida", "agua", "ticket"]);
+function impPalabras(txt){
+  return [...new Set(impNorm(txt).replace(/z/g, "c").split(" ").filter(w => w.length >= 4 && !IMP_VACIAS.has(w)))];
+}
 function impDias(a, b){ return Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400e3); }
 function impFirma(g){ return [g.fecha, impNorm(g.concepto), g.monto, g.moneda].join("|"); }
 // Arma lo que se va a cargar. `filas`: lo que devolvió impLeerHoja de cada solapa, aplanado. `o`: mapaTipo y mapaPago (lo que
@@ -25430,22 +25444,30 @@ function impArmar(filas, o){
   });
   const rends = [...grupos.values()].map(r => {
     const base = r.rutinaMes || r.hasta;
-    const x = { ...r, postId: "", lugar: "", pais: "", historica: base < IMP_CORTE, totales: {} };
+    const x = { ...r, postId: "", sugerida: "", libroNombre: "", lugar: "", pais: "", historica: base < IMP_CORTE, totales: {} };
+    r.gastos.forEach(g => { const m = g.rendido_monto != null ? g.rendido_moneda : g.moneda, n = g.rendido_monto != null ? g.rendido_monto : g.monto; x.totales[m] = Math.round(((x.totales[m] || 0) + n) * 100) / 100; });
     if(!r.rutinaMes){
-      // El enlace que se propone: la actividad de la Agenda que se solapa con las fechas (con dos días de margen).
-      // La que mejor calza: la de fechas más parecidas (una actividad larga, como un curso de meses, se solapa con todo y no es el viaje).
-      let mejor = null, mejorDist = Infinity;
+      // El libro de movimientos tiene una línea por viaje, con su nombre y el mismo total: así se sabe de qué viaje es (las fechas solas
+      // no alcanzan: dos viajes se pisan, y el libro dice «Curaçao» donde la Agenda podría tener otra cosa ese día).
+      const l = (o.libro || []).find(y => !/routine|rutina/i.test(y.descripcion) && x.totales[y.moneda] != null && Math.abs(x.totales[y.moneda] - y.monto) < 0.005);
+      if(l){ x.libroNombre = l.descripcion; x.lugar = l.descripcion.replace(/\s*\([^)]*\)\s*/g, " ").trim(); }
+      // Las fechas del viaje sin las compras anticipadas (los pasajes se pagan semanas antes): del cuarto inferior de las fechas en adelante.
+      const fechas = r.gastos.map(g => g.fecha).sort(), nucleo = fechas[Math.floor((fechas.length - 1) * 0.25)];
+      const mias = new Set([...impPalabras(x.libroNombre), ...r.gastos.flatMap(g => impPalabras(g.concepto))]);
+      let mejor = null, mejorDist = Infinity, sugerida = null, sugDist = Infinity;
       (o.posts || []).forEach(p => {
         if(!p || p.activityType === "rutina") return;
         const d = String(p.startDate || p.date || "").slice(0, 10), h = String(p.endDate || p.startDate || p.date || "").slice(0, 10);
         if(!d) return;
-        if(impDias(d, r.hasta) < -2 || impDias(r.desde, h) < -2) return;
-        const dist = Math.abs(impDias(d, r.desde)) + Math.abs(impDias(h, r.hasta));
-        if(dist < mejorDist){ mejor = p; mejorDist = dist; }
+        if(impDias(d, r.hasta) < -3 || impDias(nucleo, h) < -3) return;
+        const dist = Math.abs(impDias(d, nucleo)) + Math.abs(impDias(h, r.hasta));
+        // El enlace se propone solo si el NOMBRE también coincide (una palabra del lugar en la Agenda y en el viaje); por fechas solas, solo se sugiere.
+        const palabrasP = impPalabras((p.title || "") + " " + (p.lugares || ""));
+        if(palabrasP.some(w => mias.has(w))){ if(dist < mejorDist){ mejor = p; mejorDist = dist; } }
+        else if(dist < sugDist){ sugerida = p; sugDist = dist; }
       });
-      if(mejor) x.postId = mejor.id;
+      if(mejor) x.postId = mejor.id; else if(sugerida) x.sugerida = sugerida.id;
     }
-    r.gastos.forEach(g => { const m = g.rendido_monto != null ? g.rendido_moneda : g.moneda, n = g.rendido_monto != null ? g.rendido_monto : g.monto; x.totales[m] = Math.round(((x.totales[m] || 0) + n) * 100) / 100; });
     return x;
   }).sort((a, b) => (a.rutinaMes || a.desde).localeCompare(b.rutinaMes || b.desde));
   return { rends, dudosas, repetidas };
@@ -25479,6 +25501,7 @@ function impTituloDe(r){
   if(r.rutinaMes) return t("Rutina de {m}","Routine for {m}","Rotina de {m}","שגרה של {m}",{ m: nombreDeMes(r.rutinaMes) });
   const p = r.postId && getPostById(r.postId);
   if(p && p.title) return p.title;
+  if(r.libroNombre) return r.libroNombre;
   const a = r.actividad ? r.actividad.charAt(0).toUpperCase() + r.actividad.slice(1) : t("Viaje","Trip","Viagem","נסיעה");
   return `${a} · ${fmtDate(r.desde)}${r.hasta && r.hasta !== r.desde ? " – " + fmtDate(r.hasta) : ""}`;
 }
@@ -25512,7 +25535,9 @@ function impCargarHojas(hojas, archivo){
 function impRearmar(){
   const I = gastosImp; if(!I) return;
   const existentes = gastosDatos ? gastosDatos.gastos.filter(g => g.monto != null && g.fecha).map(g => impFirma({ fecha: g.fecha, concepto: g.concepto, monto: g.monto, moneda: g.moneda })) : [];
-  const arm = impArmar(I.filas, { mapaTipo: I.mapaTipo, mapaPago: I.mapaPago, posts: state.posts, existentes });
+  const posts = state.posts.map(p => ({ id: p.id, title: p.title, activityType: p.activityType, startDate: p.startDate, endDate: p.endDate, date: p.date,
+    lugares: (Array.isArray(p.scopes) ? p.scopes : []).map(x => [x.country, x.city, x.name, x.label].filter(Boolean).join(" ")).join(" ") }));
+  const arm = impArmar(I.filas, { mapaTipo: I.mapaTipo, mapaPago: I.mapaPago, posts, existentes, libro: I.mov ? I.mov.gastados.filter(x => !x.dudas.length) : [] });
   arm.rends.forEach(r => { Object.assign(r, I.edits[r.clave] || {}); r.titulo = impTituloDe(r); });
   I.arm = arm;
   I.movs = { nuevos: [], repetidos: [], dudosos: [] }; I.conc = {};
@@ -25600,9 +25625,13 @@ function renderGastosImportar(){
   const posts = [...state.posts].filter(p => p.activityType !== "rutina").sort((a, b) => String(b.startDate || b.date || "").localeCompare(String(a.startDate || a.date || "")));
   const tarjeta = r => `<div class="gx-tarjeta gx-imp-rend${r.excluida ? " gx-imp-fuera" : ""}">
       <div class="gx-imp-cab"><b>${esc(impTituloDe(r))}</b><span>${esc(t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות",{ n: r.gastos.length }))} · ${Object.entries(r.totales).map(([m, n]) => esc(fmtMonto(m, n))).join(" · ")}</span></div>
+      <p class="gx-imp-fechas">${r.rutinaMes ? "" : `📅 ${esc(fmtDate(r.desde))}${r.hasta !== r.desde ? " – " + esc(fmtDate(r.hasta)) : ""}`}${r.libroNombre ? ` · ${esc(t("En tu libro: «{n}»","In your ledger: “{n}”","No seu livro: «{n}»","בספר שלך: «{n}»",{ n: r.libroNombre }))}` : ""}</p>
+      ${!r.rutinaMes && !r.postId && r.sugerida && getPostById(r.sugerida) ? `<p class="gx-imp-sug">⚠️ ${esc(t("Solo por las fechas se parece a «{a}» ({f}), pero el nombre no coincide: revisalo antes de usarla.","By dates alone it resembles “{a}” ({f}), but the name doesn't match: check before using it.","Só pelas datas se parece com «{a}» ({f}), mas o nome não coincide: confira antes de usá-la.","לפי תאריכים בלבד דומה ל«{a}» ({f}), אבל השם לא תואם: בדקו לפני שתשתמשו.",{ a: getPostById(r.sugerida).title || "", f: fmtDate(getPostById(r.sugerida).startDate || getPostById(r.sugerida).date) }))} <button type="button" class="gx-link" data-action="gastos-imp-usar" data-k="${esc(r.clave)}" data-id="${esc(r.sugerida)}">${t("Usar esta","Use this one","Usar esta","להשתמש בזו")}</button></p>` : ""}
+      <details class="gx-imp-det"><summary>${esc(t("Ver los {n} gastos","See the {n} expenses","Ver as {n} despesas","הצגת {n} ההוצאות",{ n: r.gastos.length }))}</summary>
+        <table class="gx-imp-tabla"><tbody>${r.gastos.map(g => `<tr><td>${esc(fmtDate(g.fecha))}</td><td>${esc(g.concepto)}</td><td>${esc(nombreTipoGasto(g.tipo))}</td><td class="gx-imp-m">${esc(fmtMonto(g.moneda, g.monto))}${g.rendido_monto != null && g.rendido_moneda !== g.moneda ? "<br><small>" + esc(fmtMonto(g.rendido_moneda, g.rendido_monto)) + "</small>" : ""}</td></tr>`).join("")}</tbody></table></details>
       <div class="gx-imp-ctl">
         ${r.rutinaMes ? "" : `<label>${t("Actividad de la Agenda","Agenda activity","Atividade da Agenda","פעילות ביומן")}<select data-gimp="rend" data-k="${esc(r.clave)}" data-c="postId">
-          <option value="">${esc(t("No está en la Agenda","Not in the Agenda","Não está na Agenda","לא ביומן"))}</option>${posts.map(p => `<option value="${esc(p.id)}"${r.postId === p.id ? " selected" : ""}>${esc(p.title || p.id)} (${esc(fmtDate(p.startDate || p.date))})</option>`).join("")}</select></label>
+          <option value="">${esc(t("No está en la Agenda","Not in the Agenda","Não está na Agenda","לא ביומן"))}</option>${posts.map(p => `<option value="${esc(p.id)}"${r.postId === p.id ? " selected" : ""}>${esc(p.title || p.id)} (${esc(fmtDate(p.startDate || p.date))}${p.endDate && p.endDate !== (p.startDate || p.date) ? " – " + esc(fmtDate(p.endDate)) : ""})</option>`).join("")}</select></label>
         ${r.postId ? "" : `<label>${t("Lugar","Place","Local","מקום")}<input type="text" maxlength="120" data-gimp="rend" data-k="${esc(r.clave)}" data-c="lugar" value="${esc(r.lugar || "")}"></label>
           <label>${t("País","Country","País","מדינה")}<input type="text" maxlength="120" data-gimp="rend" data-k="${esc(r.clave)}" data-c="pais" value="${esc(r.pais || "")}"></label>`}`}
         <label class="gx-imp-chk"><input type="checkbox" data-gimp="rend" data-k="${esc(r.clave)}" data-c="historica"${r.historica ? " checked" : ""}> ${t("Histórica: no entra en la cuenta corriente","Historical: not in the running balance","Histórica: não entra na conta corrente","היסטורית: לא נכנסת לחשבון השוטף")}</label>
@@ -29737,6 +29766,7 @@ const GASTOS_ACCIONES = {
   "gastos-reintentar": async () => { cortarGastos(); sincronizarGastos(); render(); },
   "gastos-devolver": async el => devolverRendicion(el.dataset.id),
   "gastos-imp-archivo": async () => { await impElegirArchivo(); },
+  "gastos-imp-usar": async el => { const I = gastosImp; if(!I) return; (I.edits[el.dataset.k] = I.edits[el.dataset.k] || {}).postId = el.dataset.id; impRearmar(); render(); },
   "gastos-imp-importar": async () => impImportar(),
   "gastos-imp-deshacer": async el => impDeshacer(el.dataset.lote),
   "gastos-imp-limpiar": async () => { gastosImp = null; render(); },

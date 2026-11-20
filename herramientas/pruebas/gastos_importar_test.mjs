@@ -27,7 +27,7 @@ const FIN = { email: "fabi@team-latam.com", name: "Fabi Finanzas", nickname: "fa
 const T = ["Concepto", "Fecha", "Monto", "Moneda", "Tipo", "Actividad", "Cuenta", "Forma de pago", "Quién pagó", "Factura", "Observaciones"];
 const SEP = [[], T,
   ["Taxi aeropuerto", "10-9-2026", 40, "USD", "Transporte", "Visita", "", "Tarjeta", "ORG", "Si", ""],
-  ["Hotel", "11-9-2026", 300, "USD", "Alojamiento", "Visita", "", "Tarjeta", "ORG", "Si", ""],
+  ["Hotel en Montevideo", "11-9-2026", 300, "USD", "Alojamiento", "Visita", "", "Tarjeta", "ORG", "Si", ""],
   ["Cena", "12-9-2026", 45.5, "USD", "Comida", "Visita", "", "Efectivo", "", "Si", "Gasto por MEX 2,834.00.-"],
   ["Librería", "4-9-2026", 25, "USD", "Papelería", "Rutina", "", "Tarjeta", "", "Si", ""],
   ["Pasaje de Iván", "14-9-2026", 80, "USD", "Pasaje", "Visita", "Empleados", "Tarjeta", "ORG", "Si", ""],
