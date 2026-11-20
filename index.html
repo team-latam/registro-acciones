@@ -28509,7 +28509,7 @@ function cuentaDe(persona){
   gastosDatos.gastos.forEach(g => {
     if(g.autor !== p || g.pago !== "persona") return;
     const r = rs.get(g.rendicionId), x = rendidoDe(g);
-    if(!r || !x) return;
+    if(!r || !x || r.historica) return; // lo importado de años anteriores no entra en la cuenta (se saldó antes)
     if(r.estado === "aprobada") fila(x.moneda).gastado += x.monto;
     else if(r.estado === "enviada" || r.estado === "observada") fila(x.moneda).enRevision += x.monto;
   });

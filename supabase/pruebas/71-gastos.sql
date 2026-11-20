@@ -731,6 +731,37 @@ select lab.comprobar('…y su cuenta', $q$select lab.rechaza(lab.como('ana@x.com
 select lab.comprobar('el admin sigue viendo todo', $q$select lab.hacer(lab.como('benny@team-latam.com'), $x$select (count(*) > 0)::text from public.gastos$x$)$q$, 'true');
 select lab.comprobar('Finanzas sigue viendo todo aunque estén cerrados al equipo', $q$select lab.hacer(lab.como('fin@x.com'), $x$select (count(*) > 0)::text || '/' || public.gastos_habilitado()::text from public.gastos$x$)$q$, 'true/true');
 
+-- ---------- Importar lo histórico (20/11/2026) ----------
+truncate public.gastos_comentarios, public.gastos, public.gastos_rendiciones, public.gastos_movimientos cascade;
+select 'a0000000-0000-4000-8000-000000000001' as lote \gset
+select $j$[
+ {"titulo":"Visita de prueba","lugar":"Ciudad Ejemplo","pais":"Chile","desde":"2026-09-10","hasta":"2026-09-14","historica":true,
+  "gastos":[{"fecha":"2026-09-10","concepto":"Taxi","tipo":"transporte","moneda":"USD","monto":40,"pago":"persona"},
+            {"fecha":"2026-09-11","concepto":"Hotel","tipo":"alojamiento","moneda":"USD","monto":300,"rendido_moneda":"USD","rendido_monto":300,"pago":"organizacion"}]},
+ {"titulo":"Rutina octubre","rutina_mes":"2026-10-01","historica":false,
+  "gastos":[{"fecha":"2026-10-03","concepto":"Librería","tipo":"oficina","moneda":"USD","monto":25,"pago":"persona"}]}
+]$j$ as lote_json \gset
+select lab.comprobar('un integrante no importa', format($q$select lab.rechaza(lab.como('ana@x.com'), format($x$select public.gastos_importar(%%L, %%L)::text$x$, %L, %L))$q$, :'lote', :'lote_json'), 'true');
+select lab.comprobar('Finanzas tampoco importa', format($q$select lab.rechaza(lab.como('fin@x.com'), format($x$select public.gastos_importar(%%L, %%L)::text$x$, %L, %L))$q$, :'lote', :'lote_json'), 'true');
+select lab.comprobar('el admin importa: dos rendiciones y tres gastos',
+  format($q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_importar(%%L, %%L)::text$x$, %L, %L))$q$, :'lote', :'lote_json'), '{"gastos": 3, "rendiciones": 2}');
+select lab.comprobar('lo importado queda aprobado, a nombre de quien importa y con su lugar y país',
+  $q$select string_agg(r.estado || '|' || r.autor || '|' || coalesce(r.pais, '-') || '|' || r.historica::text, ',' order by r.titulo) from public.gastos_rendiciones r$q$,
+  'aprobada|benny@team-latam.com|-|false,aprobada|benny@team-latam.com|Chile|true');
+select lab.comprobar('los gastos quedan aprobados', $q$select string_agg(distinct estado, ',') from public.gastos$q$, 'aprobado');
+select lab.comprobar('la tanda no se importa dos veces', format($q$select lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_importar(%%L, %%L)::text$x$, %L, %L))$q$, :'lote', :'lote_json'), 'true');
+select lab.comprobar('lo histórico NO entra en la cuenta corriente; lo que no es histórico, sí',
+  $q$select lab.hacer(lab.como('benny@team-latam.com'), $x$select (public.gastos_cuenta('benny@team-latam.com') -> 'USD' ->> 'gastado')$x$)$q$, '25.00');
+select lab.comprobar('Finanzas ve lo importado', $q$select lab.hacer(lab.como('fin@x.com'), $x$select count(*)::text from public.gastos$x$)$q$, '3');
+select lab.comprobar('un integrante no ve lo importado', $q$select lab.hacer(lab.como('ana@x.com'), $x$select count(*)::text from public.gastos$x$)$q$, '0');
+select lab.comprobar('un integrante no deshace una tanda', format($q$select lab.rechaza(lab.como('ana@x.com'), $x$select public.gastos_importar_deshacer(%L)::text$x$)$q$, :'lote'), 'true');
+select lab.comprobar('un gasto con un tipo roto frena toda la tanda (no entra nada)',
+  $q$select lab.hacer(lab.como('benny@team-latam.com'), $x$select public.gastos_importar('a0000000-0000-4000-8000-000000000002', '[{"titulo":"X","gastos":[{"fecha":"2026-01-01","concepto":"ok","tipo":"transporte","monto":1},{"fecha":"2026-01-02","concepto":"mal","tipo":"CON ESPACIOS","monto":1}]}]'::jsonb)::text$x$) like 'error:%'$q$, 'true');
+select lab.comprobar('…y de esa tanda no quedó nada', $q$select count(*)::text from public.gastos_rendiciones where lote_id = 'a0000000-0000-4000-8000-000000000002'$q$, '0');
+select lab.comprobar('el admin deshace la tanda entera',
+  format($q$select lab.hacer(lab.como('benny@team-latam.com'), $x$select public.gastos_importar_deshacer(%L)::text$x$)$q$, :'lote'), '{"gastos": 3, "rendiciones": 2}');
+select lab.comprobar('…y no queda nada', $q$select (select count(*) from public.gastos)::text || '/' || (select count(*) from public.gastos_rendiciones)::text$q$, '0/0');
+
 -- Limpieza, para las pruebas que vienen después.
 truncate public.gastos_comentarios, public.gastos, public.gastos_rendiciones, public.gastos_movimientos cascade;
 delete from public.app_config where key = 'preferences';

@@ -110,6 +110,26 @@ create unique index if not exists rendiciones_por_actividad on public.gastos_ren
 create unique index if not exists rendiciones_por_mes on public.gastos_rendiciones (autor, rutina_mes) where rutina_mes is not null;
 create index if not exists rendiciones_estado on public.gastos_rendiciones (estado);
 
+-- Rendiciones históricas (20/11/2026, importador): lo de años anteriores que se
+-- carga para las estadísticas y el Análisis. Una histórica no entra en ninguna
+-- cuenta corriente (antes de octubre de 2026 no se debe nada) y hace de registro
+-- de su actividad aunque nunca se cargó en la Agenda: lleva lugar, país y
+-- fechas. `lote_id` agrupa lo que entró junto, para poder deshacerlo.
+alter table public.gastos_rendiciones add column if not exists historica boolean not null default false;
+alter table public.gastos_rendiciones add column if not exists lote_id uuid;
+alter table public.gastos_rendiciones add column if not exists lugar text;
+alter table public.gastos_rendiciones add column if not exists pais text;
+alter table public.gastos_rendiciones add column if not exists desde date;
+alter table public.gastos_rendiciones add column if not exists hasta date;
+alter table public.gastos_rendiciones drop constraint if exists rendiciones_historica;
+alter table public.gastos_rendiciones add constraint rendiciones_historica check (
+  length(coalesce(lugar, '')) <= 120 and length(coalesce(pais, '')) <= 120
+  and (desde is null or desde between '2000-01-01' and '2100-12-31')
+  and (hasta is null or hasta between '2000-01-01' and '2100-12-31')
+  and (desde is null or hasta is null or desde <= hasta)
+);
+create index if not exists rendiciones_lote on public.gastos_rendiciones (lote_id) where lote_id is not null;
+
 -- Un gasto. Sin rendición = «sin vincular» (la actividad todavía no está
 -- cargada): se asigna después.
 create table if not exists public.gastos (
@@ -158,6 +178,8 @@ alter table public.gastos add column if not exists pago_quien text;
 -- entregado no cambian (lo eligió el usuario). Lo pone la base al aprobar;
 -- nadie lo escribe desde el navegador.
 alter table public.gastos add column if not exists aprobado_el timestamptz;
+alter table public.gastos add column if not exists lote_id uuid;
+create index if not exists gastos_lote on public.gastos (lote_id) where lote_id is not null;
 alter table public.gastos drop constraint if exists gastos_forma;
 alter table public.gastos add constraint gastos_forma check (
   estado in ('borrador', 'confirmado', 'enviado', 'observado', 'aprobado')
@@ -924,6 +946,7 @@ begin
            coalesce(g.rendido_monto, g.monto) as monto, g.estado = 'aprobado' as aprobado
       from public.gastos g join public.gastos_rendiciones r on r.id = g.rendicion_id
      where g.autor = p_persona and g.pago = 'persona' and coalesce(g.rendido_monto, g.monto) is not null
+       and not r.historica
        and (g.estado = 'aprobado' or r.estado in ('enviada', 'observada'))
   ), filas as (
     select moneda, sum(monto) filter (where aprobado) as gastado,
@@ -950,6 +973,72 @@ begin
     into v from por_moneda;
   return v;
 end $$;
+
+-- Importar lo de años anteriores (20/11/2026). Solo un admin, y entra todo de
+-- una vez o nada. Cada elemento de p_rendiciones es una rendición con sus
+-- gastos (ya aprobados, a nombre de quien importa); `historica` (por defecto
+-- sí) la deja afuera de la cuenta corriente. `p_lote` la identifica para
+-- deshacerla entera con gastos_importar_deshacer.
+create or replace function public.gastos_importar(p_lote uuid, p_rendiciones jsonb)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare yo text := public.mi_correo(); r jsonb; g jsonb; v_id uuid; n_r integer := 0; n_g integer := 0;
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Importa un admin' using errcode = 'insufficient_privilege';
+  end if;
+  if p_lote is null or jsonb_typeof(p_rendiciones) <> 'array' or jsonb_array_length(p_rendiciones) not between 1 and 300 then
+    raise exception 'Una tanda tiene entre 1 y 300 rendiciones' using errcode = 'invalid_parameter_value';
+  end if;
+  if exists (select 1 from public.gastos_rendiciones x where x.lote_id = p_lote) then
+    raise exception 'Esa tanda ya se importó' using errcode = 'check_violation';
+  end if;
+  for r in select * from jsonb_array_elements(p_rendiciones) loop
+    if jsonb_typeof(r->'gastos') <> 'array' or jsonb_array_length(r->'gastos') > 2000 then
+      raise exception 'Una rendición lleva hasta 2000 gastos' using errcode = 'invalid_parameter_value';
+    end if;
+    insert into public.gastos_rendiciones (autor, post_id, rutina_mes, titulo, estado, aprobada_el, aprobada_por,
+        historica, lote_id, lugar, pais, desde, hasta)
+      values (yo, nullif(r->>'post_id', ''), nullif(r->>'rutina_mes', '')::date, left(coalesce(r->>'titulo', ''), 200),
+        'aprobada', now(), yo, coalesce((r->>'historica')::boolean, true), p_lote,
+        nullif(left(r->>'lugar', 120), ''), nullif(left(r->>'pais', 120), ''),
+        nullif(r->>'desde', '')::date, nullif(r->>'hasta', '')::date)
+      returning id into v_id;
+    n_r := n_r + 1;
+    for g in select * from jsonb_array_elements(r->'gastos') loop
+      insert into public.gastos (autor, rendicion_id, fecha, concepto, tipo, moneda, monto, rendido_moneda, rendido_monto,
+          pago, pago_quien, forma_pago, tarjeta, factura, observaciones, estado, aprobado_el, lote_id)
+        values (yo, v_id, (g->>'fecha')::date, left(coalesce(g->>'concepto', ''), 140), g->>'tipo',
+          coalesce(g->>'moneda', 'USD'), (g->>'monto')::numeric, coalesce(g->>'rendido_moneda', g->>'moneda', 'USD'),
+          (g->>'rendido_monto')::numeric, coalesce(g->>'pago', 'persona'), nullif(g->>'pago_quien', ''),
+          nullif(g->>'forma_pago', ''), nullif(g->>'tarjeta', ''), coalesce((g->>'factura')::boolean, true),
+          left(coalesce(g->>'observaciones', ''), 500), 'aprobado', now(), p_lote);
+      n_g := n_g + 1;
+    end loop;
+  end loop;
+  return jsonb_build_object('rendiciones', n_r, 'gastos', n_g);
+end $$;
+
+create or replace function public.gastos_importar_deshacer(p_lote uuid)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare n_g integer; n_r integer;
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Deshace un admin' using errcode = 'insufficient_privilege';
+  end if;
+  if p_lote is null then
+    raise exception 'Falta la tanda' using errcode = 'invalid_parameter_value';
+  end if;
+  delete from public.gastos where lote_id = p_lote;
+  get diagnostics n_g = row_count;
+  delete from public.gastos_rendiciones where lote_id = p_lote;
+  get diagnostics n_r = row_count;
+  return jsonb_build_object('rendiciones', n_r, 'gastos', n_g);
+end $$;
+
+revoke execute on function public.gastos_importar(uuid, jsonb) from public, anon;
+revoke execute on function public.gastos_importar_deshacer(uuid) from public, anon;
+grant execute on function public.gastos_importar(uuid, jsonb) to authenticated;
+grant execute on function public.gastos_importar_deshacer(uuid) to authenticated;
 
 -- En Supabase toda función nueva de `public` se puede llamar desde el
 -- navegador: se deja solo a quien corresponde (supabase/pruebas/
