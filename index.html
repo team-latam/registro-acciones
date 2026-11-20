@@ -855,6 +855,21 @@
   .gxe-v .gx-num{ justify-content:flex-start; flex-wrap:wrap; max-width:100%; }
   .gxe-v .gx-val{ min-width:0; text-align:start; }
   .gxe-n{ font-size:12px; color:var(--text-muted); margin-top:5px; display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; }
+  /* Los números de las fichas se achican para entrar: nunca se salen de la tarjeta, sea cual sea la moneda (X20, 20/11). */
+  .gxe-v, .gxe-edades b{ container-type:inline-size; }
+  .gxe-v .gx-num, .gxe-edades .gx-num{ display:flex; flex-direction:column; align-items:flex-start; gap:0; }
+  .gxe-v .gx-cur, .gxe-edades .gx-cur{ font-size:12px; }
+  .gxe-v .gx-val{ font-size:clamp(12px, calc(100cqi / (var(--c, 10) * .64)), 26px); line-height:1.15; }
+  .gxe-grandes .gxe-v .gx-val{ font-size:clamp(12px, calc(100cqi / (var(--c, 10) * .64)), 32px); }
+  .gxe-edades .gx-val{ min-width:0; font-size:clamp(11px, calc(100cqi / (var(--c, 10) * .64)), 19px); text-align:start; }
+  .gxe-dos > .gxe-tarjeta + .gxe-tarjeta{ margin-top:0; }
+  .gxe-fila{ grid-template-columns:minmax(70px,130px) 1fr var(--nw,10ch) !important; }
+  .gxe-fila .gx-val{ min-width:0; }
+  .gxe-c b{ font-size:12px; }
+  .gxe-ybar{ grid-template-columns:36px 1fr 6ch !important; }
+  .gxe-tabla td{ vertical-align:top; }
+  .gxe-tabla .gx-chip{ display:flex; width:max-content; margin:3px 0 0 auto; }
+  @media (max-width:520px){ .gxe-tarjeta{ padding:14px 12px; } .gxe-tabla{ font-size:12px; } .gxe-tabla th{ font-size:12px; letter-spacing:0; white-space:nowrap; } .gxe-tabla th, .gxe-tabla td{ padding:7px 3px; } .gxe-tabla th:first-child, .gxe-tabla td:first-child{ width:27%; } }
   .gxe-dos{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:14px; margin-bottom:6px; }
   .gxe-tarjeta{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px 18px; min-width:0; }
   .gxe-tarjeta h3{ font-size:15px; font-weight:800; margin:0 0 2px; }
@@ -871,7 +886,7 @@
   .gxe-grandes .gxe-v{ font-size:30px; }
   .gxe-tile.gxe-aviso .gxe-v{ color:var(--warn-text); }
   .gxe-tarjeta + .gxe-tarjeta{ margin-top:14px; }
-  .gxe-edades{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
+  .gxe-edades{ display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:10px; }
   .gxe-edades > div{ background:var(--surface-alt); border-radius:var(--radius-md); padding:10px 12px; min-width:0; }
   .gxe-edades b{ display:block; font-size:19px; font-weight:800; overflow-wrap:anywhere; }
   .gxe-edades span{ font-size:12px; color:var(--text-muted); }
@@ -25706,6 +25721,15 @@ function nombreTipoGasto(k){
 // miles, punto para los centavos, siempre dos decimales, en cualquier idioma de la app.
 const NUM_CONTABLE = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const numContable = n => (n < 0 ? "-" : "") + NUM_CONTABLE.format(Math.abs(n));
+// Para los gráficos, donde un número entero de 10 dígitos no entra: 2.9K, 115K, 1.3M. Las tablas y los totales llevan el número entero.
+function compacto(n){
+  n = Number(n) || 0; const a = Math.abs(n), s = n < 0 ? "-" : "";
+  if(a < 1000) return s + String(Math.round(a));
+  const [d, suf] = a < 1e6 ? [1e3, "K"] : a < 1e9 ? [1e6, "M"] : [1e9, "B"];
+  return s + String(parseFloat((a / d).toPrecision(3))) + suf;
+}
+// El ancho (en caracteres) de la columna de montos de una lista de barras: así todas las filas dejan la barra del mismo largo.
+const anchoNum = vals => Math.max(5, ...vals.map(v => numContable(Number(v) || 0).length)) + 1;
 function fmtMonto(moneda, n){
   if(n === null || n === undefined || isNaN(n)) return "";
   return `${moneda} ${numContable(Number(n))}`;
@@ -25716,7 +25740,7 @@ function fmtMonto(moneda, n){
 const numeroHtml = n => n === null || n === undefined || isNaN(n) ? "" : `<span class="gx-num"><span class="gx-val">${esc(numContable(Number(n)))}</span></span>`;
 function montoHtml(moneda, n, signo = ""){
   if(n === null || n === undefined || isNaN(n)) return "";
-  return `<span class="gx-num"><span class="gx-cur">${esc(moneda)}</span> <span class="gx-val">${esc(signo + numContable(Number(n)))}</span></span>`;
+  return `<span class="gx-num"><span class="gx-cur">${esc(moneda)}</span> <span class="gx-val" style="--c:${(signo + numContable(Number(n))).length}">${esc(signo + numContable(Number(n)))}</span></span>`;
 }
 // Un monto escrito en un campo: «1250», «1,250.50», «1.250,50», «12,5», «$ 40», «-30» (un ajuste).
 // null si está vacío; NaN si no se entiende.
@@ -27041,7 +27065,7 @@ function barrasPorTipo(l){
   const por = {};
   l.forEach(x => { const k = x.g.tipo ? nombreTipoGasto(x.g.tipo) : t("Sin tipo","No type","Sem tipo","ללא סוג"); por[k] = redondo((por[k] || 0) + x.monto); });
   const items = Object.entries(por).sort((a, b) => b[1] - a[1]), max = Math.max(1, ...items.map(i => i[1]));
-  return `<div>${items.map(([k, v]) => `<div class="gxe-fila"><span class="gxe-l">${esc(k)}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(v / max * 100).toFixed(1)}%"></span></span>${numeroHtml(v)}</div>`).join("")}</div>`;
+  return `<div style="--nw:${anchoNum(items.map(i => i[1]))}ch">${items.map(([k, v]) => `<div class="gxe-fila"><span class="gxe-l">${esc(k)}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(v / max * 100).toFixed(1)}%"></span></span>${numeroHtml(v)}</div>`).join("")}</div>`;
 }
 function renderGastosEstadisticas(){
   const E = estadisticasMias(), { anio, moneda, sel } = E, yo = miCorreo();
@@ -27111,7 +27135,7 @@ function htmlMeses(sel, anio, moneda){
   const maxMes = Math.max(1, ...porMes);
   return `<div class="gxe-meses" role="group" aria-label="${esc(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"))}">${porMes.map((v, i) => {
     const nom = new Date(Number(anio), i, 1).toLocaleDateString(dateLocale(), { month: "short" });
-    return `<div class="gxe-c${v ? "" : " gxe-cero"}" role="img" aria-label="${esc(nom + ": " + (v ? fmtMonto(moneda, v) : t("sin gastos","no expenses","sem despesas","ללא הוצאות")))}">${v ? `<b>${esc(Math.round(v).toLocaleString("en-US"))}</b>` : ""}<i style="height:${(v / maxMes * 100).toFixed(1)}%"></i><span>${esc(nom)}</span></div>`; }).join("")}</div>`;
+    return `<div class="gxe-c${v ? "" : " gxe-cero"}" role="img" aria-label="${esc(nom + ": " + (v ? fmtMonto(moneda, v) : t("sin gastos","no expenses","sem despesas","ללא הוצאות")))}">${v ? `<b>${esc(compacto(v))}</b>` : ""}<i style="height:${(v / maxMes * 100).toFixed(1)}%"></i><span>${esc(nom)}</span></div>`; }).join("")}</div>`;
 }
 // Cuánto hace que esperan las rendiciones mandadas (la fecha en que se mandaron): hasta 7 días, de 8 a 30, más de 30.
 function edadesDeEnviadas(){
@@ -27187,7 +27211,7 @@ function metricasDe(todos, anio, moneda, corte){
 const tablaHtml = (cabezas, filas) => `<div class="gxe-scroll"><table class="gxe-tabla"><thead><tr>${cabezas.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${filas.map(f => `<tr>${f.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
 function barrasLV(items){
   const max = Math.max(1, ...items.map(i => i.v));
-  return `<div>${items.map(i => `<div class="gxe-fila"><span class="gxe-l">${esc(i.l)}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(i.v / max * 100).toFixed(1)}%"></span></span>${numeroHtml(i.v)}</div>`).join("")}</div>`;
+  return `<div style="--nw:${anchoNum(items.map(i => i.v))}ch">${items.map(i => `<div class="gxe-fila"><span class="gxe-l">${esc(i.l)}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(i.v / max * 100).toFixed(1)}%"></span></span>${numeroHtml(i.v)}</div>`).join("")}</div>`;
 }
 // Una fila que se despliega (la misma tarjeta que «Rendiciones» y «Mis estadísticas»).
 function filaDesplegable(id, ico, titulo, detalle, chipHtml, total, cuerpo){
@@ -27229,13 +27253,13 @@ function anaPorPersona(E){
     }).join("")}</div>`;
 }
 function acumuladoSvg(todos, anios, moneda){
-  const W = 640, H = 230, L = 52, B = 26, T = 10, R = 12, colores = ["var(--text-muted)", "var(--celeste-dark)", "var(--ink)"].slice(-anios.length);
+  const ang = window.innerWidth < 560, W = ang ? 360 : 480, H = ang ? 210 : 290, L = ang ? 40 : 52, B = 26, T = 10, R = 12, colores = ["var(--text-muted)", "var(--celeste-dark)", "var(--ink)"].slice(-anios.length);
   const mesHoy = Number(todayISO().slice(5, 7)) - 1, anioHoy = todayISO().slice(0, 4);
   const ser = anios.map(y => { let acc = 0; const a = []; for(let m = 0; m < 12; m++){ if(y === anioHoy && m > mesHoy) break; acc += sumaDe(todos.filter(x => x.moneda === moneda && x.anio === y && Number(x.g.fecha.slice(5, 7)) - 1 === m)); a.push(acc); } return a; });
   const max = Math.max(1, ...ser.map(a => a[a.length - 1])) * 1.05, X = m => L + m * (W - L - R) / 11, Y = v => H - B - v / max * (H - B - T);
   const meses = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString(dateLocale(), { month: "short" }));
-  const grid = [0, 1, 2, 3, 4].map(i => { const v = max * i / 4; return `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="12" fill="var(--text-muted)">${esc(Math.round(v).toLocaleString("en-US"))}</text>`; }).join("");
-  const xs = meses.map((n, i) => `<text x="${X(i)}" y="${H - 8}" text-anchor="middle" font-size="12" fill="var(--text-muted)">${esc(n)}</text>`).join("");
+  const grid = [0, 1, 2, 3, 4].map(i => { const v = max * i / 4; return `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${esc(compacto(v))}</text>`; }).join("");
+  const xs = meses.map((n, i) => ang && i % 2 ? "" : `<text x="${X(i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${esc(n)}</text>`).join("");
   const lineas = ser.map((a, i) => `<polyline fill="none" stroke="${colores[i]}" stroke-width="2.5" stroke-linejoin="round" points="${a.map((v, m) => X(m) + "," + Y(v)).join(" ")}"/><circle cx="${X(a.length - 1)}" cy="${Y(a[a.length - 1])}" r="4" fill="${colores[i]}"/>`).join("");
   const leyenda = `<div class="gxe-ley">${anios.map((y, i) => `<span><i style="background:${colores[i]}"></i>${esc(y)} · ${esc(fmtMonto(moneda, redondo(ser[i][ser[i].length - 1])))}</span>`).join("")}</div>`;
   return `${leyenda}<svg class="gxe-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Gasto acumulado mes a mes, por año","Cumulative spending by month, per year","Gasto acumulado mês a mês, por ano","הוצאה מצטברת לפי חודש, לפי שנה"))}">${grid}${xs}${lineas}</svg>`;
@@ -27248,23 +27272,23 @@ function anaAnios(E){
       <button type="button" class="chip-toggle${!A.corte ? " active" : ""}" data-action="gastos-ana-set" data-k="corte" data-v="false" aria-pressed="${!A.corte}">${t("Años completos","Full years","Anos completos","שנים שלמות")}</button></div></div>`;
   if(anios.length < 2) return `${controles}<p class="setting-sub gx-nada">${t("Todavía hay gastos de un solo año. La comparación aparece cuando haya otro año cargado (por ejemplo, importando los anteriores).","There are expenses from only one year so far. The comparison shows up once another year is loaded (for example, by importing earlier ones).","Ainda há despesas de um só ano. A comparação aparece quando houver outro ano carregado (por exemplo, importando os anteriores).","יש הוצאות משנה אחת בלבד. ההשוואה תופיע כשתיטען שנה נוספת (למשל בייבוא שנים קודמות).")}</p>`;
   const ms = anios.map(y => metricasDe(E.todos, y, mon, A.corte));
-  const filas = [[t("Gastado en total","Total spent","Gasto total","סך הוצאות"), m => m.tot, v => fmtMonto(mon, redondo(v)), false],
+  const filas = [[t("Gastado en total","Total spent","Gasto total","סך הוצאות"), m => m.tot, v => Math.round(v).toLocaleString("en-US"), false],
     [t("Actividades","Activities","Atividades","פעילויות"), m => m.acts, v => String(v), true], [t("Personas que rindieron","People who reported","Pessoas que prestaram contas","אנשים שדיווחו"), m => m.personas, v => String(v), true],
-    [t("Costo de una actividad (equipo)","Cost of an activity (team)","Custo de uma atividade (equipe)","עלות פעילות (צוות)"), m => m.perAct, v => fmtMonto(mon, redondo(v)), false],
-    [t("Costo por persona y día","Cost per person per day","Custo por pessoa por dia","עלות לאדם ליום"), m => m.perDia, v => fmtMonto(mon, redondo(v)), false]];
+    [t("Costo de una actividad (equipo)","Cost of an activity (team)","Custo de uma atividade (equipe)","עלות פעילות (צוות)"), m => m.perAct, v => Math.round(v).toLocaleString("en-US"), false],
+    [t("Costo por persona y día","Cost per person per day","Custo por pessoa por dia","עלות לאדם ליום"), m => m.perDia, v => Math.round(v).toLocaleString("en-US"), false]];
   const dlt = (x, y0, neutro) => { if(!y0) return ""; const r = x / y0 - 1; return gxChip([pcTxt(r), neutro ? "neutro" : r > 0.1 ? "aviso" : r < -0.1 ? "bien" : "neutro"]); };
   const tablaAnios = tablaHtml([""].concat(anios), filas.map(([l, f, fm, neu]) => [esc(l)].concat(ms.map((m, i) => `${esc(fm(f(m)))} ${i ? dlt(f(m), f(ms[i - 1]), neu) : ""}`))));
   const tipos = [...new Set(ms.flatMap(m => m.l.map(x => x.g.tipo || "")))];
   const colA = ["var(--text-muted)", "var(--celeste-dark)", "var(--ink)"].slice(-anios.length);
   const filasTipo = tipos.map(k => ({ l: k ? nombreTipoGasto(k) : t("Sin tipo","No type","Sem tipo","ללא סוג"), v: ms.map(m => sumaDe(m.l.filter(x => (x.g.tipo || "") === k))) })).sort((a, b) => b.v[b.v.length - 1] - a.v[a.v.length - 1]);
   const maxT = Math.max(1, ...filasTipo.flatMap(r => r.v));
-  const porTipoAnio = filasTipo.map(r => `<div class="gxe-yrow"><span class="gxe-l">${esc(r.l)}</span><div class="gxe-ybars">${r.v.map((v, i) => `<div class="gxe-ybar"><span>${esc(anios[i])}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(v / maxT * 100).toFixed(1)}%;background:${colA[i]}"></span></span><b>${esc(Math.round(v).toLocaleString("en-US"))}</b></div>`).join("")}</div></div>`).join("");
+  const porTipoAnio = filasTipo.map(r => `<div class="gxe-yrow"><span class="gxe-l">${esc(r.l)}</span><div class="gxe-ybars">${r.v.map((v, i) => `<div class="gxe-ybar"><span>${esc(anios[i])}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(v / maxT * 100).toFixed(1)}%;background:${colA[i]}"></span></span><b title="${esc(fmtMonto(mon, redondo(v)))}">${esc(compacto(v))}</b></div>`).join("")}</div></div>`).join("");
   const paises = [...new Set(ms.flatMap(m => m.act.map(x => paisDeActividad(x.r.postId))).filter(Boolean))].sort();
   const pd = (m, pa) => { const a = m.act.filter(x => paisDeActividad(x.r.postId) === pa); if(!a.length) return 0; const dp = [...agrupar(a, x => x.r.postId + "|" + x.g.autor).values()].reduce((s2, g) => s2 + diasDeActividad(getPostById(g[0].r.postId)), 0); return dp ? sumaDe(a) / dp : 0; };
   const porPais = paises.length ? `<section class="gxe-tarjeta"><h3>${t("Por destino","By destination","Por destino","לפי יעד")}</h3><p class="gxe-sub">${t("Costo por persona y día de actividad, año por año. Un guion: ese año no hubo actividad ahí.","Cost per person per activity day, year by year. A dash: no activity there that year.","Custo por pessoa por dia de atividade, ano a ano. Um traço: nesse ano não houve atividade ali.","עלות לאדם ליום פעילות, שנה אחר שנה. מקף: באותה שנה לא הייתה שם פעילות.")}</p>
-      ${tablaHtml([t("Destino","Destination","Destino","יעד")].concat(anios, [`${anios[0]} → ${anios[anios.length - 1]}`]), paises.map(pa => { const v = ms.map(m => pd(m, pa)); return [esc(pa)].concat(v.map(x => x ? esc(Math.round(x).toLocaleString("en-US")) : "–"), [v[0] && v[v.length - 1] ? dlt(v[v.length - 1], v[0]) : "–"]); }))}</section>` : "";
+      ${tablaHtml([t("Destino","Destination","Destino","יעד")].concat(anios, [t("Cambio","Change","Variação","שינוי")]), paises.map(pa => { const v = ms.map(m => pd(m, pa)); return [esc(pa)].concat(v.map(x => x ? esc(Math.round(x).toLocaleString("en-US")) : "–"), [v[0] && v[v.length - 1] ? dlt(v[v.length - 1], v[0]) : "–"]); }))}</section>` : "";
   return `${controles}
-    <section class="gxe-tarjeta"><h3>${t("Año contra año","Year over year","Ano contra ano","שנה מול שנה")}</h3><p class="gxe-sub">${A.corte ? t("Los años cortados en el mismo día, así el año en curso no pierde contra años enteros.","The years cut at the same day, so the current year doesn't lose against full years.","Os anos cortados no mesmo dia, para que o ano em curso não perca contra anos inteiros.","השנים נחתכות באותו יום, כך שהשנה הנוכחית לא מפסידה מול שנים שלמות.") : t("Los años completos: el año en curso todavía no terminó.","Full years: the current year hasn't ended yet.","Os anos completos: o ano em curso ainda não terminou.","שנים שלמות: השנה הנוכחית עוד לא הסתיימה.")}</p>${tablaAnios}</section>
+    <section class="gxe-tarjeta"><h3>${t("Año contra año","Year over year","Ano contra ano","שנה מול שנה")}</h3><p class="gxe-sub">${esc(mon)} · ${A.corte ? t("Los años cortados en el mismo día, así el año en curso no pierde contra años enteros.","The years cut at the same day, so the current year doesn't lose against full years.","Os anos cortados no mesmo dia, para que o ano em curso não perca contra anos inteiros.","השנים נחתכות באותו יום, כך שהשנה הנוכחית לא מפסידה מול שנים שלמות.") : t("Los años completos: el año en curso todavía no terminó.","Full years: the current year hasn't ended yet.","Os anos completos: o ano em curso ainda não terminou.","שנים שלמות: השנה הנוכחית עוד לא הסתיימה.")}</p>${tablaAnios}</section>
     <div class="gxe-dos"><section class="gxe-tarjeta"><h3>${t("Ritmo del año","Pace of the year","Ritmo do ano","קצב השנה")}</h3><p class="gxe-sub">${t("Gasto acumulado mes a mes","Cumulative spending by month","Gasto acumulado mês a mês","הוצאה מצטברת לפי חודש")}</p>${acumuladoSvg(E.todos, anios, mon)}</section>
     <section class="gxe-tarjeta"><h3>${t("Por tipo de gasto","By type of expense","Por tipo de despesa","לפי סוג הוצאה")}</h3><p class="gxe-sub">${esc(mon)}</p>${porTipoAnio}</section></div>${porPais}`;
 }

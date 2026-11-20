@@ -126,6 +126,21 @@ const gastos = [
   await q.close();
 }
 
+/* ---------------- Montos muy grandes (X20, 20/11): nada se sale ni se pisa, en compu y celular ---------------- */
+{
+  const grandes = [48750000.5, 1234567890.12, 9850.4, 125, 3300000, 87650, 640000.75].map((m, i) => g({ id: "gr" + i, rendicion_id: "re_x", fecha: `${Y}-0${i + 1}-05`, concepto: "Grande " + i, tipo: ["pasaje", "alojamiento", "comida"][i % 3], moneda: "USD", monto: m, rendido_monto: m }));
+  for(const [nombre, vpt] of [["compu", vp], ["celular", celu]]){
+    const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vpt, base: base([r({ id: "re_x", autor: ADMIN, post_id: "p9" })], grandes) });
+    await irEstadisticas(p);
+    eq(`${nombre}: con montos de miles de millones, cada número entra en su recuadro`, await p.evaluate(() => [...document.querySelectorAll(".gxe-tile .gx-val")].every(v => { const t = v.closest(".gxe-tile").getBoundingClientRect(), x = v.getBoundingClientRect(); return x.right <= t.right - 8 && x.left >= t.left; })), true);
+    eq(`${nombre}: los montos de las barras quedan dentro de su tarjeta`, await p.evaluate(() => [...document.querySelectorAll(".gxe-fila .gx-num")].every(v => v.getBoundingClientRect().right <= v.closest(".gxe-tarjeta").getBoundingClientRect().right)), true);
+    eq(`${nombre}: las etiquetas de «Mes a mes» no se pisan`, await p.evaluate(() => { const l = [...document.querySelectorAll(".gxe-c b")].map(e => e.getBoundingClientRect()).filter(r => r.width); return l.every((r, i) => !i || r.left >= l[i - 1].right - 1); }), true);
+    eq(`${nombre}: sin desborde horizontal`, await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true);
+    eq(`${nombre}: sin errores de página`, errores, []);
+    await p.close();
+  }
+}
+
 await b.close();
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

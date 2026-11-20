@@ -88,11 +88,12 @@ const tabla = (p, i) => textos(p, `.gxe-tarjeta:first-of-type .gxe-tabla tbody t
 {
   const { p, errores } = await entrar(b, FIN.email, FIN.name, { viewport: vp, base: datos() });
   await irAna(p, "anios");
-  eq("tres años, al mismo corte: gastado en total y su cambio contra el año anterior", await tabla(p, 1), ["Gastado en total", "USD 800.00", "USD 1,410.00 +76%", "USD 2,200.00 +56%"]);
+  eq("tres años, al mismo corte: gastado en total y su cambio contra el año anterior", await tabla(p, 1), ["Gastado en total", "800", "1,410 +76%", "2,200 +56%"]);
   eq("…actividades y personas", [await tabla(p, 2), await tabla(p, 3)], [["Actividades", "1", "2 +100%", "2 +0%"], ["Personas que rindieron", "1", "2 +100%", "4 +100%"]]);
-  eq("…costo por persona y día", await tabla(p, 5), ["Costo por persona y día", "USD 160.00", "USD 176.25 +10%", "USD 196.36 +11%"]);
+  eq("…costo por persona y día", await tabla(p, 5), ["Costo por persona y día", "160", "176 +10%", "196 +11%"]);
   await set(p, "corte", "false");
-  eq("con los años completos, el año pasado suma lo de fin de año", (await tabla(p, 1))[2].startsWith("USD 1,510.00"), true);
+  eq("con los años completos, el año pasado suma lo de fin de año", (await tabla(p, 1))[2].startsWith("1,510"), true);
+  eq("la moneda va una sola vez, arriba de la tabla (los números no la repiten)", (await textos(p, ".gxe-tarjeta:first-of-type .gxe-sub"))[0].startsWith("USD · "), true);
   eq("por destino: costo por persona y día, año por año", [await textos(p, ".gxe-tarjeta:last-of-type .gxe-tabla tbody tr:nth-child(1) td"), await textos(p, ".gxe-tarjeta:last-of-type .gxe-tabla tbody tr:nth-child(2) td")],
     [["México", "160", "206", "210", "+31%"], ["Uruguay", "–", "160", "185", "–"]]);
   eq("el ritmo del año se dibuja con una línea por año", await p.$$eval(".gxe-svg polyline", l => l.length), 3);
