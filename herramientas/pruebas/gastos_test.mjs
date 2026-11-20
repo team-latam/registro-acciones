@@ -221,7 +221,8 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
   eq("confirmado: se guarda entero y atado a la rendición de esa actividad", await hasta(p, id => { const g = window.__sb.tablas.gastos.find(x => x.id === id);
     return g.estado === "confirmado" && g.tipo === "transporte" && g.monto === 12.5 && g.moneda === "ARS" && g.rendido_monto === 8 && g.rendido_moneda === "USD" && g.forma_pago === "tarjeta" && g.tarjeta === "4321" && g.rendicion_id === "ren_mvd"; }, foto.id), true);
-  eq("la ventana se cierra y el foco vuelve a la lista", await p.evaluate(() => [document.getElementById("gastoOverlay").hidden, !!document.activeElement.closest(".gastos-view")]), [true, true]);
+  // La app devuelve el foco cuando la lista terminó de dibujarse (un instante después de guardar): se espera, no se exige en el acto.
+  eq("la ventana se cierra y el foco vuelve a la lista", await hasta(p, () => document.getElementById("gastoOverlay").hidden && !!document.activeElement.closest(".gastos-view")), true);
 
   // El PDF, a la rutina del mes anterior: la rendición se abre en la base.
   const mesAnt = await p.evaluate(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); });

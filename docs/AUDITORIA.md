@@ -194,6 +194,13 @@ nombres y una función aislada que no conocía una función nueva: `RECURRENTES.
 nuevos de 44 px, la ventanita de «Responsable» podía dejar el botón pegado al borde de arriba en el celular (el navegador
 mueve la página solo después de que la app revisó); ahora la app vuelve a revisar cuando ese movimiento terminó.
 
+La primera publicación de la segunda subida **no salió**: GitHub, que es más lento que el sandbox, encontró una
+comprobación de 5.186 (`gastos_test`, «el foco vuelve a la lista») que miraba el foco en el mismo instante en que
+se guardaba el dato, antes de que la lista terminara de dibujarse. Se arregló en la app (si la lista tarda, el
+foco se reintenta unos instantes: también ayuda en un celular lento) y en la prueba (espera en vez de exigirlo
+en el acto), y se volvió a subir. La versión anterior siguió en línea todo ese rato, que es para lo que existe
+ese portero (U1).
+
 Las herramientas: `masa.mjs` (la masa crítica; ya cuida Y1, Y2 y Y5 a Y10 y los controles chicos, y exceptúa los enlaces
 dentro de un texto como pide WCAG 2.2), `codigo.mjs` (ahora mide lo que **se publica**, ya achicado, contra el límite de
 600 KB), dos falsas alarmas corregidas en `seguridad` y cuatro anotadas en `conocidos.json`; patrones nuevos en

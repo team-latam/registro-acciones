@@ -696,3 +696,13 @@ nivel superior con una sola aparición dio cinco, y tres sí se usan (`getCities
 delante que el patrón no entendía. *Regla:* un «sin uso» se verifica con `grep -n` antes de
 borrar, y se mira también quién lo usa afuera de `index.html` (`diasEntre` figuraba en la lista
 de nombres de `armar_reportes.py`; `csvDeTabla`, en `xlsx_test`).
+
+**Una prueba que mira el estado en el mismo instante en que algo se guarda.** `gastos_test`
+(«la ventana se cierra y el foco vuelve a la lista») pasó 5 veces en el sandbox y falló en GitHub, el
+20/11/2026, en la primera publicación de la tanda: la app devuelve el foco cuando la lista terminó de
+volver a dibujarse, y la prueba lo miró apenas apareció el dato en la base de mentira. *Por qué:* GitHub
+es más lento que el sandbox, y un celular lento también; lo que anda «en el mismo cuadro» acá, allá
+tarda unos cientos de milisegundos. *Se detecta:* solo en GitHub (no se reproduce ni con cuatro
+corridas a la vez). *Regla:* una comprobación sobre algo que la app hace **después** de guardar (el foco,
+un aviso, la lista) espera a que ocurra (`hasta(...)`), no lo exige en el acto; y si la espera revela
+que la app no se recupera sola cuando tarda, la app también reintenta (`cerrarGasto` ahora lo hace).

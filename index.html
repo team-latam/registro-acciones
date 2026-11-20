@@ -29561,7 +29561,16 @@ function cerrarGasto(sinFoco){
     if(x && typeof x.focus === "function") x.focus();
   };
   volver();
-  requestAnimationFrame(() => setTimeout(() => { if(!document.activeElement || document.activeElement === document.body) volver(); }, 0));
+  // La lista se vuelve a dibujar un instante después de guardar (con lo guardado), y en un celular o una máquina lenta
+  // puede tardar: si el foco quedó en la página (en el body), se reintenta unos instantes hasta que la fila esté.
+  // (20/11/2026: en GitHub, más lento, la prueba «el foco vuelve a la lista» lo miró antes de que la lista volviera.)
+  let intentos = 0;
+  const reintentar = () => {
+    if(document.activeElement && document.activeElement !== document.body) return;
+    volver();
+    if(++intentos < 8) setTimeout(reintentar, 100);
+  };
+  requestAnimationFrame(() => setTimeout(reintentar, 0));
 }
 // Un gasto que ya no se corrige (mandado, aprobado, o de otra persona): sus datos como texto, sin
 // controles apagados (lo pidió el usuario el 17/11: «mirá cómo queda cuando es aprobado»).
