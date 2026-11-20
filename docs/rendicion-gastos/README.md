@@ -487,6 +487,21 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
 - **Rutina:** una rendición por mes con todo lo de rutina («Rutina septiembre»).
 - **Primera prueba real:** septiembre de 2026 (tiene un viaje); después el resto de 2026 y los años anteriores.
 
+### Importador: lo construido (20/11/2026, en la rama; sin subir a `main` hasta el OK del usuario)
+
+- **Base** (`27-gastos.sql`): las rendiciones tienen `historica`, `lote_id`, `lugar`, `pais`, `desde` y `hasta`; los gastos, `lote_id`.
+  `gastos_importar(lote, rendiciones)` carga todo junto (o nada), aprobado y a nombre de quien importa, **solo un admin** (Finanzas no);
+  `gastos_importar_deshacer(lote)` borra la tanda entera. `gastos_cuenta` y la cuenta de la pantalla **ignoran lo histórico**, así
+  que no se inventa deuda. Oct–nov de 2026 no es histórico (cuenta corriente corre desde el 1/10).
+- **Pantalla** (Gastos → «Importar», solo admin): se elige el Excel (SheetJS, en el navegador del admin: los datos no pasan por el
+  repo), se ve lo que se entendió, los tipos y «quién pagó» para elegir, las rendiciones que se crearían (rutina por mes; viajes por
+  cercanía de fechas, con el enlace a la Agenda ya propuesto, o lugar y país a mano), la suma por moneda para comparar con la planilla,
+  lo dudoso aparte (no se carga), lo repetido (ya cargado o duplicado en la planilla) y lo de empleados («Cuenta» = Empleados) para después.
+- **Lector** (funciones `imp…` de `index.html`): columnas por nombre, fechas y montos en los formatos de cada año, moneda original de
+  Observaciones, fila de título en cualquier lugar de las primeras diez. Probado en `herramientas/pruebas/gastos_importar_lector_test.mjs`
+  (puro) y `gastos_importar_test.mjs` (pantalla), con datos inventados.
+- **Falta:** probarlo con septiembre de 2026 de verdad (el usuario baja el Excel y lo elige), planillas de viaje (otro formato), 2022–2025.
+
 ## Lo que anotó el usuario al probarlo (desde el 18/11)
 
 Lo fue dejando mientras revisaba la versión publicada. **Hecho el 18/11 en una tanda** (en la rama; va a `main` con su

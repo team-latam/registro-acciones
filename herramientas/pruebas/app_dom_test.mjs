@@ -299,6 +299,30 @@ export function createClient(url, clave){
           r.estado = "abierta"; r.aprobada_el = null; r.aprobada_por = null;   // lo aprobado sigue aprobado (18/11)
           return { data: true, error: null };
         }
+        // Importar lo histórico (27-gastos.sql): solo un admin (Finanzas no), entra todo junto, y se deshace por tanda.
+        if(nombre === "gastos_importar" || nombre === "gastos_importar_deshacer"){
+          const mm = (estado.tablas.members || []).find(x => x.email === yo);
+          if(!(yo === "benny@team-latam.com" || (mm && mm.role === "admin"))) return mal("42501", nombre === "gastos_importar" ? "Importa un admin" : "Deshace un admin");
+          if(nombre === "gastos_importar_deshacer"){
+            const rs = T("gastos_rendiciones").filter(r => r.lote_id === args.p_lote), n = T("gastos").filter(g => g.lote_id === args.p_lote).length;
+            estado.tablas.gastos = T("gastos").filter(g => g.lote_id !== args.p_lote);
+            estado.tablas.gastos_rendiciones = T("gastos_rendiciones").filter(r => r.lote_id !== args.p_lote);
+            return { data: { rendiciones: rs.length, gastos: n }, error: null };
+          }
+          if(T("gastos_rendiciones").some(r => r.lote_id === args.p_lote)) return mal("23514", "Esa tanda ya se importó");
+          let ng = 0;
+          args.p_rendiciones.forEach((r, i) => {
+            const id = "imp_" + args.p_lote.slice(0, 4) + "_" + i;
+            T("gastos_rendiciones").push({ id, autor: yo, post_id: r.post_id || null, rutina_mes: r.rutina_mes || null, titulo: r.titulo || "", estado: "aprobada", enviada_el: null,
+              aprobada_el: ahora, aprobada_por: yo, total_manual: {}, total_manual_confirmado: false, total_manual_por: null, total_manual_el: null, creada_el: ahora, tocada_el: ahora,
+              historica: r.historica !== false, lote_id: args.p_lote, lugar: r.lugar || null, pais: r.pais || null, desde: r.desde || null, hasta: r.hasta || null });
+            r.gastos.forEach((g, j) => { ng++; T("gastos").push({ id: id + "_g" + j, autor: yo, rendicion_id: id, fecha: g.fecha, concepto: g.concepto, tipo: g.tipo, moneda: g.moneda || "USD", monto: g.monto,
+              rendido_moneda: g.rendido_moneda || g.moneda || "USD", rendido_monto: g.rendido_monto, pago: g.pago || "persona", pago_quien: null, forma_pago: g.forma_pago || null, tarjeta: null,
+              factura: g.factura !== false, observaciones: g.observaciones || "", estado: "aprobado", aprobado_el: ahora, lote_id: args.p_lote, archivo: null, archivo_nombre: null,
+              archivo_tipo: null, archivo_hash: null, lectura: null, creado_el: ahora, tocado_el: ahora }); });
+          });
+          return { data: { rendiciones: args.p_rendiciones.length, gastos: ng }, error: null };
+        }
         if(nombre === "gastos_movimiento_confirmar"){
           if(!esAdmin) return mal("42501", "Confirma un admin");
           const m = T("gastos_movimientos").find(x => x.id === args.p_id && x.estado === "pendiente");
