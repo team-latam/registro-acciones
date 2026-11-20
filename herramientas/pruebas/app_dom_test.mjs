@@ -139,7 +139,8 @@ function consulta(tabla){
       //   fallo         las escrituras se rechazan (el valor es el código del error; true = 42501, sin permiso); mensajeFallo, su texto
       //   falloLectura  las lecturas fallan como si no hubiera red
       //   demora        milisegundos que tarda cada pedido
-      return new Promise(r => setTimeout(r, estado.demora || 0)).then(() => {
+      //   demoraDe      lo mismo pero de una sola tabla: { app_config: 2500 } (pisa a «demora» para esa tabla)
+      return new Promise(r => setTimeout(r, (estado.demoraDe && estado.demoraDe[q.tabla]) || estado.demora || 0)).then(() => {
         if(estado.fallo && q.op !== "select") return { data: null, error: { code: estado.fallo === true ? "42501" : String(estado.fallo),
           message: estado.mensajeFallo || (estado.fallo === true || estado.fallo === "42501" ? 'new row violates row-level security policy for table "' + q.tabla + '"' : "error de la base") } };
         if(estado.falloLectura && q.op === "select") return { data: null, error: { code: "", message: "TypeError: Failed to fetch" } };

@@ -1227,7 +1227,9 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   Object.assign(base.gastos.find(g => g.id === "gx4"), { pago: "otro", pago_quien: ANA.email });
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
   await irGastos(p);
-  eq("en gastos no está el «+» de nuevo evento (tapaba botones de gastos)", await p.evaluate(() => { const f = document.getElementById("fab"); return !f || getComputedStyle(f).display === "none"; }), true);
+  // 20/11: el usuario echó de menos el «+» adentro de Gastos (se había sacado el 18/11 por taparle botones): vuelve, como
+  // en todas las solapas (gastos_solapa_foto_test.mjs lo mira con más detalle).
+  eq("en gastos está el «+», como en las demás solapas", await p.evaluate(() => { const f = document.getElementById("fab"); return !!f && getComputedStyle(f).display !== "none"; }), true);
   await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
   eq("los estados de los gastos: «Falta confirmar» y «Confirmado» (antes «Listo»)", await textos(p, ".gx-filas .gx-chip"), ["Falta confirmar", "Confirmado", "Confirmado"]);
   await p.click('[data-action="gasto-abrir"][data-id="gx3"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");

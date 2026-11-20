@@ -283,13 +283,38 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     usuario) y las tres secciones entran juntas, con su número.
   - **Los botones**: «Confirmar» la plata es un botón como los demás principales; «Dejar de ofrecer» un tipo es un
     link; borrar un movimiento es una 🗑️ con su nombre; el «+» de nuevo evento no aparece en gastos en la compu
-    (tapaba botones).
+    (tapaba botones). **Revertido el 20/11:** el usuario echó de menos el «+» adentro de Gastos; vuelve, como en todas
+    las solapas (ver «La solapa, el «+» y la cámara», más abajo). Solo se corre mientras se revisa en lista.
   - **La cuenta corriente**: «Anotar plata recibida o devuelta» está detrás de un botón; en cada tarjeta la
     moneda va una sola vez, arriba; lo recibido y lo devuelto van sin signo (el «−500.00» confundía); el ajuste
     sí lo lleva.
   - **Detalles**: un gasto mandado dice «En revisión», como su rendición, y uno confirmado «Confirmado» (antes
     «Mandado» y «Listo»); el total dice «(no suma el que falta)»; la ayuda de «Revisar en lista» va en un
     renglón; «Sin vincular» ya no tiene el borde punteado (parecía una zona para soltar archivos).
+
+- [x] **La solapa, el «+» y la cámara** (20/11; el usuario lo marcó mirando la pantalla; en la rama, **a `main` con su OK**):
+  - **La solapa «Gastos» no se hace esperar.** Aparecía más tarde que las demás (esperaba a leer la configuración del
+    módulo en la base) y movía a «Reportes». Ahora la solapa se muestra desde el primer momento: como estaba **la
+    última vez en ese aparato** (se recuerda por persona en `localStorage`, `ra_gastos_solapa`) o, la primera vez, como
+    es lo normal (todos los que cargan la ven; un observador, nunca). Cuando llega la configuración manda ella: si el
+    módulo se apagó o se cerró al equipo, la solapa se va y se recuerda apagada. Solo cambia la solapa: los datos, el ⋯
+    de las actividades y la campanita siguen esperando a la configuración. Tocarla antes de tiempo no rebota al Feed:
+    muestra «Cargando…» y se abre sola. En el peor caso (se apagó desde la última vez) se ve un instante y se va; no
+    se pudo evitar sin volver a esperar.
+  - **El «+» adentro de Gastos** (compu): vuelve. Sigue sin verse en «Revisar en lista» (los botones de abajo flotan
+    ahí) y en la lista de tipos de Administración.
+  - **Sacar una foto**: en «¿De qué son estos comprobantes?», en la barra de una rendición vacía y arriba de la lista
+    de gastos («Subir más»), un botón **«📷 Sacar una foto»** abre la cámara de atrás del celular (`<input type="file"
+    accept="image/*" capture="environment">`, `#gastosFoto`) y la foto va por el mismo camino que cualquier comprobante
+    (huella, miniatura, lector). Una foto por vez, como hace el navegador; para varias, se toca de nuevo («Subir más»).
+    Se ofrece **solo en pantallas táctiles** (`pointer: coarse`): en una compu `capture` se ignora y abriría el selector
+    de archivos, que ya está en «Subir». Por qué aparte: en Android, con fotos y PDF juntos en `accept`, el selector no
+    ofrece la cámara. La cámara entrega siempre «image.jpg»: la app le pone «Foto AAAA-MM-DD HH.MM.SS.jpg» (sin la fecha
+    en la forma que lee `sugerirDeNombre`: la del gasto sale del lector o de la persona, no del reloj del celular).
+    **Pendiente, si lo pide:** la cámara de la compu (con `getUserMedia`), y lo mismo para el comprobante de la cuenta
+    corriente y del cambio de moneda.
+  Lo prueba `herramientas/pruebas/gastos_solapa_foto_test.mjs` (la configuración se hace tardar con `demoraDe` del
+  Supabase de mentira, `app_dom_test.mjs`).
 
 ### Etapa 4, los PDF de entrega (publicada el 18/11 con el OK del usuario)
 

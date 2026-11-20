@@ -1162,7 +1162,10 @@
   .gx-lcuenta{ margin-inline-end:auto; font-size:13.5px; font-weight:700; color:var(--text-muted); }
   .gx-ldestino{ flex:1 1 260px; max-width:420px; }
   body:has(.gx-lista-rev) .fab-wrap, body:has(.gx-lista-rev) .scroll-top{ display:none; }
-  @media (min-width:641px){ body:has(.gastos-view) .fab-wrap, body:has(.gx-tipos) .fab-wrap{ display:none; } }
+  /* El «+» está en todas las solapas, también en Gastos (20/11: el usuario lo echó de menos; el 18/11 se había sacado de acá por
+     taparle botones, pero un botón flotante se corre scrolleando, como en el resto de la app). Solo se esconde mientras se revisa
+     en lista (arriba: ahí los botones de abajo flotan) y en la lista de tipos de Administración. */
+  @media (min-width:641px){ body:has(.gx-tipos) .fab-wrap{ display:none; } }
   .gx-btn-chico{ min-height:34px; padding:6px 14px; font-size:13px; }
   @media (max-width:640px){
     .gx-lcuerpo, .gx-v-foto .gx-lcuerpo{ grid-template-columns:minmax(0, 1fr); }
@@ -5322,6 +5325,9 @@
 <!-- Fuera de la vista a propósito: la vista se vuelve a dibujar con cada aviso
      en vivo, y un selector de archivos abierto quedaría huérfano. -->
 <input type="file" id="gastosArchivos" multiple accept="image/*,application/pdf" hidden>
+<!-- La cámara, aparte (20/11): en Android, con fotos y PDF juntos en `accept`, el selector de archivos no ofrece la cámara;
+     con solo imágenes y `capture`, abre directo la cámara trasera (una foto por vez: así lo hace el navegador). -->
+<input type="file" id="gastosFoto" accept="image/*" capture="environment" hidden>
 <input type="file" id="gastosMovArchivo" accept="image/*,application/pdf" hidden>
 
 <div class="modal-overlay" id="cumpleOverlay" hidden>
@@ -13335,10 +13341,13 @@ function doRender(){
   // En angosto el panel de filtros tapa todo: la página de atrás no se mueve.
   document.documentElement.classList.toggle("fp-abierto", fp.abierto);
   // Gastos, entre Proyectos y Reportes (19/11: dejó de ser una prueba y salió del menú de la foto), con lo que espera.
+  // La solapa no espera a la configuración (20/11: aparecía más tarde que las demás y movía a «Reportes»): hasta que
+  // llega se muestra como estaba la última vez en este aparato, y después se confirma o se saca.
   const tabGastos = document.querySelector('#tabs button[data-view="gastos"]');
   if(tabGastos){
-    tabGastos.hidden = !gastosVisible();
-    const n = tabGastos.hidden ? 0 : gastosPendientes();
+    if(gastosConfigLeida && isAuthorized()) recordarSolapaDeGastos(gastosVisible());
+    tabGastos.hidden = !gastosSolapaVisible();
+    const n = tabGastos.hidden || !gastosVisible() ? 0 : gastosPendientes();
     tabGastos.innerHTML = esc(t("Gastos","Expenses","Despesas","הוצאות")) + (n ? ` <span class="pending-count">${n}</span>` : "");
   }
   document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
@@ -13389,7 +13398,9 @@ function doRender(){
   if(!isAdmin() && ADMIN_VIEWS.has(state.view)) state.view = "feed";
   // Gastos: se escucha solo mientras el módulo se ve.
   sincronizarGastos();
-  if(state.view === "gastos" && !gastosVisible()) state.view = "feed";
+  // Sacarla de la vista solo cuando ya se sabe que no corresponde: con la solapa mostrada de antemano, tocarla antes de
+  // que llegue la configuración no tiene que rebotar al Feed (se ve «Cargando…» hasta que llega).
+  if(state.view === "gastos" && gastosConfigLeida && !gastosVisible()) state.view = "feed";
 
   if(!fatalError && !state.loaded){
     html += `<div class="empty-state"><div class="big">⏳</div>${t("Cargando registro compartido…","Loading shared log…","Carregando registro compartilhado…","טוען יומן משותף...")}</div>`;
@@ -25142,6 +25153,7 @@ let gastosSel = null;                   // lo elegido con las casillas (siempre 
 let gastosHist = { desde: "", hasta: "", estado: "", persona: "", abiertas: new Set() };   // la lista agrupada: los filtros y las rendiciones desplegadas
 const gastoOverlay = document.getElementById("gastoOverlay");
 const gastosArchivosInput = document.getElementById("gastosArchivos");
+const gastosFotoInput = document.getElementById("gastosFoto");
 const gastosMovArchivoInput = document.getElementById("gastosMovArchivo");
 
 // Los siete tipos de hoy (los de la planilla de rendición). Un admin los
@@ -25172,6 +25184,29 @@ let gastosConfigLeida = false;
 function gastosVisible(){
   if(!isAuthorized() || !gastosConfigLeida || !gastosPrendido()) return false;
   return esGestor() || (gastosAbiertoAlEquipo() && canWrite());
+}
+// La solapa de Gastos, antes de que llegue la configuración (20/11/2026): se muestra como estaba la última vez de esta
+// persona en este aparato; si no hay nada recordado, como es lo normal (todos los que cargan la ven). Una vez leída la
+// configuración manda gastosVisible(), y eso es lo que se recuerda para la próxima. Solo cambia la solapa: lo demás
+// (los datos, el ⋯ de las actividades, la campanita) sigue esperando a la configuración.
+const CLAVE_SOLAPA_GASTOS = "ra_gastos_solapa";
+let solapaGastosGuardada = null;
+function solapaDeGastosRecordada(){
+  try{ const v = JSON.parse(localStorage.getItem(CLAVE_SOLAPA_GASTOS) || "null"); if(v && v.u === miCorreo() && typeof v.v === "boolean") return v.v; }
+  catch(e){ /* sin localStorage o con algo roto: como si no hubiera nada */ }
+  return null;
+}
+function recordarSolapaDeGastos(ve){
+  const clave = miCorreo() + "|" + !!ve;
+  if(solapaGastosGuardada === clave) return;
+  solapaGastosGuardada = clave;
+  try{ localStorage.setItem(CLAVE_SOLAPA_GASTOS, JSON.stringify({ u: miCorreo(), v: !!ve })); }catch(e){ /* no se puede recordar: la próxima vez aparece cuando llega la configuración */ }
+}
+function gastosSolapaVisible(){
+  if(!isAuthorized()) return false;
+  if(gastosConfigLeida) return gastosVisible();
+  const r = solapaDeGastosRecordada();
+  return canWrite() && r !== false;   // un observador nunca; el resto, como la última vez o como es lo normal
 }
 function miCorreo(){ return String((state.auth.user && state.auth.user.email) || "").toLowerCase(); }
 function applyGastosConfig(cfg){
@@ -26815,6 +26850,27 @@ function elegirComprobantes(destino){
   gastosArchivosInput.value = "";
   gastosArchivosInput.click();
 }
+// «Sacar una foto» (20/11, lo pidió el usuario: no había cómo tomarla desde la pantalla de subir): abre la cámara del
+// celular y la foto sigue el mismo camino que cualquier comprobante. Solo se ofrece donde hay cámara a mano (pantalla
+// táctil): en una compu el navegador ignora `capture` y abriría el selector de archivos, que ya está en «Subir».
+const puedeSacarFoto = () => { try{ return !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches); }catch(e){ return false; } };
+function sacarFotoDeComprobante(destino){
+  if(gastosSubida && gastosSubida.corriendo) return;
+  gastosSubidaDestino = destino || null;
+  gastosFotoInput.value = "";
+  gastosFotoInput.click();
+}
+// La cámara entrega siempre el mismo nombre («image.jpg»): con un nombre que dice cuándo se sacó, cada foto se distingue
+// en la lista y en los avisos de «ya estaba cargado». No lleva fecha en la forma que lee `sugerirDeNombre`: la del
+// gasto la completa el lector o la persona, no el reloj del celular.
+function nombreDeFoto(f){
+  const d = new Date(), p2 = n => String(n).padStart(2, "0");
+  const ext = /png/i.test(f.type) ? "png" : /heic|heif/i.test(f.type) ? "heic" : "jpg";
+  const nombre = `Foto ${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}.${p2(d.getMinutes())}.${p2(d.getSeconds())}.${ext}`;
+  try{ return new File([f], nombre, { type: f.type, lastModified: f.lastModified }); }catch(e){ return f; }
+}
+const botonDeFoto = (clase, accion, extra) => puedeSacarFoto()
+  ? `<button type="button" class="${clase}" data-action="${accion}"${extra || ""}>📷 ${t("Sacar una foto","Take a photo","Tirar uma foto","צילום קבלה")}</button>` : "";
 // Uno por uno: primero la fila (la base deja subir a la carpeta de un gasto
 // que ya es tuyo), después el archivo y al final su ruta. Si el archivo no
 // sube, la fila se borra: no queda un gasto sin comprobante a medias.
@@ -27471,6 +27527,7 @@ function renderDestinoDeSubida(){
         <select id="gxDestino" class="gx-elige"><option value="-"${D.vinculo === "-" ? " selected" : ""} disabled>${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${opcionesDeVinculo({ fecha: todayISO() }, D.vinculo === "-" ? "-" : D.vinculo).replace(esc(t("Sin vincular (la asigno después)","Not linked yet (I'll assign it later)","Sem vínculo (atribuo depois)","לא משויך (אשייך אחר כך)")), esc(t("Todavía no sé (quedan sin vincular)","I don't know yet (they stay unlinked)","Ainda não sei (ficam sem vínculo)","עוד לא יודע/ת (יישארו לא משויכות)")))}</select></label>
       <div class="gx-acciones gx-acciones-chicas">
         <button type="button" class="btn-secondary" data-action="gastos-destino-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+        ${botonDeFoto("btn-secondary", "gastos-destino-foto", D.vinculo === "-" ? " disabled" : "")}
         <button type="button" class="btn-primary" data-action="gastos-destino-elegir" ${D.vinculo === "-" ? "disabled" : ""}>📎 ${t("Elegir los archivos","Choose the files","Escolher os arquivos","בחירת הקבצים")}</button>
       </div>
     </section>`;
@@ -28054,11 +28111,13 @@ function barraDeRendicion(r, gs, comoAdmin){
     `<button type="button" class="btn-primary" data-action="gasto-abrir" data-id="${esc(obs[0].id)}">${obs.length === 1 ? t("Ver el gasto observado","See the flagged expense","Ver a despesa observada","לצפייה בהוצאה עם ההערה") : t("Ver el primero","See the first one","Ver a primeira","לצפייה בראשונה")}</button>`);
   if(!gs.length && !Object.keys(r.totalManual || {}).length) return barraDePaso("neutro", t("Subí los comprobantes","Upload the receipts","Envie os comprovantes","העלו את הקבלות"), "",
     `<button type="button" class="btn-primary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes","Upload receipts","Enviar comprovantes","העלאת קבלות")}</button>
+     ${botonDeFoto("btn-secondary", "gastos-foto", ` data-id="${esc(r.id)}"`)}
      <button type="button" class="gx-link" data-action="gastos-total-abrir" data-id="${esc(r.id)}">${t("o anotar solo el total","or enter just the total","ou anotar só o total","או לרשום רק את הסכום")}</button>`);
   // Recién reabierta: todo lo que tiene ya está aprobado. Si falta algo, se sube; si al final no había nada que
   // sumar, se vuelve a mandar desde acá, con el mismo botón de siempre (lo pidió el usuario el 18/11).
   if(gs.length && gs.every(g => g.estado === "aprobado")) return barraDePaso("neutro", t("Reabierta: sumá lo que faltaba o volvé a mandarla","Reopened: add what was missing or send it again","Reaberta: some o que faltava ou mande de novo","נפתח מחדש: הוסיפו את מה שחסר או שלחו שוב"), "",
     `<button type="button" class="btn-secondary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes","Upload receipts","Enviar comprovantes","העלאת קבלות")}</button>
+     ${botonDeFoto("btn-secondary", "gastos-foto", ` data-id="${esc(r.id)}"`)}
      <button type="button" class="btn-primary" data-action="gastos-enviar" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Mandando…","Sending…","Enviando…","שולח…") : t("Volver a mandar la rendición","Send the report again","Mandar a prestação de novo","שליחה חוזרת של הדוח")}</button>`);
   if(faltan) return barraDePaso("aviso", textoFaltan(faltan),
     "", botonRevisar(r.id));
@@ -28069,7 +28128,7 @@ function barraDeRendicion(r, gs, comoAdmin){
 }
 // Arriba de la lista: cuántos gastos son, y lo de menos uso como links (subir más, seleccionar varios).
 function cabeceraDeFilas(rid, n, subir, titulo){
-  const links = subir ? `<button type="button" class="gx-link gx-subir-aca" data-action="gastos-subir" data-id="${esc(rid)}">📎 ${t("Subir más","Upload more","Enviar mais","העלאת עוד")}</button>` : "";
+  const links = subir ? `<button type="button" class="gx-link gx-subir-aca" data-action="gastos-subir" data-id="${esc(rid)}">📎 ${t("Subir más","Upload more","Enviar mais","העלאת עוד")}</button>${botonDeFoto("gx-link gx-subir-aca", "gastos-foto", ` data-id="${esc(rid)}"`)}` : "";
   return `<div class="gx-filas-cab"><h3 class="admin-h3 gx-filas-tit">${titulo || (n === 1 ? t("1 gasto","1 expense","1 despesa","הוצאה אחת") : t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות",{ n }))}</h3>${links ? `<div class="gx-filas-acc">${links}</div>` : ""}</div>`;
 }
 // La lista de gastos de una rendición. Si se reabrió (18/11), arriba lo nuevo o corregido —lo único que se revisa— y
@@ -29718,6 +29777,7 @@ async function prenderGastos(prendido){
 const GASTOS_ACCIONES = {
   "gastos-seccion": async el => { if(!await soltarLista()) return; gastosSeccion = el.dataset.key; gastosAbierta = null; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render(); scrollToTop(); },
   "gastos-subir": async el => { elegirComprobantes(el.dataset.id || (gastosAbierta && gastosAbierta !== "sin" ? gastosAbierta : null)); },
+  "gastos-foto": async el => { sacarFotoDeComprobante(el.dataset.id || (gastosAbierta && gastosAbierta !== "sin" ? gastosAbierta : null)); },
   "gastos-rendicion-quitar": async el => quitarRendicion(el.dataset.id),
   "gastos-rendicion-borrar": async el => borrarRendicionEntera(el.dataset.id),
   // Desplegar o plegar una rendición de la lista agrupada (el foco queda en su tarjeta).
@@ -29757,6 +29817,7 @@ const GASTOS_ACCIONES = {
   "gastos-destino-cancelar": async () => { gastosDestino = null; render(); const x = document.querySelector('[data-action="gastos-destino-abrir"]'); if(x) x.focus(); },
   // El selector de archivos se abre en el mismo toque (si no, el navegador lo frena); la rendición se abre al subir.
   "gastos-destino-elegir": async () => { const D = gastosDestino; if(!D || D.vinculo === "-") return; elegirComprobantes({ vinculo: D.vinculo }); gastosDestino = null; render(); },
+  "gastos-destino-foto": async () => { const D = gastosDestino; if(!D || D.vinculo === "-") return; sacarFotoDeComprobante({ vinculo: D.vinculo }); gastosDestino = null; render(); },
   "gastos-subida-cerrar": async () => { gastosSubida = null; if(lectorEstado && !lectorEstado.corriendo) lectorEstado = null; render(); },
   "gastos-abrir-rendicion": async el => { gastosAbierta = el.dataset.id; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render(); scrollToTop(); },
   "gastos-volver": async () => { if(!await soltarLista()) return; const id = gastosAbierta; gastosAbierta = null; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; gastosSel = null; render();
@@ -29970,7 +30031,7 @@ function gastosAlEscribir(el, evento){
     return true;
   }
   if(el.id === "gxListaDestino" && gastosLista){ gastosLista.destino = el.value; return true; }
-  if(el.id === "gxDestino" && gastosDestino){ gastosDestino.vinculo = el.value; const b = document.querySelector('[data-action="gastos-destino-elegir"]'); if(b) b.disabled = el.value === "-"; return true; }
+  if(el.id === "gxDestino" && gastosDestino){ gastosDestino.vinculo = el.value; document.querySelectorAll('[data-action="gastos-destino-elegir"], [data-action="gastos-destino-foto"]').forEach(b => { b.disabled = el.value === "-"; }); return true; }
   if(el.dataset.gtotal && gastosTotal){
     const [i, campo] = el.dataset.gtotal.split(":");
     const f = gastosTotal.filas[Number(i)];
@@ -30046,6 +30107,12 @@ gastoOverlay.addEventListener("keydown", e => {
 gastosArchivosInput.addEventListener("change", () => {
   const files = [...(gastosArchivosInput.files || [])];
   gastosArchivosInput.value = "";
+  if(files.length) subirComprobantes(files, gastosSubidaDestino);
+});
+// La foto recién sacada: un solo archivo, con nombre propio, por el mismo camino que los demás.
+gastosFotoInput.addEventListener("change", () => {
+  const files = [...(gastosFotoInput.files || [])].map(nombreDeFoto);
+  gastosFotoInput.value = "";
   if(files.length) subirComprobantes(files, gastosSubidaDestino);
 });
 // El comprobante de la cuenta corriente: la foto achicada como la de un gasto, o el PDF tal cual.
