@@ -17,7 +17,8 @@
      palabras que van juntas («krav maga»), plural y tildes, varias palabras que
      aparecen en los mismos posteos son un solo tema, y un tema solo se muestra si
      el cambio no puede ser casualidad;
-   - con menos de 8 posteos en los 180 días, ni la sección ni la tarjeta.
+   - con menos de 8 posteos en los 180 días, la sección y la tarjeta dicen «todavía hay pocos datos»;
+     sin cambios que no puedan ser azar, dicen que nada cambió más de lo que podría ser azar (D23-A, 20/11/2026).
    Reportes
    - las categorías (Todo, Lugares, Tipos, Temas), «Ver las otras N» y «Mostrar menos»;
    - en la compu, un mosaico sin huecos (la primera ficha, grande); en el celular, filas;
@@ -33,7 +34,10 @@
    ====================================================================== */
 import { fileURLToPath as __aRuta } from "node:url";
 process.chdir(__aRuta(new URL(".", import.meta.url)));
-import { abrirNavegador, entrar, ADMIN, BASE, post, pais, tab, irAdmin, click } from "./app_de_mentira.mjs";
+import { abrirNavegador, entrar as entrarDeVerdad, ADMIN, BASE, post, pais, tab, irAdmin, click } from "./app_de_mentira.mjs";
+// Estas cuentas a mano (Chile 6 contra 2, Brasil 1 contra 5…) son de las reglas de antes del 20/11/2026, sin la prueba de
+// azar de lugares y tipos (D23-A): acá se apaga (window.__tendenciasZ = 0). La regla de verdad, en tendencias_azar_test.mjs.
+const entrar = (b, email, nombre, o = {}) => entrarDeVerdad(b, email, nombre, { ...o, iniciar: "window.__tendenciasZ = 0;" + (o.iniciar || "") });
 
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
@@ -281,16 +285,16 @@ const solo = (p, sel) => p.evaluate(s => document.querySelector(s) ? document.qu
   const pocas = vacia();
   poner(pocas, 4, "ahora", { pais: "Chile" }); poner(pocas, 3, "antes", { pais: "Brasil" });
   const { p } = await abrir({ width: 1280, height: 900 }, pocas);
-  eq("con 7 posteos en los 180 días: ni la sección en Reportes", await p.$$eval("#repTendencias", l => l.length), 0);
+  eq("con 7 posteos en los 180 días: la sección de Reportes dice que todavía hay pocos datos (D23-A), sin fichas", await p.evaluate(() => [document.querySelectorAll("#repTendencias .rep-mov-it").length, (document.querySelector("#repTendencias .rep-tend-vacio") || {}).textContent]), [0, "Todavía hay pocos datos para hablar de tendencias."]);
   await tab(p, "feed"); await p.waitForTimeout(300);
-  eq("…ni la tarjeta del Inicio", await p.$$eval(".fs-tendencias", l => l.length), 0);
+  eq("…y la tarjeta del Inicio también, sin filas", await p.evaluate(() => [document.querySelectorAll(".fs-tendencias .fila").length, (document.querySelector(".fs-tendencias .fs-poco") || {}).textContent]), [0, "Todavía hay pocos datos para hablar de tendencias."]);
   await p.close();
   const iguales = vacia();
   poner(iguales, 5, "ahora", { pais: "Chile" }); poner(iguales, 5, "antes", { pais: "Chile" }); poner(iguales, 3, "ahora", { pais: "Perú" }); poner(iguales, 3, "antes", { pais: "Perú" });
   const r = await abrir({ width: 1280, height: 900 }, iguales);
-  eq("con 16 posteos y nada que haya cambiado: la sección dice que no hubo cambios grandes, sin fichas", await r.p.evaluate(() => [document.querySelectorAll("#repTendencias .rep-mov-it").length, (document.querySelector("#repTendencias .rep-tend-vacio") || {}).textContent]), [0, "Nada cambió lo suficiente."]);
+  eq("con 16 posteos y nada que haya cambiado: la sección dice que no hubo cambios grandes, sin fichas", await r.p.evaluate(() => [document.querySelectorAll("#repTendencias .rep-mov-it").length, (document.querySelector("#repTendencias .rep-tend-vacio") || {}).textContent]), [0, "Nada cambió más de lo que podría ser azar."]);
   await tab(r.p, "feed"); await r.p.waitForTimeout(300);
-  eq("…y en el Inicio, sin tarjeta", await r.p.$$eval(".fs-tendencias", l => l.length), 0);
+  eq("…y en el Inicio, la tarjeta lo dice y no trae filas", await r.p.evaluate(() => [document.querySelectorAll(".fs-tendencias .fila").length, (document.querySelector(".fs-tendencias .fs-poco") || {}).textContent]), [0, "Nada cambió más de lo que podría ser azar."]);
   await r.p.close();
   // Doce países que cambiaron: nunca más de 10 (en Reportes, 6 + «Ver las otras 4»; en el Inicio, 5 + 5).
   const muchos = vacia();

@@ -30,8 +30,8 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if
 const RAIZ = __aRuta(new URL("../..", import.meta.url));
 const src = fs.readFileSync(process.env.INDEX || RAIZ + "index.html", "utf8");
 const g = hacerGrab(src);
-const trozos = ["XLSX_TIPO", "xmlEsc", "sinControl", "letraDeColumna", "serialDeFecha", "CRC_TABLA", "crc32", "comprimirRaw", "zipDe", "URL_DE_ENLACE", "xlsxDeTabla", "celdaCsv", "csvDeTabla"];
-const app = new Function(`${trozos.map(n => g(n)).join("\n")}\nreturn { xlsxDeTabla, csvDeTabla, letraDeColumna, serialDeFecha, zipDe };`)();
+const trozos = ["XLSX_TIPO", "xmlEsc", "sinControl", "letraDeColumna", "serialDeFecha", "CRC_TABLA", "crc32", "comprimirRaw", "zipDe", "URL_DE_ENLACE", "xlsxDeTabla", "celdaCsv"];
+const app = new Function(`${trozos.map(n => g(n)).join("\n")}\nreturn { xlsxDeTabla, celdaCsv, letraDeColumna, serialDeFecha, zipDe };`)();
 
 const leer = async blob => abrirZip(Buffer.from(await blob.arrayBuffer()));
 const tabla = filas => ({ hoja: "Actividades", columnas: [
@@ -90,10 +90,11 @@ eq("en hebreo la hoja se abre de derecha a izquierda", /<sheetView workbookViewI
   const h = leerHoja(z);
   eq("3.000 filas: la tabla llega a la 3001 y la última fila es la última", [leerTabla(z).ref, h[3000][2]], ["A1:F3001", "Título 2999"]);
 }
-// El CSV.
+// El CSV (lo que usan las exportaciones de la app): una celda que empieza como fórmula lleva un apóstrofo
+// (M11); un número, no. (Hasta el 20/11/2026 esto se probaba con csvDeTabla, que ninguna pantalla usaba.)
 {
-  const csv = app.csvDeTabla(T).split("\r\n");
-  eq("el CSV: títulos, y la fórmula con apóstrofo; el enlace va como dirección", [csv[0], csv[2].includes("\"'=HYPERLINK"), csv[1].includes("?post=p1"), csv[1].startsWith('"2026-03-10";2026;')], ['"Desde";"Año";"Título";"Texto";"Enlace";"Año"', true, true, true]);
+  eq("el CSV: la fórmula lleva apóstrofo y un texto común no", [app.celdaCsv('=HYPERLINK("http://malo")'), app.celdaCsv("Visita a Rosario")], ['"\'=HYPERLINK(""http://malo"")"', '"Visita a Rosario"']);
+  eq("el CSV: +, -, @ y tabulador también se marcan; un número negativo o con coma, no", [app.celdaCsv("+1+1"), app.celdaCsv("@x"), app.celdaCsv("\tx"), app.celdaCsv("-12,5"), app.celdaCsv(null)], ['"\'+1+1"', '"\'@x"', '"\'\tx"', '"-12,5"', '""']);
 }
 
 // Otro lector, el de verdad, si está.

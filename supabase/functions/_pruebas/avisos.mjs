@@ -266,5 +266,31 @@ eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "
   eq("si a la base no le corresponde (no es admin, muy seguido, tope del día), no sale nada", [rn[1], n.reg.correos.length], [{ enviado: false, motivo: "no-corresponde" }, 0]);
 }
 
+/* ---------- «Ya podés entrar», al aprobar un pedido de acceso (D26-A, 20/11/2026, 29-aviso-de-acceso.sql) ---------- */
+{
+  const aviso = { para: [{ email: "nuevo@x.com", nombre: "Nuevo Ingreso", lang: "es" }], autor: "Benny", en: "acceso", id: "nuevo@x.com" };
+  const m = mundo({ otros: { preparar_aviso_de_acceso: aviso } });
+  const r = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "acceso", id: "nuevo@x.com" } }), { env: entorno(), fetch: m.traer, esperar: m.esperar }));
+  eq("acceso aprobado: se le pregunta a la base con la sesión de quien aprueba y sale UN correo, a quien pidió entrar",
+     [r, m.reg.rpc.map(x => x.nombre), m.reg.rpc[0].auth, m.reg.cuerpos[0], m.reg.correos.map(c => c.to)],
+     [[200, { enviado: true, enviados: 1 }], ["preparar_aviso_de_acceso", "tomar_aviso"], "Bearer sesion-de-ana", { p_email: "nuevo@x.com" }, [["nuevo@x.com"]]]);
+  const c = m.reg.correos[0];
+  eq("el correo: asunto, saludo por su nombre, enlace a la app, y sin «Mis preferencias» (todavía no tiene)",
+     [c.subject, c.text.includes("Hola Nuevo: te aprobaron el acceso a Toldot"), c.text.includes(APP), /preferencias/i.test(c.html)],
+     ["Ya podés entrar a Toldot", true, true, false]);
+  for(const [lang, asunto] of [["en", "You can now sign in to Toldot"], ["pt", "Você já pode entrar no Toldot"], ["he", "אפשר להיכנס לתולדות"]]){
+    const k = mundo({ otros: { preparar_aviso_de_acceso: { ...aviso, para: [{ ...aviso.para[0], lang }] } } });
+    await atenderAviso(pedir({ cuerpo: { tipo: "acceso", id: "nuevo@x.com" } }), { env: entorno(), fetch: k.traer, esperar: k.esperar });
+    const ck = k.reg.correos[0];
+    eq(`${lang}: el asunto en su idioma${lang === "he" ? " y de derecha a izquierda" : ""}`, [ck.subject, lang === "he" ? ck.html.includes('dir="rtl"') : true], [asunto, true]);
+  }
+  const x = mundo({ otros: { preparar_aviso_de_acceso: { ...aviso, para: [{ ...aviso.para[0], nombre: "<img src=x onerror=alert(1)>" }] } } });
+  await atenderAviso(pedir({ cuerpo: { tipo: "acceso", id: "nuevo@x.com" } }), { env: entorno(), fetch: x.traer, esperar: x.esperar });
+  eq("un nombre con HTML no se cuela al correo", /<img src=x/.test(x.reg.correos[0].html), false);
+  const n = mundo({ otros: { preparar_aviso_de_acceso: null } });
+  const rn = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "acceso", id: "otro@x.com" } }), { env: entorno(), fetch: n.traer, esperar: n.esperar }));
+  eq("si a la base no le corresponde (no es admin, no es nuevo, ya salió uno), no sale nada", [rn[1], n.reg.correos.length], [{ enviado: false, motivo: "no-corresponde" }, 0]);
+}
+
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import { chromium } from "playwright";
 import { fileURLToPath as __aRuta } from "node:url";
-import { conHuellas, scriptsEscritos } from "../publicar/csp.mjs";
+import { conHuellas, scriptsEscritos, huella } from "../publicar/csp.mjs";
+import { achicar } from "../publicar/achicar.mjs";
 process.chdir(__aRuta(new URL(".", import.meta.url)));
 const RAIZ = __aRuta(new URL("../..", import.meta.url));
 
@@ -21,10 +22,13 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
   if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
 
 const fuente = fs.readFileSync(process.env.INDEX || RAIZ + "index.html", "utf8");
-const publicada = conHuellas(fuente);
+// Tal como sale de «Publicar el sitio»: primero se achica (achicar.mjs, 20/11/2026) y sobre eso se arman las huellas.
+const achicada = achicar(fuente);
+const publicada = conHuellas(achicada);
 const csp = h => (h.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/) || [, ""])[1];
-eq("lo único que cambia es la CSP", publicada.replace(csp(publicada), ""), fuente.replace(csp(fuente), ""));
-eq("una huella por cada script escrito en la página", (csp(publicada).match(/'sha256-/g) || []).length, scriptsEscritos(fuente).length);
+eq("lo único que cambia al ponerle las huellas es la CSP", publicada.replace(csp(publicada), ""), achicada.replace(csp(achicada), ""));
+eq("una huella por cada script escrito en la página", (csp(publicada).match(/'sha256-/g) || []).length, scriptsEscritos(achicada).length);
+eq("y la huella es la de lo que se publica (el script achicado), no la del fuente", scriptsEscritos(publicada).every(c => csp(publicada).includes(huella(c))), true);
 
 const APP = "https://team-latam.github.io/registro-acciones/";
 const b = await chromium.launch();

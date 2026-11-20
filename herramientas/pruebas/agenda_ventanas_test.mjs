@@ -175,7 +175,13 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   eq("celular (661 de alto): «Sumar a alguien» entra entero, sin desplazarse", await p.$eval(".ag-cuerpo", e => e.scrollHeight <= e.clientHeight + 1), true);
   eq("celular: «Sumar a alguien» sin el texto de ayuda de arriba", await cuantos(p, ".ag-cab small"), 0);
   eq("celular: Nombre y Cargo en el mismo renglón", await p.evaluate(() => { const n = document.getElementById("agFNombre").getBoundingClientRect(), c = document.getElementById("agFCargo").getBoundingClientRect(); return Math.abs(n.top - c.top) < 1 && n.right <= c.left; }), true);
-  eq("celular: «Rab a cargo» se lee entero en su campo", await p.$eval("#agFCargo", e => { const c = document.createElement("canvas").getContext("2d"), cs = getComputedStyle(e); c.font = cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily; return c.measureText(e.placeholder).width <= e.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 20; }), true);
+  // Esto mide el ancho de un texto con la letra de la marca (Montserrat). Donde no se puede bajar (este sandbox no
+  // llega a fonts.gstatic.com) cae a otra más ancha y la medición no dice nada del sitio: da rojo SIEMPRE, también
+  // con la página de hace un día (auditoría del 20/11/2026, Y14). Sin Montserrat se salta, y se dice; en GitHub, que
+  // sí la baja, se mide como siempre.
+  const conMontserrat = await p.evaluate(() => { const c = document.createElement("canvas").getContext("2d"); const t = "Rab a cargo mWiIl", m = f => { c.font = "16px " + f; return c.measureText(t).width; }; return m("Montserrat, monospace") !== m("monospace"); });
+  if(!conMontserrat) console.log("   (sin Montserrat en esta máquina: «Rab a cargo» no se mide acá, se mide en GitHub)");
+  else eq("celular: «Rab a cargo» se lee entero en su campo", await p.$eval("#agFCargo", e => { const c = document.createElement("canvas").getContext("2d"), cs = getComputedStyle(e); c.font = cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily; return c.measureText(e.placeholder).width <= e.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 20; }), true);
   eq("celular: «+ Otra institución» y «+ Otro teléfono» en el renglón del título de su campo", await p.evaluate(() => [...document.querySelectorAll(".ag-conlink")].map(c => {
     const t = c.querySelector(":scope > span:first-child").getBoundingClientRect(), l = c.querySelector(":scope > .ag-link").getBoundingClientRect();
     return Math.abs((t.top + t.bottom) / 2 - (l.top + l.bottom) / 2) < 8 && l.left > t.left; })), [true, true]);

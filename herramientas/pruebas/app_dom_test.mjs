@@ -35,6 +35,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 // la prueba arma antes de cargar la página y mira después.
 const FALSO = `
 const estado = window.__sb;
+estado.emitir = estado.emitir || ((tabla, tipo, fila) => (estado.suscripciones || []).filter(x => x.tabla === tabla && typeof x.cb === "function").forEach(x => x.cb({ eventType: tipo, new: fila, old: fila })));
 const MARCA = "1970-01-01T00:00:00.000Z";
 const claveDe = t => ({ members:"email", former_members:"email", access_requests:"email",
                         user_prefs:"email", app_config:"key" }[t] || "id");
@@ -176,6 +177,12 @@ export function createClient(url, clave){
       estado.rpc.push([nombre, copia(args)]);
       await new Promise(r => setTimeout(r, 0));
       if(estado.falloRpc) return { data: null, error: { code: "42501", message: "permission denied for function " + nombre } };
+      // La última entrada de cada persona, de TODO el registro (28-ultimas-entradas.sql).
+      if(nombre === "ultimas_entradas"){
+        const m = new Map();
+        (estado.tablas.audit_log || []).filter(x => x.type === "login").forEach(x => { const t = Date.parse(x.created_at) || 0; if(!m.has(x.actor_email) || t > m.get(x.actor_email)) m.set(x.actor_email, t); });
+        return { data: [...m].map(([email, t]) => ({ email, ultima: new Date(t).toISOString() })), error: null };
+      }
       if(nombre === "me_gusta_posteo") return conMeGusta("posts", args.p_id, args.p_puesto);
       if(nombre === "me_gusta_comentario") return conMeGusta("replies", args.p_id, args.p_puesto);
       if(nombre === "guardar_preferencias"){
@@ -485,7 +492,9 @@ export function createClient(url, clave){
     }; } },
     channel(nombre){
       estado.canales++;
-      const c = { on(){ return c; }, subscribe(fn){ setTimeout(() => fn && fn("SUBSCRIBED"), 0); return c; } };
+      // Guarda quién escucha qué tabla: una prueba puede simular el aviso de tiempo real de un cambio que hizo OTRA
+      // persona con window.__sb.emitir("posts", "UPDATE", fila).
+      const c = { on(tipo, filtro, cb){ (estado.suscripciones = estado.suscripciones || []).push({ tabla: filtro && filtro.table, cb }); return c; }, subscribe(fn){ setTimeout(() => fn && fn("SUBSCRIBED"), 0); return c; } };
       return c;
     },
     removeChannel(){ estado.canales--; },
@@ -1038,12 +1047,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   const secciones = () => p.$$eval(".mentions-menu .bell-section", es => es.map(e => e.textContent));
   const nuevos = () => p.$$eval(".mentions-menu .mention-item.nuevo", es => es.length);
   await p.click('[data-action="toggle-mentions-menu"]');
-  eq("campanita: las tres secciones, los eventos primero", await secciones(), ["Próximos eventos", "Respuestas a tus posteos", "Menciones"]);
+  eq("campanita: las tres secciones, los eventos primero", await secciones(), ["Próximos eventos", "Respuestas a tus actividades", "Menciones"]);
   // Nunca se había abierto: la respuesta y la mención llevan "Nuevo"; el
   // evento no, que no es algo que alguien le haya dicho.
   eq("campanita: lo que no se vio lleva la marca Nuevo", await nuevos(), 2);
   await p.click('.bell-filtros [data-action="bell-filtro"][data-key="respuestas"]');
-  eq("campanita: el filtro deja solo las respuestas", await secciones(), ["Respuestas a tus posteos"]);
+  eq("campanita: el filtro deja solo las respuestas", await secciones(), ["Respuestas a tus actividades"]);
   eq("campanita: y el panel sigue abierto", await visible(p, ".mentions-menu"), true);
   await p.click('.bell-filtros [data-action="bell-filtro"][data-key="todo"]');
   await p.click('[data-action="toggle-mentions-menu"]');
@@ -1105,8 +1114,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("tipos: la fila tocada con el mouse recupera el foco pero sin el anillo del navegador",
     await p.evaluate(() => { const a = document.activeElement; return [a.dataset.action, a.dataset.key, a.classList.contains("sin-anillo"), getComputedStyle(a).outlineStyle]; }),
     ["tipo-abrir", "visita", true, "none"]);
-  eq("tipos: la ficha no ofrece eliminarla (hay posteos) y dice por qué",
-    [!!(await p.$('.lp-panel [data-action="tipos-remove"]')), await p.$eval(".lp-pf", e => /No se puede eliminar: hay 2 posteos con este tipo/.test(e.textContent))],
+  eq("tipos: la ficha no ofrece eliminarla (hay actividades) y dice por qué",
+    [!!(await p.$('.lp-panel [data-action="tipos-remove"]')), await p.$eval(".lp-pf", e => /No se puede eliminar: hay 2 actividades con este tipo/.test(e.textContent))],
     [false, true]);
   await p.click('.lp-panel [data-action="tipos-move"][data-key="visita"][data-dir="1"]');
   eq("tipos: 'Bajar' la pone segunda y la ficha sigue abierta", [(await orden()).slice(0, 2), await visible(p, ".lp-panel")], [["Curso", "Visita"], true]);
@@ -1511,7 +1520,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     (document.querySelector(".ficha-lugar h2") || {}).textContent === "Argentina" && !!document.querySelector('.fl-migas [data-action="drill-zone"][data-zona="sur"]')), true);
   await p.click('.fl-migas [data-action="drill-clear"]');
   eq("zona: la lista de Países arranca con las tres zonas", await p.$$eval(".paises-zona", es => es.map(e => e.dataset.zona)), ["sur", "central", "norte"]);
-  eq("zona: con cuántos registros tiene cada una", await p.$eval('.paises-zona[data-zona="sur"] small', e => /^\d+ registros$/.test(e.textContent.trim())), true);
+  eq("zona: con cuántas actividades tiene cada una", await p.$eval('.paises-zona[data-zona="sur"] small', e => /^\d+ actividades$/.test(e.textContent.trim())), true);
   await p.click('.paises-zona[data-zona="sur"]');
   eq("zona: y cada una lleva a su ficha", await hasta(p, () => (document.querySelector(".ficha-lugar h2") || {}).textContent === "Región Sur"), true);
   // «Reporte del lugar»: se imprime con todo desplegado y sin botones.
@@ -1752,15 +1761,15 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   });
   await esperarTexto(p, "Reunión con la comunidad");
   const cuantas = () => p.$$eval("#viewRoot article.post", es => es.length);
-  eq("escritorio: la columna lateral está a la vista, con sus tres cajas",
+  eq("escritorio: la columna lateral está a la vista, con sus cuatro cajas (con pocos datos, «Tendencias» dice que todavía no hay de qué hablar: D23)",
     await p.$$eval(".feed-side .fs-box h4:not(.fs-sub)", es => es.map(e => e.textContent.replace(/^\S+\s/, ""))),
-    ["Próximos eventos", "Hitos por vencer", "Accesos directos"]);
+    ["Próximos eventos", "Hitos por vencer", "Tendencias", "Accesos directos"]);
   eq("escritorio: lo que se viene lista el taller de pasado mañana y el hito por vencer", await p.$$eval(".feed-side .fs-item .fs-what", es => es.map(e => e.textContent.trim())),
     ["🧳 Taller de pasado mañana", "Primera entrega"]);
-  // Acceso directo "Mis posteos": del admin es solo el proyecto.
+  // Acceso directo "Mis actividades": del admin es solo el proyecto.
   await p.click('.feed-side [data-action="feed-quick"][data-key="mine"]');
-  eq("escritorio: 'Mis posteos' deja solo lo del admin, con su ficha en la barra de filtros",
-    [await cuantas(), await p.$eval('.fb-ficha-abrir[data-cat="persona"]', e => e.textContent.trim())], [1, "👤 Mis posteos"]);
+  eq("escritorio: 'Mis actividades' deja solo lo del admin, con su ficha en la barra de filtros",
+    [await cuantas(), await p.$eval('.fb-ficha-abrir[data-cat="persona"]', e => e.textContent.trim())], [1, "👤 Mis actividades"]);
   // Guardar ese filtro con nombre: queda en la columna y en las preferencias.
   await p.click('[data-action="feed-saved-start"]');
   await p.type("#savedFilterName", "Lo mío");
@@ -1932,12 +1941,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("celular: la barra trae Inicio, Calendario, Países y Más, con el hueco del + en el medio",
     await p.$$eval(".bottom-nav > *", es => es.map(e => e.classList.contains("bn-gap") ? "+" : e.dataset.view || e.dataset.action)),
     ["feed", "calendario", "+", "paises", "toggle-more-menu"]);
-  // 6/10/2026: píldora de vidrio que flota, solo íconos (los nombres
-  // quedan para los lectores de pantalla).
-  eq("celular: la barra flota separada de los bordes, con vidrio, y muestra solo los íconos",
+  // 6/10/2026: píldora de vidrio que flota. Desde el 20/11/2026 (Z5, D27-A) cada ícono lleva su nombre
+  // a la vista, debajo (antes solo íconos, con los nombres para los lectores de pantalla).
+  eq("celular: la barra flota separada de los bordes, con vidrio, y cada ícono lleva su nombre a la vista",
     await p.evaluate(() => { const n = document.querySelector(".bottom-nav"), r = n.getBoundingClientRect(), c = getComputedStyle(n);
       const txt = document.querySelector('.bn-item[data-view="feed"] .bn-txt'), rt = txt.getBoundingClientRect();
-      return [r.left >= 8, innerHeight - r.bottom >= 8, c.backdropFilter !== "none", rt.width <= 1, txt.textContent.trim()]; }),
+      return [r.left >= 8, innerHeight - r.bottom >= 8, c.backdropFilter !== "none", rt.width > 20 && rt.height > 8, txt.textContent.trim()]; }),
     [true, true, true, true, "Inicio"]);
   // El + tiene que caer en el medio exacto de la pantalla, sobre el hueco
   // de la barra, y no corrido (pisaba "Países": la caja que lo envuelve es

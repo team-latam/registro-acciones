@@ -118,7 +118,7 @@ const enfocado = p => p.evaluate(() => document.activeElement && (document.activ
   eq("al volver, la ficha de abril sigue abierta", [await cuantos(p, ".rep-mes-ficha"), await texto(p, ".rep-mes-cab h4")], [1, "abril 2026"]);
   // El panel de filtros muestra el mes elegido.
   await click(p, col("2026-06")); await p.waitForTimeout(150); await click(p, ".rep-mes-ir"); await p.waitForSelector(".feed-solapas");
-  eq("junio: 1 posteo en la lista, y la línea explica que son 4 actividades", [await texto(p, '.feed-solapas button[data-key="pasado"] .fs-n'), /4 actividades en 1 posteo/.test(await texto(p, ".fb-nota"))], ["1", true]);
+  eq("junio: 1 actividad en la lista, y la línea explica que son 4 veces", [await texto(p, '.feed-solapas button[data-key="pasado"] .fs-n'), /4 veces en 1 actividad/.test(await texto(p, ".fb-nota"))], ["1", true]);
   await p.evaluate(() => window.scrollTo(0, 0)); await click(p, "#fbFiltros"); await p.waitForSelector(".fp-panel");
   await click(p, '.fp-item[data-cat="fecha"]'); await p.waitForTimeout(200);
   eq("el panel de filtros muestra «junio 2026» elegido, y ningún año", [await p.$$eval(".fp-op.on", l => l.map(e => e.textContent.replace(/\s+/g, " ").trim())), await cuantos(p, ".fp-tris")], [["junio 2026"], 0]);

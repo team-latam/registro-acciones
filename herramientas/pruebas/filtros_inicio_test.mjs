@@ -93,7 +93,7 @@ const b = await abrirNavegador();
   eq("«Ver N posteos» aplica", await fichas(p), ["📍 Argentina", `📅 ${anterior}`, "👤 Ana Pérez"]);
   eq("y cierra", await abierto(p), false);
   const n = await solapas(p);
-  eq("y quedan los posteos que prometía", `Ver ${n} ${n === 1 ? "posteo" : "posteos"}`, prometido);
+  eq("y quedan las actividades que prometía", `Ver ${n} ${n === 1 ? "actividad" : "actividades"}`, prometido);
   eq("la barra cuenta tres filtros", await p.$eval("#fbFiltros .fb-cuenta", e => e.textContent), "3");
 
   // Enter aplica (después de tocar con el mouse, sin anillo de teclado).
@@ -120,7 +120,7 @@ const b = await abrirNavegador();
   await p.click("#fbFiltros"); await p.waitForTimeout(200);
   await p.click('.fp-atajos [data-key="mine"]'); await p.click('.fp-atajos [data-key="mes"]'); await p.waitForTimeout(150);
   await p.click(".fp-ver"); await p.waitForTimeout(300);
-  eq("Mis posteos y Este mes, juntos", await fichas(p), ["📍 Argentina", "📅 Este mes", "👤 Mis posteos"]);
+  eq("Mis actividades y Este mes, juntos", await fichas(p), ["📍 Argentina", "📅 Este mes", "👤 Mis actividades"]);
   eq("la columna de la derecha marca los dos", await p.$$eval(".feed-side .fs-link.active", l => l.map(e => e.dataset.key)), ["mine", "mes"]);
 
   // «Qué incluir» vive adentro de Lugar, con los números de lo demás puesto.

@@ -1,5 +1,5 @@
 /* ======================================================================
-   «Ver N posteos» del panel de filtros cuenta lo que se va a ver
+   «Ver N actividades» del panel de filtros cuenta lo que se va a ver
    (auditoría del 10/10/2026, R21)
 
    El botón sumaba las dos solapas del Inicio (lo que pasó y lo que viene)
@@ -14,7 +14,7 @@ let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
 const b = await abrirNavegador();
 
-for(const [lang, patron] of [["", /^Ver (\d+) posteos?$/], ["en", /^See (\d+) posts?$/]]){
+for(const [lang, patron] of [["", /^Ver (\d+) actividad(?:es)?$/], ["en", /^See (\d+) activit(?:y|ies)$/]]){
   const idioma = lang || "es";
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 1280, height: 900 }, lang });
   const cuentas = () => p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".feed-solapas button[data-key]")].map(e => [e.dataset.key, Number(e.querySelector(".fs-n").textContent)])));

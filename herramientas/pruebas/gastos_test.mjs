@@ -607,8 +607,8 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     return p.$$eval(".post-menu-item", l => l.filter(e => e.offsetParent).map(e => e.dataset.action)); };
   // El +: «Subir comprobantes».
   await p.click("#fabMain"); await p.waitForTimeout(150);
-  eq("el + tiene «Subir comprobantes», debajo de «Nuevo posteo» y «Nuevo evento»", await p.$$eval(".fab-action", l => l.filter(b => !b.hidden).map(b => b.textContent.trim())),
-    ["📝Nuevo posteo", "📅Nuevo evento", "🧾Subir comprobantes"]);
+  eq("el + tiene «Subir comprobantes», debajo de «Nueva actividad» y «Nuevo evento»", await p.$$eval(".fab-action", l => l.filter(b => !b.hidden).map(b => b.textContent.trim())),
+    ["📝Nueva actividad", "📅Nuevo evento", "🧾Subir comprobantes"]);
   await p.click("#fabGastos");
   eq("…lleva a «Por rendir», con «¿De qué son estos comprobantes?» abierto y el foco ahí", await hasta(p, () => !!document.querySelector(".gastos-view") && document.activeElement.id === "gxDestino"
     && document.querySelector('.admin-menu [data-key="rendir"]').classList.contains("active")), true);

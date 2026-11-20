@@ -26,7 +26,7 @@ const armar = () => {
     post({ id: "hoy", title: "Visita de hoy", d: 0, a: 1, type: "visita", scopes: [ciudad("Argentina", "Bariloche")], content: "" }),
     post({ id: "ayer", title: "Visita de ayer", d: 1, a: 1, type: "visita", scopes: [ciudad("Argentina", "Rosario")], content: "" }),
     post({ id: "tres", title: "Visita de hace tres días", d: 3, a: 1, type: "visita", scopes: [ciudad("Argentina", "Cordoba")], content: "" }),
-    // Un lugar sin visitas, solo con un registro de ayer: «Todavía no hay visitas… Último registro…»
+    // Un lugar sin visitas, solo con una actividad de ayer: «Todavía no hay visitas… Última actividad…»
     post({ id: "rut", title: "Llamado de ayer", d: 1, a: 1, type: "rutina", scopes: [ciudad("Chile", "Santiago")], content: "Llamado" }),
   ];
   b.replies = [];
@@ -51,10 +51,10 @@ const MALOS = /\b1 days ago|\b0 days ago|hace 1 días|hace 0 días|há 1 dias|h�
 
 // Por idioma: [Argentina → filas de las tres ciudades], [Rosario → lectura y «Última»], [Chile → sin visitas]
 const ESPERADO = {
-  en: { hoy: "latest: today", ayer: "latest: 1 day ago", tres: "latest: 3 days ago", lectura: /Last visit 1 day ago/, ultima: /1 day ago/, sinVisitas: /Last record 1 day ago/ },
-  es: { hoy: "último: hoy", ayer: "último: hace 1 día", tres: "último: hace 3 días", lectura: /Última visita hace 1 día(?!s)/, ultima: /hace 1 día(?!s)/, sinVisitas: /Último registro hace 1 día(?!s)/ },
-  pt: { hoy: "último: hoje", ayer: "último: há 1 dia", tres: "último: há 3 dias", lectura: /Última visita há 1 dia(?!s)/, ultima: /há 1 dia(?!s)/, sinVisitas: /Último registro há 1 dia(?!s)/ },
-  he: { hoy: "אחרון: היום", ayer: "אחרון: לפני יום", tres: "אחרון: לפני 3 ימים", lectura: /ביקור אחרון לפני יום(?! ?ימים)/, ultima: /לפני יום(?! ?ימים)/, sinVisitas: /רשומה אחרונה לפני יום/ },
+  en: { hoy: "latest: today", ayer: "latest: 1 day ago", tres: "latest: 3 days ago", lectura: /Last visit 1 day ago/, ultima: /1 day ago/, sinVisitas: /Last activity 1 day ago/ },
+  es: { hoy: "último: hoy", ayer: "último: hace 1 día", tres: "último: hace 3 días", lectura: /Última visita hace 1 día(?!s)/, ultima: /hace 1 día(?!s)/, sinVisitas: /Última actividad hace 1 día(?!s)/ },
+  pt: { hoy: "último: hoje", ayer: "último: há 1 dia", tres: "último: há 3 dias", lectura: /Última visita há 1 dia(?!s)/, ultima: /há 1 dia(?!s)/, sinVisitas: /Última atividade há 1 dia(?!s)/ },
+  he: { hoy: "אחרון: היום", ayer: "אחרון: לפני יום", tres: "אחרון: לפני 3 ימים", lectura: /ביקור אחרון לפני יום(?! ?ימים)/, ultima: /לפני יום(?! ?ימים)/, sinVisitas: /פעילות אחרונה לפני יום/ },
 };
 for(const lang of ["en", "es", "pt", "he"]){
   const E = ESPERADO[lang];
@@ -72,11 +72,11 @@ for(const lang of ["en", "es", "pt", "he"]){
   eq(`${lang}: Rosario no tiene «1 días» ni «0 días» en ninguna parte`, MALOS.test(rosario.pagina), false);
   await p.close();
 
-  // Un lugar con registros pero sin visitas: «Todavía no hay visitas cargadas. Último registro hace 1 día.»
+  // Un lugar con actividades pero sin visitas: «Todavía no hay visitas cargadas. Última actividad hace 1 día.»
   const chile = await abrir(lang);
   await irPais(chile.p, "Chile"); await irCiudad(chile.p, "Santiago");
   const stgo = await leer(chile.p);
-  eq(`${lang}: «sin visitas, último registro» usa el singular`, E.sinVisitas.test(stgo.lectura), true);
+  eq(`${lang}: «sin visitas, última actividad» usa el singular`, E.sinVisitas.test(stgo.lectura), true);
   eq(`${lang}: sin errores de página`, [...errores, ...chile.errores], []);
   await chile.p.close();
 }

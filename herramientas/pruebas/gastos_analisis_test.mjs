@@ -28,7 +28,7 @@ const set = async (p, k, v) => { await p.click(`[data-action="gastos-ana-set"][d
 
 const Y = new Date().getFullYear();
 const hace = d => new Date(Date.now() - d * 86400e3).toISOString();
-const FIN = { email: "fabi@team-latam.com", name: "Fabi Finanzas", nickname: "fabi", role: "finance" };
+const FIN = { email: "fabi@x.com", name: "Fabi Finanzas", nickname: "fabi", role: "finance" };
 const BENNY = ADMIN, ANA = PERS[1].email, LUCIA = PERS[3].email, DIEGO = PERS[2].email;
 const g = (o) => ({ autor: ADMIN, rendicion_id: null, fecha: null, concepto: "", tipo: null, moneda: "USD", monto: null, rendido_moneda: "USD", rendido_monto: null,
   pago: "persona", forma_pago: null, tarjeta: null, factura: true, observaciones: "", estado: "aprobado", archivo: null, archivo_nombre: null,

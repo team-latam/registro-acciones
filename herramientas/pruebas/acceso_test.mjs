@@ -77,6 +77,10 @@ function armar(){
     const avisarAlAdminUnaVez = ()=>{ reg.avisos = (reg.avisos || 0) + 1; };
     // La lista de «Algo no anda» (13/10/2026) se trae una vez al entrar el admin: acá no importa.
     const cargarProblemas = ()=>{};
+    // Lo que se suma el 20/11/2026 a onAuthChanged: los borradores de otra cuenta se borran al entrar (Y9) y la última entrada de cada
+    // persona se pide aparte (Y7). Acá no importan.
+    const borradoresDeOtraSesion = ()=>{};
+    const cargarUltimasEntradas = ()=>{};
     const anotar = n => ()=>{ reg.suscripciones.push(n); return ()=>{}; };
     const subscribeData = anotar("posts"), subscribeAccessRequests = anotar("solicitudes"),
           subscribeAuditLog = anotar("auditoria"), subscribeRoster = anotar("padron"),
@@ -304,7 +308,7 @@ for(const [role, esperado] of [[undefined,"approved"],["member","approved"],["ob
    pedido viejo): tiene que limpiar la cola sin tocarle la ficha.
 ------------------------------------------------------------------ */
 function armarAprobacion(fichaExistente, personas = [], descartados = []){
-  const reg = { altas:[], estados:[], borradosEx:[], auditoria:[], vinculadas:[] };
+  const reg = { altas:[], estados:[], borradosEx:[], auditoria:[], vinculadas:[], avisos:[] };
   const store = {
     // Personas sin cuenta (7/10/2026): si una ficha tiene este correo, al
     // aprobar se le pasa el historial a la cuenta nueva.
@@ -329,6 +333,8 @@ function armarAprobacion(fichaExistente, personas = [], descartados = []){
     const parecidosDescartados = new Set(ctx.descartados || []);
     const takenNicknames = async ()=> new Set();
     const makeNickname = (nombre)=> "laura";
+    // El correo «Ya podés entrar» (D26, 20/11/2026): acá solo se anota a quién se le pide.
+    const avisarPorCorreo = (tipo, id) => { reg.avisos.push([tipo, id]); };
     ${grab("approveRequest")}
     return { approveRequest };
   `)({ store, reg, personas, descartados });
@@ -357,6 +363,7 @@ function armarAprobacion(fichaExistente, personas = [], descartados = []){
   eq("a quien ya es integrante no se le rehace la ficha", a.reg.altas, []);
   eq("solo se saca el pedido de la cola", a.reg.estados, [{ email:"laura@x.com", status:"approved" }]);
   eq("y queda registrado igual", a.reg.auditoria, ["access_approved"]);
+  eq("y no se le manda «Ya podés entrar»: ya entraba", a.reg.avisos, []);
 }
 {
   const a = armarAprobacion(null);
@@ -365,6 +372,7 @@ function armarAprobacion(fichaExistente, personas = [], descartados = []){
   eq("con su @nickname", a.reg.altas[0].nickname, "laura");
   eq("como integrante", a.reg.altas[0].role, "member");
   eq("y el pedido queda aprobado", a.reg.estados, [{ email:"laura@x.com", status:"approved" }]);
+  eq("y se le pide a la función de avisos el correo «Ya podés entrar», por su dirección", a.reg.avisos, [["acceso", "laura@x.com"]]);
 }
 
 /* ------------------------------------------------------------------

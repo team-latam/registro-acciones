@@ -38,7 +38,7 @@ const datos = () => {
   base.posts = base.posts.concat([post({ title: '=HYPERLINK("http://x")', d: 1, a: 1, type: "otro", scopes: [ciudad("Argentina", "Rosario")], content: "Texto con ; punto y coma y \"comillas\"." })]);
   return base;
 };
-const TITULOS = ["Desde", "Hasta", "Año", "Mes", "Tipo", "Título", "Texto del posteo", "Países", "Ciudades", "Zonas", "Alcance", "Dónde", "Cargó", "Correo de quien cargó", "Participantes", "Cantidad de participantes", "Estado", "Proyecto", "Se repite", "Objetivos", "Objetivos logrados", "Pasos pendientes", "Pasos hechos", "Cargado el", "Enlace"];
+const TITULOS = ["Desde", "Hasta", "Año", "Mes", "Tipo", "Título", "Texto de la actividad", "Países", "Ciudades", "Zonas", "Alcance", "Dónde", "Cargó", "Correo de quien cargó", "Participantes", "Cantidad de participantes", "Estado", "Proyecto", "Se repite", "Objetivos", "Objetivos logrados", "Pasos pendientes", "Pasos hechos", "Cargado el", "Enlace"];
 
 // Baja lo que dispara `hacer` y lo lee: { nombre, zip, filas, tabla }.
 async function bajar(p, hacer){
@@ -91,12 +91,12 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   eq("la visita a Rosario, cada dato en su columna: tipo, país, ciudad, zona, cargó, correo, participantes, cuántos, estado, proyecto",
     rosario && ["Tipo", "Países", "Ciudades", "Zonas", "Cargó", "Correo de quien cargó", "Participantes", "Cantidad de participantes", "Estado", "Proyecto"].map(n => rosario[col(n)]),
     ["Visita", "Argentina", "Rosario", "Sur", "Ana Pérez", PERS[1].email, "Diego Martínez; Lucía Fernández Goldberg", 2, "Hecha", "No"]);
-  eq("…con el texto del posteo entero (también los saltos de línea)", rosario[col("Texto del posteo")].startsWith("Reunión con la comisión directiva") && rosario[col("Texto del posteo")].includes("\n\nQuedó pendiente la charla con los padres."), true);
+  eq("…con el texto del posteo entero (también los saltos de línea)", rosario[col("Texto de la actividad")].startsWith("Reunión con la comisión directiva") && rosario[col("Texto de la actividad")].includes("\n\nQuedó pendiente la charla con los padres."), true);
   eq("…y su cierre: 3 objetivos, 2 logrados, 2 pasos pendientes y 1 hecho", ["Objetivos", "Objetivos logrados", "Pasos pendientes", "Pasos hechos"].map(n => rosario[col(n)]), [3, 2, 2, 1]);
   eq("las fechas son fechas de Excel (números con estilo de fecha), y el año y el mes, números", [typeof rosario[col("Desde")], typeof rosario[col("Año")], rosario[col("Mes")] >= 1 && rosario[col("Mes")] <= 12], ["number", "number", true]);
   eq("«Enlace» es un hipervínculo al posteo", rosario[col("Enlace")] && /^HYPERLINK\(".*\?post=[\w-]+","Abrir"\)$/.test(rosario[col("Enlace")].f), true);
   const formula = r.filas.find(f => f && f[col("Título")] === '=HYPERLINK("http://x")');
-  eq("un título que empieza con = queda como texto, no como fórmula; y su texto con ; y comillas, igual", formula && [formula[col("Título")], formula[col("Texto del posteo")]], ['=HYPERLINK("http://x")', 'Texto con ; punto y coma y "comillas".']);
+  eq("un título que empieza con = queda como texto, no como fórmula; y su texto con ; y comillas, igual", formula && [formula[col("Título")], formula[col("Texto de la actividad")]], ['=HYPERLINK("http://x")', 'Texto con ; punto y coma y "comillas".']);
   eq("de la más vieja a la más nueva", r.filas.slice(1).map(f => f[0]).every((d, i, l) => i === 0 || l[i - 1] <= d), true);
   // En «Próximos», sin filtros, baja lo mismo: todo.
   await p.click('[data-action="feed-solapa"][data-key="futuro"]'); await p.waitForTimeout(400);

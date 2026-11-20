@@ -26,7 +26,7 @@ const rpcs = (p, n) => p.evaluate(n => window.__sb.rpc.filter(r => r[0] === n).m
 
 const Y = new Date().getFullYear(), ahora = Date.now();
 const hace = d => new Date(ahora - d * 86400e3).toISOString();
-const ANA = PERS[1], DIEGO = PERS[2], FIN = { email: "fabi@team-latam.com", name: "Fabi Finanzas", nickname: "fabi", role: "finance" };
+const ANA = PERS[1], DIEGO = PERS[2], FIN = { email: "fabi@x.com", name: "Fabi Finanzas", nickname: "fabi", role: "finance" };
 const g = (o) => ({ autor: ADMIN, rendicion_id: null, fecha: null, concepto: "", tipo: null, moneda: "USD", monto: null, rendido_moneda: "USD", rendido_monto: null,
   pago: "persona", forma_pago: null, tarjeta: null, factura: true, observaciones: "", estado: "aprobado", archivo: null, archivo_nombre: null,
   archivo_tipo: "image/jpeg", archivo_hash: null, lectura: null, creado_el: hace(3), tocado_el: hace(3), ...o });

@@ -30,6 +30,10 @@ insert into esperadas values
   ('datos_del_pedido()',                    true, true),   -- navegador e IP de SU propio pedido
   -- Gastos (27-gastos.sql): dicen algo de QUIEN LLAMA y nada de los demás.
   -- Las usan las políticas; sin sesión contestan «no».
+  -- Última entrada de cada persona (28-ultimas-entradas.sql, 20/11/2026): solo devuelve filas a un admin.
+  ('ultimas_entradas()',                    false, true),
+  -- «Ya podés entrar» (29-aviso-de-acceso.sql, D26-A): solo un admin, solo para alguien recién aprobado, una vez.
+  ('preparar_aviso_de_acceso(text)',        false, true),
   ('gastos_habilitado()',                   true, true),   -- security definer: ¿los gastos están abiertos para mí?
   ('gastos_archivo_visible(text)',          true, true),   -- security definer: ¿puedo ver ESTE comprobante? (sí solo si es mío o soy admin)
   ('gastos_archivo_subible(text)',          true, true),   -- security definer: ¿puedo subir a ESTA ruta? (solo a un gasto mío que se puede corregir)

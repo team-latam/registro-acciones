@@ -1089,5 +1089,34 @@ eq("el adaptador sabe dar la miniatura de una foto y olvidar las firmas al salir
   }
 }
 
+{
+  // Auditoría del 20/11/2026. S1: los comprobantes de Gastos (tickets, facturas) se firman por 6 horas y NO se guardan en
+  // el aparato; el resto sigue en una semana. Y17: el pedido de firmas se parte en tandas de 400, no uno solo gigante.
+  const nav = navegadorDeMentira();
+  const sbX = supabaseDeMentira();
+  const objetos = new Set();
+  const filas = [];
+  for(let i = 0; i < 45; i++){ const imgs = []; for(let k = 0; k < 20; k++){ imgs.push(`posts/q${i}/img${k}_1.jpg`); objetos.add(`posts/q${i}/img${k}_1.jpg`); } filas.push({ id: "q" + i, title: "x", images: imgs, files: [] }); }
+  sbX.reg.objetos = objetos;
+  sbX.ponerFilas("posts", filas);
+  sbX.ponerFilas("gastos", [{ id: "g1", archivo: "gastos/g1/comprobante_1.jpg", estado: "borrador" }, { id: "g2", archivo: "gastos/g2/comprobante_2.pdf", estado: "borrador" }]);
+  objetos.add("gastos/g1/comprobante_1.jpg"); objetos.add("gastos/g2/comprobante_2.pdf");
+  const stX = nav.crear(sbX);
+  stX.posts.subscribe(() => {});
+  stX.gastos.subscribe(() => {}, () => {}, true);
+  await aTiempo(); await aTiempo();
+  const pedidos = sbX.reg.firmadas || [];
+  const deGastos = pedidos.filter(p => p[1].some(r => r.startsWith("gastos/")));
+  const delResto = pedidos.filter(p => !p[1].some(r => r.startsWith("gastos/")));
+  eq("ningún pedido de firmas mezcla Gastos con lo demás", pedidos.filter(p => p[1].some(r => r.startsWith("gastos/")) && p[1].some(r => !r.startsWith("gastos/"))).length, 0);
+  eq("los comprobantes de Gastos se firman por 6 horas", deGastos.length > 0 && deGastos.every(p => p[2] === 6 * 60 * 60), true);
+  eq("lo demás, por una semana", delResto.length > 0 && delResto.every(p => p[2] === 7 * 24 * 60 * 60), true);
+  eq("ningún pedido pasa de 400 direcciones", Math.max(...pedidos.map(p => p[1].length)) <= 400, true);
+  eq("900 fotos con sus miniaturas se piden en varias tandas, no en un pedido gigante", delResto.length >= 4, true);
+  eq("y todas las fotos llegaron a firmarse", new Set(delResto.flatMap(p => p[1]).filter(r => !r.endsWith(".min.jpg"))).size, 900);
+  const guardado = nav.guardado.get(CLAVE_FIRMAS) || "";
+  eq("las firmas de las fotos quedan guardadas en el navegador", guardado.includes("posts/q0/img0_1"), true);
+  eq("las de los comprobantes de Gastos, NO", guardado.includes("gastos/"), false);
+}
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

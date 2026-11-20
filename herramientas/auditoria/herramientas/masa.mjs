@@ -102,7 +102,7 @@ for(const [nombre, armar] of ESCALAS){
     const { p } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 1440, height: 900 }, base: equipoAlAzar(N, s * 977 + N) });
     await p.waitForTimeout(250);
     const txt = await p.evaluate(() => { const e = [...document.querySelectorAll("aside")].map(x => x.innerText).join("\n"); const i = e.indexOf("TENDENCIAS"); const j = e.indexOf("ACCESOS DIRECTOS"); return i < 0 ? "" : e.slice(i, j < 0 ? i + 500 : j); });
-    if(txt){ con++; if(!ejemplo) ejemplo = txt.replace(/\s+/g, " ").replace(/\s*↗\s*/g, " ").slice(0, 150); }
+    if(/→/.test(txt)){ con++; if(!ejemplo) ejemplo = txt.replace(/\s+/g, " ").replace(/\s*↗\s*/g, " ").slice(0, 150); }
     await p.close();
   }
   if(con >= SEMILLAS / 2) out.push(hallazgo("datos", "medio", "«Tendencias» muestra cambios aunque no haya ninguna (puro azar)", `${N} actividades al azar en 180 días`, `aparece en ${con} de ${SEMILLAS} equipos; ej.: ${ejemplo}`));
@@ -201,6 +201,7 @@ for(const [nombre, armar] of ESCALAS){
       if(!r.width || !r.height || cs.visibility === "hidden" || cs.display === "none" || e.closest("[hidden]") || e.classList.contains("skip-link")) continue;
       if(e.tagName === "DIV" && e.querySelector("button, a, input")) continue;
       if(Math.min(r.width, r.height) >= 24) continue;
+      if(cs.display === "inline" && e.parentElement && e.parentElement.textContent.trim().length > e.textContent.trim().length + 8) continue;   // WCAG 2.2 (2.5.8): un enlace dentro de un texto corrido queda exceptuado
       const k = (e.dataset.action || e.className || e.tagName).toString().slice(0, 30), o = m.get(k) || { n: 0, w: Math.round(r.width), h: Math.round(r.height) }; o.n++; m.set(k, o);
     }
     return [...m.entries()].sort((a, z) => z[1].n - a[1].n).map(([k, v]) => `${k} ${v.w}×${v.h} (×${v.n})`);

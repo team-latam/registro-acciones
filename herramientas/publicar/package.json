@@ -1,0 +1,8 @@
+{
+  "name": "registro-acciones-publicar",
+  "private": true,
+  "description": "Lo que hace falta para armar el sitio que se publica (achicar.mjs). La app no tiene build: esto corre solo al publicar y en las pruebas de lo publicado.",
+  "devDependencies": {
+    "esbuild": "0.24.2"
+  }
+}

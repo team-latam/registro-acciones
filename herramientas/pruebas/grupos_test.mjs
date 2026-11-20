@@ -111,7 +111,7 @@ const b = await abrirNavegador();
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 1280, height: 900 }, base });
   await tab(p, "paises"); await p.waitForTimeout(400);
   const jamaica = await p.$eval('.country-card[data-country="Jamaica"]', e => ({ propios: e.querySelector(".count").textContent.replace(/\s+/g, " ").trim(), cruces: [...e.querySelectorAll(".cross-line span")].map(x => x.textContent.trim()) }));
-  eq("Jamaica: lo suyo es 1 (lo del Caribe no cuenta como pasado ahí)", jamaica.propios, "1 registro");
+  eq("Jamaica: lo suyo es 1 (lo del Caribe no cuenta como pasado ahí)", jamaica.propios, "1 actividad");
   eq("Jamaica: «+1 de Región Norte» y «+1 del Caribe», cada uno por su lado", jamaica.cruces, ["+1 de Región Norte", "+1 del Caribe"]);
   eq("sin errores (Países)", errores, []);
   await p.close();

@@ -5,7 +5,7 @@
    Reportes cuenta cada vez que ocurre una reunión semanal (15 en lo que va
    del año); el Inicio la muestra en una sola tarjeta. Tocás «Argentina 17»
    y la lista tiene 3 posteos. Al venir de Reportes con un período, una línea
-   lo explica («17 actividades en 3 posteos…») y cuántas veces fue cada serie
+   lo explica («17 veces en 3 actividades…») y cuántas veces fue cada serie
    se ve recién al tocar «se repite…» en su tarjeta.
    ====================================================================== */
 import { abrirNavegador, entrar, ADMIN, BASE, post, pais, ciudad, dia, tab } from "./app_de_mentira.mjs";
@@ -43,8 +43,8 @@ for(const lang of ["", "en"]){
   const posteos = await numeroDe(p, '.feed-solapas button[data-key="pasado"] .fs-n');
   eq(`[${idioma}] el Inicio lista los 3 posteos`, posteos, 3);
   eq(`[${idioma}] y una línea explica la diferencia`, await texto(p, ".fb-nota"),
-     idioma === "es" ? `${total} actividades en 3 posteos. Lo que se repite cuenta cada vez: tocá «se repite…» en su tarjeta para ver cuántas.`
-                     : `${total} activities in 3 posts. Anything that repeats counts every time: tap “repeats…” on its card to see how many.`);
+     idioma === "es" ? `${total} veces en 3 actividades. Lo que se repite cuenta cada vez: tocá «se repite…» en su tarjeta para ver cuántas.`
+                     : `${total} times in 3 activities. Anything that repeats counts every time: tap “repeats…” on its card to see how many.`);
   eq(`[${idioma}] cuántas veces es cada serie NO se ve hasta tocar «se repite…»`, await cuantos(p, ".occ-pop-veces"), 0);
   await p.click('.occ-chip[data-post-id="lunes"]');
   await p.waitForSelector(".occ-pop-veces");

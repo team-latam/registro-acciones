@@ -2140,6 +2140,7 @@
   .fs-box{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:14px 14px 10px; margin-bottom:14px; }
   .fs-box h4{ margin:0 0 8px; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); }
   .fs-box h4.fs-sub{ margin-top:12px; }
+  .fs-poco{ margin:0 0 4px; font-size:13px; line-height:1.4; color:var(--text-muted); }
   .fs-item, .fs-link{
     display:flex; flex-direction:column; gap:1px; width:100%; text-align:start; background:none; border:none; padding:7px 8px; margin:0 -8px; width:calc(100% + 16px);
     border-radius:var(--radius-sm); font-family:inherit; font-size:13px; color:var(--text); cursor:pointer; line-height:1.35;
@@ -5053,9 +5054,11 @@
     .brand h1, .brand .sub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     /* La barra de abajo es una píldora de vidrio esmerilado que flota
        (pedido del usuario el 6/10/2026, "que se vea más invisible", con
-       una referencia tipo Instagram): deja ver lo de atrás borroso, solo
-       los íconos, y la sección actual con una pastilla clara detrás. Los
-       nombres siguen ahí para los lectores de pantalla (.bn-txt). */
+       una referencia tipo Instagram): deja ver lo de atrás borroso y la
+       sección actual con una pastilla clara detrás. Hasta el 20/11/2026
+       eran solo íconos (los nombres, solo para los lectores de pantalla);
+       desde la auditoría (Z5, D27-A) cada ícono lleva su nombre debajo
+       (.bn-txt), porque un emoji solo no dice adónde lleva. */
     .bottom-nav{
       position:fixed; left:12px; right:12px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:64; display:flex; align-items:stretch;
       height:62px; padding:5px; border-radius:999px;
@@ -5075,14 +5078,20 @@
        (T6 de la auditoría del 28/10/2026). */
     .calendar-notice{ bottom:calc(84px + env(safe-area-inset-bottom)); }
     .bn-item{
-      flex:1; display:flex; align-items:center; justify-content:center; position:relative; border-radius:999px;
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; position:relative; border-radius:999px;
       border:none; background:none; color:var(--text-muted); font-family:inherit; cursor:pointer; padding:0;
       transition:background .15s;
     }
     .bn-item.active{ background:rgba(13,59,62,.09); }
     html[data-theme="dark"] .bn-item.active{ background:rgba(255,255,255,.1); }
-    .bn-ico{ font-size:23px; line-height:1; }
-    .bn-txt{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+    .bn-ico{ font-size:21px; line-height:1; display:inline-flex; align-items:center; justify-content:center; height:22px; }
+    /* El nombre debajo de cada dibujo (D27-A, 20/11/2026): antes eran solo íconos (pedido del 6/10) y quien recién llega no sabe
+       qué es cada uno. */
+    .bn-txt{ font-size:12px; font-weight:600; line-height:1.1; max-width:100%; padding:0 2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .bn-item.active{ color:var(--petroleo); }
+    html[data-theme="dark"] .bn-item.active{ color:var(--link); }
+    /* El calendario de la barra dibuja el día de HOY (el emoji dibujaba siempre «17 de julio»). */
+    .bn-cal{ width:23px; height:23px; display:block; }
     .bn-gap{ flex:1; }
     .bn-dot{ position:absolute; top:9px; left:calc(50% + 9px); width:8px; height:8px; border-radius:50%; background:var(--danger); }
     .bn-sheet{
@@ -5161,6 +5170,21 @@
   .feed-solapas .fs-n{ background:var(--celeste-soft); color:var(--link); border-radius:999px; padding:1px 7px; font-size:11px; }
   .feed-solapas button.on .fs-n{ background:rgba(255,255,255,.2); color:#fff; }
   @media (max-width:520px){ .feed-solapas{ flex:1; } .feed-solapas button{ flex:1; padding:7px 10px; } }
+  /* Lo que se toca en el celular no baja de 24×24 (el piso de WCAG 2.2) y lo principal llega a 44: «Me gusta» medía 19×36 y
+     «Responder» 17×36, uno al lado del otro; las filas de Reportes, 15 de alto (auditoría del 20/11/2026, Z2). El área
+     crece con relleno: el dibujo no cambia. Un enlace dentro de un texto (el nombre de una persona) queda afuera, como
+     pide la misma regla. */
+  @media (max-width:760px){
+    button[data-action="toggle-like"], button[data-action="toggle-reply"], button[data-action="ver-me-gusta"], .post-actions .post-menu-btn{ min-width:44px; min-height:44px; justify-content:center; }
+    .post-actions .doc-linea, .scope-chip.ver-completo, .btn-text-add, .rep-fila-ir, summary{ min-height:32px; }
+    .btn-text-add{ display:inline-flex; align-items:center; }
+    .rep-fila-ir{ padding-block:9px; }
+    summary{ padding-block:8px; }
+    .cal-arrow{ min-width:40px; min-height:40px; }
+    /* Los nombres de los participantes («👥 Diego Martínez») son enlaces sueltos de 15 px de alto: el relleno vertical de un
+       elemento en línea agranda el área que se toca sin mover ni una línea de texto. */
+    .post-quien [data-action="show-user-profile"]{ padding-block:5px; }
+  }
 </style>
 </head>
 <body>
@@ -5228,7 +5252,7 @@
   <div class="fab-wrap" id="fab" hidden>
     <div class="fab-actions">
       <button type="button" class="fab-action" data-action="new-rutina">
-        <span class="fab-ico" aria-hidden="true">📝</span><span class="fab-label" id="fabRutinaLabel">Nuevo posteo</span>
+        <span class="fab-ico" aria-hidden="true">📝</span><span class="fab-label" id="fabRutinaLabel">Nueva actividad</span>
       </button>
       <button type="button" class="fab-action" data-action="new-evento">
         <span class="fab-ico" aria-hidden="true">📅</span><span class="fab-label" id="fabEventoLabel">Nuevo evento</span>
@@ -9191,12 +9215,14 @@ async function onAuthChanged(user){
   if(unsubTerritoryConfig){ unsubTerritoryConfig(); unsubTerritoryConfig = null; }
   if(unsubPreferences){ unsubPreferences(); unsubPreferences = null; }
   state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = []; state.auditLog = []; state.roster = [];
+  state.ultimasEntradas = null; state.ultimasEntradasAt = 0;
   // Borradores sin publicar (posteo nuevo/edición, Rutina, respuestas) y
   // paneles abiertos son estado de UI en memoria, no de la base — sin
   // esto, lo que alguien estaba escribiendo le quedaba visible a la
   // SIGUIENTE persona que iniciara sesión en la misma pestaña (cerrar
   // sesión no recarga la página). Se limpia en CUALQUIER cambio de
   // sesión: cerrar sesión, o pasar de una cuenta a otra.
+  borradoresDeOtraSesion(user);
   composerDraft = newComposerDraft();
   rutinaDraft = newRutinaDraft();
   zonasDraft = null;
@@ -9447,6 +9473,17 @@ function subscribeAuditLog(){
     state.auditLog = lista;
     scheduleRender();
   }, err=>console.error("Error leyendo auditoría:", err));
+  cargarUltimasEntradas(true);
+}
+// «Nunca entró» y «Inactivos» salían de las últimas 1.000 acciones del registro: con más que eso, alguien que entró hace
+// 12 días figuraba como que nunca entró (Y7). La última entrada de cada uno se le pregunta aparte a la base; se renueva
+// al abrir Personas si pasaron más de 2 minutos.
+async function cargarUltimasEntradas(forzar){
+  if(!isAdmin() || !store || !store.auditLog || !store.auditLog.ultimasEntradas) return;
+  if(!forzar && Date.now() - (state.ultimasEntradasAt || 0) < 120000) return;
+  state.ultimasEntradasAt = Date.now();
+  try{ state.ultimasEntradas = await store.auditLog.ultimasEntradas(); scheduleRender(); }
+  catch(err){ console.warn("No se pudieron leer las últimas entradas:", err); }
 }
 /* ======================================================================
    CAPA DE DATOS
@@ -9565,6 +9602,16 @@ function crearSupabaseStore(sb, opciones = {}){
      dirección copiada sigue abriendo el archivo, aun para alguien que ya
      no está en el equipo: es el precio, y es por eso que no es más. */
   const SEGUNDOS_FIRMA = 7 * 24 * 60 * 60;
+  // Los comprobantes de Gastos (tickets, facturas: datos de plata y de tarjetas) duran 6 horas, no una semana, y no se
+  // guardan en el aparato: una dirección copiada sigue abriendo el archivo aun después de revocarle el acceso a
+  // alguien, y lo que no conviene es que dure días (auditoría del 20/11/2026, S1). Se renuevan con una hora de margen.
+  const SEGUNDOS_FIRMA_GASTOS = 6 * 60 * 60;
+  const MARGEN_FIRMA_GASTOS = 60 * 60 * 1000;
+  const esDeGastos = ruta => typeof ruta === "string" && ruta.startsWith("gastos/");
+  const margenDe = ruta => esDeGastos(ruta) ? MARGEN_FIRMA_GASTOS : MARGEN_FIRMA;
+  // El pedido de firmas se parte en tandas: con miles de adjuntos (la primera carga en un aparato nuevo) un solo
+  // pedido gigante tarda y puede rechazarse (Y17).
+  const FIRMAS_POR_PEDIDO = 400;
   // Se renueva cuando le queda menos de un día, y una pestaña abierta
   // revisa cada hora (ver `renovar` en enVivo): lo que todavía no se bajó
   // —una foto de más abajo, la entera al abrirla— nunca se encuentra con
@@ -9621,7 +9668,7 @@ function crearSupabaseStore(sb, opciones = {}){
   const tieneFirma = ruta => {
     if(sinMiniatura(ruta)) return true;   // no hay nada que firmar
     const f = firmadas.get(ruta);
-    return !!f && f.vence > Date.now() + MARGEN_FIRMA;
+    return !!f && f.vence > Date.now() + margenDe(ruta);
   };
 
   /* --- Las firmas se guardan en el navegador ----------------------
@@ -9638,7 +9685,7 @@ function crearSupabaseStore(sb, opciones = {}){
     const guardado = JSON.parse(localStorage.getItem(CLAVE_FIRMAS) || "{}");
     const ahora = Date.now();
     Object.entries(guardado.firmas || {}).forEach(([ruta, f]) => {
-      if(f && typeof f.url === "string" && f.vence > ahora + MARGEN_FIRMA){
+      if(f && typeof f.url === "string" && !esDeGastos(ruta) && f.vence > ahora + MARGEN_FIRMA){
         firmadas.set(ruta, f); rutaDeUrl.set(f.url, ruta);
       }
     });
@@ -9647,11 +9694,11 @@ function crearSupabaseStore(sb, opciones = {}){
   function guardarFirmas(){
     const ahora = Date.now(), todas = {}, chicas = {}, faltan = {};
     firmadas.forEach((f, ruta) => {
-      if(f.vence <= ahora + MARGEN_FIRMA) return;   // se va a renovar igual
+      if(esDeGastos(ruta) || f.vence <= ahora + MARGEN_FIRMA) return;   // las de Gastos no se guardan; el resto se va a renovar igual
       todas[ruta] = f;
       if(esMiniatura(ruta)) chicas[ruta] = f;
     });
-    noHay.forEach((hasta, ruta) => { if(hasta > ahora) faltan[ruta] = hasta; });
+    noHay.forEach((hasta, ruta) => { if(hasta > ahora && !esDeGastos(ruta)) faltan[ruta] = hasta; });
     for(const firmas of [todas, chicas]){
       try{ localStorage.setItem(CLAVE_FIRMAS, JSON.stringify({ firmas, noHay: faltan })); return; }
       catch(e){ /* no entra: se prueba con menos */ }
@@ -9669,20 +9716,27 @@ function crearSupabaseStore(sb, opciones = {}){
     const faltan = [...new Set(rutas)].filter(r => !tieneFirma(r));
     if(!faltan.length) return 0;
     const mia = sesionDeFirmas;
-    const { data, error } = await sb.storage.from("adjuntos").createSignedUrls(faltan, SEGUNDOS_FIRMA);
+    // Dos grupos, cada uno con su duración (Gastos, y el resto), en pedidos de hasta FIRMAS_POR_PEDIDO.
+    const pedidos = [];
+    for(const [lista, seg] of [[faltan.filter(esDeGastos), SEGUNDOS_FIRMA_GASTOS], [faltan.filter(r => !esDeGastos(r)), SEGUNDOS_FIRMA]])
+      for(let i = 0; i < lista.length; i += FIRMAS_POR_PEDIDO) pedidos.push([lista.slice(i, i + FIRMAS_POR_PEDIDO), seg]);
+    const respuestas = await Promise.all(pedidos.map(([rutas, seg]) =>
+      sb.storage.from("adjuntos").createSignedUrls(rutas, seg).then(r => ({ data: r.data, error: r.error, seg }))));
     if(mia !== sesionDeFirmas) return 0;
-    if(error){ console.error("No se pudieron firmar los adjuntos:", error); return 0; }
-    const vence = Date.now() + SEGUNDOS_FIRMA * 1000;
     let nuevas = 0;
-    (data || []).forEach(d => {
-      if(d && d.signedUrl && !d.error){
-        firmadas.set(d.path, { url:d.signedUrl, vence });
-        rutaDeUrl.set(d.signedUrl, d.path);
-        nuevas++;
-      } else if(d && esMiniatura(d.path)){
-        noHay.set(d.path, Date.now() + 24 * 60 * 60 * 1000);   // una foto de antes
-      }
-    });
+    for(const { data, error, seg } of respuestas){
+      if(error){ console.error("No se pudieron firmar los adjuntos:", error); continue; }
+      const vence = Date.now() + seg * 1000;
+      (data || []).forEach(d => {
+        if(d && d.signedUrl && !d.error){
+          firmadas.set(d.path, { url:d.signedUrl, vence });
+          rutaDeUrl.set(d.signedUrl, d.path);
+          nuevas++;
+        } else if(d && esMiniatura(d.path)){
+          noHay.set(d.path, Date.now() + 24 * 60 * 60 * 1000);   // una foto de antes
+        }
+      });
+    }
     guardarFirmas();
     return nuevas;
   }
@@ -10689,6 +10743,15 @@ function crearSupabaseStore(sb, opciones = {}){
             .sort((a, b) => tsToMillis(b.createdAt) - tsToMillis(a.createdAt))
             .slice(0, tope) });
       },
+      // La última entrada de cada persona, de TODO el registro y no de las últimas 1.000 acciones (28-ultimas-entradas.sql;
+      // Y7 de la auditoría del 20/11/2026). Solo la ve un admin. { email: milisegundos }.
+      async ultimasEntradas(){
+        const { data, error } = await sb.rpc("ultimas_entradas");
+        if(error) throw error;
+        const m = {};
+        (data || []).forEach(f => { const ms = Date.parse(f.ultima); if(f.email && ms) m[f.email] = ms; });
+        return m;
+      },
       async add(datos){
         const id = nuevoId();
         revienta(await sb.from("audit_log").insert({ ...aFila(datos), id }));
@@ -11199,6 +11262,9 @@ async function approveRequest(email){
   // dejaría duplicada su identidad en memberByEmail.
   try{ await store.formerMembers.remove(email); }catch(e){}
   logAudit("access_approved", { targetEmail: email });
+  // «Ya podés entrar»: antes quien pedía acceso se enteraba de que lo habían aprobado solo si volvía a
+  // mirar (a veces días después). Un correo, sin esperar (D26, 20/11/2026): la base decide si corresponde.
+  avisarPorCorreo("acceso", email);
   // Si una persona sin cuenta tenía anotado justo este correo, es ella:
   // su historial pasa a la cuenta nueva (18-personas.sql).
   // Salvo que el admin haya dicho «No es» en el aviso «¿Es «X»…?»: hasta
@@ -11302,13 +11368,14 @@ function subscribeData(){
     state.posts = lista
       .sort((a,b)=> String(b.date||"").localeCompare(String(a.date||"")) || (tsToMillis(b.createdAt) - tsToMillis(a.createdAt)));
     state.loaded = true;
+    if(!prevLoaded) reabrirRespuestasEnCurso();
     noteIncomingPosts(prevLoaded);
     subscribeReplies();
     render();
     startCalendarAutoSync();
   }, err=>{
     console.error("Error leyendo posts:", err);
-    renderFatalError(t("Error leyendo los posteos: {msg}","Error reading posts: {msg}","Erro ao ler os posteios: {msg}","שגיאה בקריאת הפוסטים: {msg}",{msg:detalleDeError(err)}));
+    renderFatalError(t("Error leyendo las actividades: {msg}","Error reading activities: {msg}","Erro ao ler as atividades: {msg}","שגיאה בקריאת הפעילויות: {msg}",{msg:detalleDeError(err)}));
   });
 
   unsubscribeData = ()=>{
@@ -11908,7 +11975,7 @@ function renderProjectDetail(post){
         ${contenidoVisible(post.content) ? `<div class="post-content">${nl2br(String(contenidoVisible(post.content)).slice(0,600))}</div>` : ""}
         ${renderProjectEditors(post)}
         <div class="post-actions">
-          <button data-action="goto-mention" data-post-id="${esc(post.id)}">💬 ${t("Ver en el Feed","See in the Feed","Ver no Feed","הצגה בפיד")}</button>
+          <button data-action="goto-mention" data-post-id="${esc(post.id)}">💬 ${t("Ver en Inicio","See in Home","Ver no Início","הצגה בדף הראשי")}</button>
           ${canEditPost(post) ? `<button data-action="edit-post" data-post-id="${esc(post.id)}">✏️ ${t("Editar evento","Edit event","Editar evento","עריכת האירוע")}</button>` : ""}
           ${canCloseProject(post) ? (projectDone(post)
             ? `<button data-action="project-reopen" data-post-id="${esc(post.id)}">✏️ ${t("Volver a editar","Edit again","Voltar a editar","עריכה מחדש")}</button>`
@@ -12284,7 +12351,7 @@ function buildEditSummary(original, next){
     ? t("repetición ({r})","repetition ({r})","repetição ({r})","חזרה ({r})",{r:recurrenceLabel({ recurrence:next.recurrence })})
     : t("dejó de repetirse","no longer repeats","deixou de se repetir","הפסיק לחזור"));
   if(!parts.length) return null;
-  return t("✏️ {n} editó este posteo: {changes}.","✏️ {n} edited this post: {changes}.","✏️ {n} editou esta postagem: {changes}.","✏️ {n} ערך/ה פוסט זה: {changes}.",{n:state.auth.user.displayName, changes:parts.join(", ")});
+  return t("✏️ {n} editó esta actividad: {changes}.","✏️ {n} edited this activity: {changes}.","✏️ {n} editou esta atividade: {changes}.","✏️ {n} ערך/ה פעילות זו: {changes}.",{n:state.auth.user.displayName, changes:parts.join(", ")});
 }
 
 // Guardar calendarEventId después de crear/editar/borrar el evento de
@@ -12305,19 +12372,47 @@ async function saveCalendarLinkOrWarn(postId, patch){
   catch(err){
     console.error("No se pudo guardar el vínculo con el evento de Calendar:", err);
     showCalendarNotice({ ok:false, message:t(
-      "Se guardó, pero el vínculo con el evento de Calendar no se pudo actualizar ({msg}). Editá el posteo una vez para reintentar.",
-      "Saved, but the link to the Calendar event couldn't be updated ({msg}). Edit the post once to retry.",
-      "Foi salvo, mas o vínculo com o evento do Calendar não pôde ser atualizado ({msg}). Edite a postagem uma vez para tentar de novo.",
-      "נשמר, אך לא ניתן היה לעדכן את הקישור לאירוע ביומן ({msg}). ערכ/י את הפוסט פעם אחת כדי לנסות שוב.",
+      "Se guardó, pero el vínculo con el evento de Calendar no se pudo actualizar ({msg}). Editá la actividad una vez para reintentar.",
+      "Saved, but the link to the Calendar event couldn't be updated ({msg}). Edit the activity once to retry.",
+      "Foi salvo, mas o vínculo com o evento do Calendar não pôde ser atualizado ({msg}). Edite a atividade uma vez para tentar de novo.",
+      "נשמר, אך לא ניתן היה לעדכן את הקישור לאירוע ביומן ({msg}). ערכ/י את הפעילות פעם אחת כדי לנסות שוב.",
       {msg:detalleDeError(err)}
     ) });
   }
 }
 
-// Lo que se escribe al guardar una edición. Aparte para que el formulario
-// pueda medir EXACTAMENTE esto antes de cerrarse (ver el submit de
-// postForm).
-function parcheDeEdicion(original, newData){
+/* --- Dos personas editando lo mismo (Y2 de la auditoría del 20/11/2026; D20-A) ---------------------------------------
+   El formulario de «Editar» guardaba TODOS los campos con lo que tenían al abrirse: si otra persona cambiaba la fecha o
+   subía un archivo mientras tanto, al guardar se le pisaba, sin aviso ni rastro. Ahora se guarda solo lo que ESTA persona
+   cambió (contra lo que había al abrir), el resumen del hilo cuenta solo eso, Calendar se actualiza con lo que hay hoy en la
+   base más lo suyo, y si la otra persona cambió justo lo MISMO se pregunta antes de pisarlo. */
+const CAMPOS_DE_EDICION = ["title", "content", "startDate", "endDate", "startTime", "endTime", "participants", "location", "activityType", "scopes", "images", "links", "files", "recurrence"];
+// Lo que dice cada campo en la pregunta (los de fecha y hora van juntos). `mentions` sale del texto y no se nombra.
+const nombreDeCampoEditado = k => ({
+  title: t("el título","the title","o título","את הכותרת"), content: t("los comentarios","the comments","os comentários","את ההערות"),
+  startDate: t("la fecha u hora","the date or time","a data ou hora","את התאריך או השעה"), endDate: t("la fecha u hora","the date or time","a data ou hora","את התאריך או השעה"),
+  startTime: t("la fecha u hora","the date or time","a data ou hora","את התאריך או השעה"), endTime: t("la fecha u hora","the date or time","a data ou hora","את התאריך או השעה"),
+  participants: t("los participantes","the participants","os participantes","את המשתתפים"), location: t("la dirección","the address","o endereço","את הכתובת"),
+  activityType: t("el tipo","the type","o tipo","את הסוג"), scopes: t("el lugar","the place","o lugar","את המקום"),
+  images: t("las fotos","the photos","as fotos","את התמונות"), links: t("los links","the links","os links","את הקישורים"),
+  files: t("los archivos","the files","os arquivos","את הקבצים"), recurrence: t("la repetición","the repetition","a repetição","את החזרה") })[k];
+// Lo que identifica a un campo, sin lo que cambia solo (la firma de una foto, «» contra nada).
+function huellaDeCampo(k, v){
+  if(v == null || v === "" || (Array.isArray(v) && !v.length)) return "";
+  if(k === "images") return JSON.stringify(v.map(x => String(x).split("?")[0]));
+  if(k === "files") return JSON.stringify(v.map(a => a && typeof a === "object" ? [a.path || a.name || "", a.doc || ""] : a));
+  return JSON.stringify(v);
+}
+const camposQueCambiaron = (antes, ahora) => CAMPOS_DE_EDICION.filter(k => huellaDeCampo(k, antes[k]) !== huellaDeCampo(k, ahora[k]));
+// Los que esta persona cambió y que otra cambió a otra cosa mientras tanto: ahí sí se pisaría algo.
+const camposPisados = (original, ahora, vivo) => !vivo ? [] : camposQueCambiaron(original, ahora)
+  .filter(k => huellaDeCampo(k, vivo[k]) !== huellaDeCampo(k, original[k]) && huellaDeCampo(k, vivo[k]) !== huellaDeCampo(k, ahora[k]));
+function textoDeLosCamposPisados(campos){
+  const nombres = [...new Set(campos.map(nombreDeCampoEditado))];
+  return nombres.length > 1 ? nombres.slice(0, -1).join(", ") + " " + t("y","and","e","ו") + " " + nombres[nombres.length - 1] : nombres[0];
+}
+// Lo que se escribe al guardar una edición: solo lo que cambió esta persona (`mios`; sin él, todo, como antes).
+function parcheDeEdicion(original, newData, mios){
   const patch = {
     title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
     date:newData.startDate, startTime:newData.startTime||null, endTime:newData.endTime||null,
@@ -12336,7 +12431,13 @@ function parcheDeEdicion(original, newData){
     if(original.recurrenceSkip && original.recurrenceSkip.length) patch.recurrenceSkip = [];
     if(original.recurrenceMoves && Object.keys(original.recurrenceMoves).length) patch.recurrenceMoves = {};
   }
-  return patch;
+  if(!mios) return patch;
+  // Solo lo que cambió: `date` va con la fecha de inicio, `mentions` con el texto, y la marca de «quién editó» siempre.
+  const queda = new Set(["lastEditedAt", "lastEditedBy", "lastEditedByEmail", "recurrenceSkip", "recurrenceMoves", ...mios]);
+  if(mios.includes("startDate")) queda.add("date");
+  if(mios.includes("content")) queda.add("mentions");
+  if("sinCalendar" in patch && !!newData.sinCalendar === !!original.sinCalendar) queda.delete("sinCalendar"); else queda.add("sinCalendar");
+  return Object.fromEntries(Object.entries(patch).filter(([k]) => queda.has(k)));
 }
 
 // Actualiza el posteo, deja constancia en el hilo, y mantiene el mismo
@@ -12351,9 +12452,14 @@ async function updatePostAndSync(postId, original, newData){
   // Uno cargado "sin pasar a Google Calendar" tampoco: no tiene evento y
   // no se le crea (ver puedeQuedarSinCalendar).
   const skipCalendar = !!original.cancelled || !!newData.sinCalendar;
-  await updatePostDoc(postId, parcheDeEdicion(original, newData));
+  const mios = camposQueCambiaron(original, newData);
+  await updatePostDoc(postId, parcheDeEdicion(original, newData, mios));
 
+  // El hilo cuenta solo lo que cambió esta persona; Calendar, lo que hay hoy en la base con lo suyo por encima (si no,
+  // una fecha que cambió otra persona volvía a la vieja en Calendar).
   const summary = buildEditSummary(original, newData);
+  const vivo = getPostById(postId);
+  if(vivo){ newData = { ...newData }; CAMPOS_DE_EDICION.forEach(k => { if(!mios.includes(k) && vivo[k] !== undefined) newData[k] = vivo[k]; }); }
   if(summary){
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
@@ -12396,15 +12502,15 @@ async function deletePostHard(post){
   const replies = state.repliesByPost[post.id] || [];
   const nombre = post.title || String(post.content||"").slice(0, 60);
   if(!(await appConfirm(replies.length === 1 ? t(
-    `¿Borrar "{title}" del todo? Se van el posteo y su respuesta. No queda ninguna marca y no se puede deshacer.`,
-    `Delete "{title}" for good? The post and its reply go away. No trace is left and it can't be undone.`,
-    `Apagar "{title}" de vez? Vão-se a postagem e sua resposta. Não fica nenhuma marca e não dá para desfazer.`,
-    `למחוק את "{title}" לצמיתות? הפוסט והתגובה שלו יימחקו. לא יישאר סימן ואי אפשר לבטל.`, { title: nombre, n: replies.length }
+    `¿Borrar "{title}" del todo? Se van la actividad y su respuesta. No queda ninguna marca y no se puede deshacer.`,
+    `Delete "{title}" for good? The activity and its reply go away. No trace is left and it can't be undone.`,
+    `Apagar "{title}" de vez? Vão-se a atividade e sua resposta. Não fica nenhuma marca e não dá para desfazer.`,
+    `למחוק את "{title}" לצמיתות? הפעילות והתגובה שלו יימחקו. לא יישאר סימן ואי אפשר לבטל.`, { title: nombre, n: replies.length }
   ) : t(
-    `¿Borrar "{title}" del todo? Se van el posteo y sus {n} respuestas. No queda ninguna marca y no se puede deshacer.`,
-    `Delete "{title}" for good? The post and its {n} replies go away. No trace is left and it can't be undone.`,
-    `Apagar "{title}" de vez? Vão-se a postagem e suas {n} respostas. Não fica nenhuma marca e não dá para desfazer.`,
-    `למחוק את "{title}" לצמיתות? הפוסט ו-{n} התגובות שלו יימחקו. לא יישאר סימן ואי אפשר לבטל.`, { title: nombre, n: replies.length }
+    `¿Borrar "{title}" del todo? Se van la actividad y sus {n} respuestas. No queda ninguna marca y no se puede deshacer.`,
+    `Delete "{title}" for good? The activity and its {n} replies go away. No trace is left and it can't be undone.`,
+    `Apagar "{title}" de vez? Vão-se a atividade e suas {n} respostas. Não fica nenhuma marca e não dá para desfazer.`,
+    `למחוק את "{title}" לצמיתות? הפעילות ו-{n} התגובות שלו יימחקו. לא יישאר סימן ואי אפשר לבטל.`, { title: nombre, n: replies.length }
   ), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
   try{
     await Promise.all(replies.map(r=> store.replies.remove(post.id, r.id)));
@@ -12647,6 +12753,7 @@ function render(){
   document.querySelectorAll("textarea.autogrow").forEach(autoGrowTextarea);
   senalarCamposConError();
   updateNewPostsPill(); // la píldora depende de la vista y del scroll
+  sincronizarHistorial();
 }
 // Para los avisos que llegan en ráfaga (varios cambios seguidos, o la
 // carga de los comentarios): junta todos los pedidos de un mismo frame en
@@ -12767,10 +12874,10 @@ function validateNicknameDraft(raw){
   const wasTaken = state.formerMembers.some(u => u.email !== myEmail && u.nickname && u.nickname.toLowerCase() === value);
   if(wasTaken){
     return { ok:false, error:t(
-      "Ese @nickname lo usó alguien que ya no está en el equipo, y sus posteos lo siguen mostrando — elegí otro para que no queden firmados a tu nombre.",
-      "That @nickname belonged to someone who's no longer on the team, and their posts still show it — pick another one so they don't end up signed with your name.",
-      "Esse @nickname era de alguém que já não está na equipe, e suas postagens ainda o mostram — escolha outro para que não fiquem assinadas em seu nome.",
-      "הכינוי הזה היה של מישהו שכבר לא בצוות, והפוסטים שלו עדיין מציגים אותו — בחר/י אחר כדי שלא ייחתמו בשמך."
+      "Ese @nickname lo usó alguien que ya no está en el equipo, y sus actividades lo siguen mostrando — elegí otro para que no queden firmados a tu nombre.",
+      "That @nickname belonged to someone who's no longer on the team, and their activities still show it — pick another one so they don't end up signed with your name.",
+      "Esse @nickname era de alguém que já não está na equipe, e suas atividades ainda o mostram — escolha outro para que não fiquem assinadas em seu nome.",
+      "הכינוי הזה היה של מישהו שכבר לא בצוות, והפעילויות שלו עדיין מציגים אותו — בחר/י אחר כדי שלא ייחתמו בשמך."
     ) };
   }
   return { ok:true, value };
@@ -12888,7 +12995,7 @@ function applyStaticI18n(){
   const fabEvento = document.getElementById("fabEventoLabel");
   if(fabEvento) fabEvento.textContent = t("Nuevo evento", "New event", "Novo evento", "אירוע חדש");
   const fabRutina = document.getElementById("fabRutinaLabel");
-  if(fabRutina) fabRutina.textContent = t("Nuevo posteo", "New post", "Nova postagem", "פוסט חדש");
+  if(fabRutina) fabRutina.textContent = t("Nueva actividad", "New activity", "Nova atividade", "פעילות חדשה");
   const fabGastos = document.getElementById("fabGastosLabel");
   if(fabGastos) fabGastos.textContent = t("Subir comprobantes", "Upload receipts", "Enviar comprovantes", "העלאת קבלות");
   if(fabMainEl) fabMainEl.setAttribute("aria-label", t("Crear", "Create", "Criar", "יצירה"));
@@ -13276,7 +13383,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
         <span class="mi-date">${fmtDateTime(c.at)}</span>
       </button>`).join("")}` : "";
   const replyItems = (ver("respuestas") && replies.length) ? `
-    <div class="bell-section">${t("Respuestas a tus posteos","Replies to your posts","Respostas às suas postagens","תגובות לפוסטים שלך")}</div>
+    <div class="bell-section">${t("Respuestas a tus actividades","Replies to your activities","Respostas às suas atividades","תגובות לפעילויות שלך")}</div>
     ${replies.map(r=>`
       <button type="button" class="mention-item${esNuevo(r.createdAt, "r") ? " nuevo" : ""}" data-action="goto-mention" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.replyId)}">
         <span class="mi-author">${authorLabelHtml(r.authorEmail, r.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}${esNuevo(r.createdAt, "r") ? nuevo : ""}</span>
@@ -13653,6 +13760,8 @@ function lastLoginByEmail(){
     const ts = tsToMillis(e.createdAt) || 0;
     if(!map[e.actorEmail] || ts > map[e.actorEmail]) map[e.actorEmail] = ts;
   });
+  // Lo que dice la base de TODO el registro (Y7), por si la persona entró antes de las últimas 1.000 acciones.
+  Object.entries(state.ultimasEntradas || {}).forEach(([email, ts]) => { if(!map[email] || ts > map[email]) map[email] = ts; });
   return map;
 }
 
@@ -13846,6 +13955,7 @@ function avatarDe(u, px){
     : `<div class="avatar-fallback lp-av${u.sinCuenta ? " sc-persona" : ""}" style="width:${px}px;height:${px}px"${u.sinCuenta ? ` title="${esc(ETIQUETA_SIN_CUENTA())}"` : ""}>${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`;
 }
 function renderUsuariosSection(){
+  cargarUltimasEntradas(false);
   const f = state.usuariosFilters;
   const logins = lastLoginByEmail();
   const todos = state.roster.map(u => ({ ...u, postCount: countRecentPosts(u.email), lastLogin: logins[u.email] || 0 }));
@@ -13972,12 +14082,12 @@ function renderPersonaPanel(u){
       <div class="lp-field"><label>${t("Actividad","Activity","Atividade","פעילות")}</label>
         <div class="lp-kv">
           <span><small>${t("Última vez","Last seen","Última vez","לאחרונה")}</small><b class="${uv.clase}">${esc(uv.texto)}</b></span>
-          <span><small>${t("Posteos","Posts","Postagens","פוסטים")}</small><b>${total}</b></span>
+          <span><small>${t("Actividades","Activities","Atividades","פעילויות")}</small><b>${total}</b></span>
           ${desde ? `<span><small>${t("En el equipo desde","On the team since","Na equipe desde","בצוות מאז")}</small><b>${esc(desde)}</b></span>` : ""}
         </div>
         <div class="lp-serie">${serie.some(n=>n) ? renderSerieMensual(serie, "var(--celeste-dark)") : ""}<span class="hint">${u.postCount === 1
-          ? t("1 posteo en los últimos 6 meses","1 post in the last 6 months","1 postagem nos últimos 6 meses","פוסט אחד ב-6 החודשים האחרונים")
-          : t("{n} posteos en los últimos 6 meses","{n} posts in the last 6 months","{n} postagens nos últimos 6 meses","{n} פוסטים ב-6 החודשים האחרונים",{n:u.postCount})}</span></div>
+          ? t("1 actividad en los últimos 6 meses","1 activity in the last 6 months","1 atividade nos últimos 6 meses","פעילות אחת ב-6 החודשים האחרונים")
+          : t("{n} actividades en los últimos 6 meses","{n} activities in the last 6 months","{n} atividades nos últimos 6 meses","{n} פעילויות ב-6 החודשים האחרונים",{n:u.postCount})}</span></div>
       </div>
       <div class="lp-botones">
         <button type="button" class="btn-secondary" data-action="show-user-profile" data-nick="${esc(String(u.nickname||"").toLowerCase())}">${t("Ver perfil","View profile","Ver perfil","צפייה בפרופיל")}</button>
@@ -14112,10 +14222,10 @@ function renderSolicitudesQueueSection(){
   const formersHtml = formers.length ? `
     <div class="rejected-section">
       <div class="hint" style="margin:18px 0 10px;">${t(
-        "Ex integrantes — estuvieron en el equipo y ya no. Sus posteos siguen firmados con su @nickname; si vuelven, lo recuperan.",
-        "Former members — they were on the team and no longer are. Their posts keep their @nickname; if they come back, they get it back.",
-        "Ex-integrantes — estiveram na equipe e já não estão. Suas postagens seguem assinadas com seu @nickname; se voltarem, o recuperam.",
-        "חברים לשעבר — היו בצוות וכבר לא. הפוסטים שלהם נשארים חתומים ב-@nickname שלהם; אם יחזרו, יקבלו אותו בחזרה."
+        "Ex integrantes — estuvieron en el equipo y ya no. Sus actividades siguen firmados con su @nickname; si vuelven, lo recuperan.",
+        "Former members — they were on the team and no longer are. Their activities keep their @nickname; if they come back, they get it back.",
+        "Ex-integrantes — estiveram na equipe e já não estão. Suas atividades seguem assinadas com seu @nickname; se voltarem, o recuperam.",
+        "חברים לשעבר — היו בצוות וכבר לא. הפעילויות שלהם נשארים חתומים ב-@nickname שלהם; אם יחזרו, יקבלו אותו בחזרה."
       )}</div>
       ${formers.map(u=>`<div class="request-row">
           ${fotoSegura(u.photoURL) ? `<img src="${esc(fotoSegura(u.photoURL))}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.email||"?")[0].toUpperCase())}</div>`}
@@ -14123,8 +14233,8 @@ function renderSolicitudesQueueSection(){
             <div class="rname">${esc(u.name||u.email)} · <span class="up-nick">@${esc(String(u.nickname||"").toLowerCase())}</span></div>
             <div class="remail">${esc(u.email)} · ${t("estuvo del {a} al {b}","member from {a} to {b}","esteve de {a} a {b}","היה/תה מ-{a} עד {b}",{a:fmtDateTime(u.approvedAt)||"—", b:fmtDateTime(u.revokedAt)||"—"})}</div>
             <div class="remail">${(()=>{ const n = state.posts.filter(p=>p.authorEmail===u.email).length;
-              return n === 1 ? t("Dejó 1 posteo","Left 1 post","Deixou 1 postagem","השאיר/ה פוסט אחד")
-                             : t("Dejó {n} posteos","Left {n} posts","Deixou {n} postagens","השאיר/ה {n} פוסטים",{n}); })()}</div>
+              return n === 1 ? t("Dejó 1 actividad","Left 1 activity","Deixou 1 atividade","השאיר/ה פעילות אחת")
+                             : t("Dejó {n} actividades","Left {n} activities","Deixou {n} atividades","השאיר/ה {n} פעילויות",{n}); })()}</div>
           </div>
           <div class="ractions">
             <button class="btn-ghost" data-action="show-user-profile" data-nick="${esc(String(u.nickname||"").toLowerCase())}">${t("Ver perfil","View profile","Ver perfil","צפייה בפרופיל")}</button>
@@ -14180,6 +14290,7 @@ async function darAccesoPorAdelantado(){
       await store.roster.add(email, { email, name, nickname, photoURL:null, role:"member", approvedBy: state.auth.user.email });
       try{ await store.formerMembers.remove(email); }catch(e){ /* no era ex integrante */ }
       logAudit("access_approved", { targetEmail: email, detail: t("por adelantado","in advance","antecipado","מראש") });
+      avisarPorCorreo("acceso", email);   // también a quien se le da acceso por adelantado: no sabía que lo iban a sumar
     }
     d.ok = t("{e} ya tiene acceso: cuando entre con Google, va directo.","{e} now has access: when they sign in with Google, they go straight in.","{e} já tem acesso: quando entrar com o Google, vai direto.","ל-{e} יש כעת גישה: בכניסה עם Google ייכנס/תיכנס ישירות.",{e:email});
     d.email = ""; d.name = "";
@@ -14272,7 +14383,7 @@ function adminSeccionTextos(key){
     resumen: { lead: t("Lo que hay para hacer hoy y cómo viene el equipo.","What needs doing today and how the team is doing.","O que há para fazer hoje e como vai a equipe.","מה יש לעשות היום ואיך הצוות מתקדם.") },
     personas: { lead: t("Quién está en el equipo, con qué rol, y los pedidos de acceso.","Who's on the team, with which role, and the access requests.","Quem está na equipe, com qual papel, e os pedidos de acesso.","מי בצוות, באיזה תפקיד, ובקשות הגישה.") },
     actividad: { lead: t("Quién entró, qué cargó y qué cambió, día por día.","Who signed in, what they logged and what changed, day by day.","Quem entrou, o que carregou e o que mudou, dia a dia.","מי נכנס/ה, מה נרשם ומה השתנה, יום אחר יום.") },
-    zonas: { lead: t("A qué zona pertenece cada país. Cambiarlo aplica también a los posteos ya cargados.","Which zone each country belongs to. Changing it also applies to posts already logged.","A que zona pertence cada país. Trocar também se aplica às postagens já carregadas.","לאיזה אזור שייכת כל מדינה. שינוי חל גם על פוסטים שכבר נרשמו.") },
+    zonas: { lead: t("A qué zona pertenece cada país. Cambiarlo aplica también a las actividades ya cargadas.","Which zone each country belongs to. Changing it also applies to activities already logged.","A que zona pertence cada país. Trocar também se aplica às atividades já carregadas.","לאיזה אזור שייכת כל מדינה. שינוי חל גם על פעילויות שכבר נרשמו.") },
     tipos: {
       lead: t("Los tipos que se ofrecen al cargar un evento, y qué documentos se espera de cada uno.","The types offered when logging an event, and which documents are expected for each.","Os tipos oferecidos ao criar um evento, e que documentos se espera de cada um.","הסוגים שמוצעים ברישום אירוע, ואילו מסמכים מצופים מכל אחד."),
       ayuda: t(
@@ -14301,7 +14412,7 @@ function adminSeccionTextos(key){
         "«הוצאות» נמצא בתפריט העליון, בין פרויקטים לדוחות (בטלפון, ב«עוד»), ב-+ וב-⋯ של כל פעילות. שם מעלים קבלות, מרכיבים את הדוח של כל פעילות או של שגרת החודש, מאשרים, ומנהלים את החשבון השוטף של כל אחד.<br><br><b>סוגי ההוצאות</b> הם אלה שמוצעים ברישום הוצאה. שינוי שם של סוג משנה אותו בכל ההוצאות שכבר משתמשות בו."),
     },
     avanzado: { lead: t("Lo que se configura una vez y casi no se toca: las zonas, las ciudades escritas a mano y los adjuntos.","What's set up once and rarely touched: zones, hand-typed cities and attachments.","O que se configura uma vez e quase não se mexe: as zonas, as cidades digitadas à mão e os anexos.","מה שמגדירים פעם אחת וכמעט לא נוגעים: האזורים, הערים שהוקלדו ידנית והקבצים המצורפים.") },
-    adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a un posteo (evento, rutina o respuesta).","How many files, and how big, can be attached to a post (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma postagem (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפוסט (אירוע, שגרה או תגובה).") },
+    adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a una actividad (evento, rutina o respuesta).","How many files, and how big, can be attached to an activity (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma atividade (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפעילות (אירוע, שגרה או תגובה).") },
     problemas: { lead: t("Lo que contó la gente con «Algo no anda» y los errores que la app anotó sola, con cuántas veces y a cuántas personas les pasó.","What people reported with “Something's wrong” and the errors the app logged by itself, with how many times and to how many people.","O que as pessoas contaram com «Algo não está funcionando» e os erros que o app anotou sozinho, com quantas vezes e a quantas pessoas aconteceu.","מה שאנשים דיווחו ב«משהו לא עובד» והשגיאות שהאפליקציה רשמה לבד, עם כמה פעמים ולכמה אנשים זה קרה.") },
     copia: { lead: t("Todo lo cargado, guardado fuera de la app: una copia automática cada domingo y, cuando quieras, una para bajar a tu computadora.","Everything logged, kept outside the app: an automatic copy every Sunday and, whenever you want, one to download to your computer.","Tudo o que foi carregado, guardado fora do app: uma cópia automática todo domingo e, quando quiser, uma para baixar no seu computador.","כל מה שנרשם, שמור מחוץ לאפליקציה: עותק אוטומטי בכל יום ראשון, ומתי שתרצו, עותק להורדה למחשב.") },
     calendar: { lead: t("El Google Calendar al que van los eventos (la Rutina no). Si lo cambiás, los ya cargados se quedan donde están.","The Google Calendar where events go (Routines don't). If you change it, the ones already created stay where they are.","O Google Calendar para onde vão os eventos (a Rotina não). Se trocar, os já criados ficam onde estão.","ה-Google Calendar שאליו נשלחים האירועים (שגרה לא). אם משנים אותו, הקיימים נשארים במקומם.") },
@@ -14399,6 +14510,8 @@ function renderAdminResumen(){
 // para el admin, Administración). Vive afuera de #viewRoot como el
 // header, así que se redibuja a mano en cada render.
 let moreMenuOpen = false;
+// El día de hoy dentro de un dibujo de calendario, con el color del texto (D27-A).
+const iconoDelCalendario = () => `<svg class="bn-cal" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 10h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><text x="12" y="17.6" text-anchor="middle" font-size="7.6" font-weight="800" fill="currentColor" font-family="inherit">${Number(todayISO().slice(8, 10))}</text></svg>`;
 function renderBottomNav(){
   if(!bottomNavEl) return;
   if(!isAuthorized()){ bottomNavEl.hidden = true; moreMenuOpen = false; return; }
@@ -14409,7 +14522,7 @@ function renderBottomNav(){
   const hoja = (view, icon, label, extra) => `<button type="button" class="bn-sheet-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}">${icon} ${label}${extra || ""}</button>`;
   bottomNavEl.innerHTML = `
     ${item("feed", "🏠", t("Inicio","Home","Início","ראשי"))}
-    ${item("calendario", "📅", t("Calendario","Calendar","Calendário","יומן"))}
+    ${item("calendario", iconoDelCalendario(), t("Calendario","Calendar","Calendário","יומן"))}
     <span class="bn-gap" aria-hidden="true"></span>
     ${item("paises", "🗺️", t("Países","Countries","Países","מדינות"))}
     <button type="button" class="bn-item${enMas.includes(state.view)?" active":""}${moreMenuOpen?" open":""}" data-action="toggle-more-menu" aria-haspopup="true" aria-expanded="${moreMenuOpen}">
@@ -14451,13 +14564,13 @@ function auditLabels(){
     // tipo en `detail`, porque un posteo borrado ya no se puede mirar.
     // Hasta el 3/10/2026 una cancelación se anotaba como edición con
     // "(cancelado)" al final: esas entradas viejas quedan así.
-    post_created: { icon:"✍️", filterLabel:t("Cargó","Logged","Carregou","רשם/ה"), text: e => t("{n} cargó {d}.","{n} logged {d}.","{n} carregou {d}.","{n} רשם/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
-    post_edited: { icon:"✏️", filterLabel:t("Editó","Edited","Editou","ערך/ה"), text: e => t("{n} editó {d}.","{n} edited {d}.","{n} editou {d}.","{n} ערך/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
-    post_cancelled: { icon:"🚫", filterLabel:t("Canceló","Cancelled","Cancelou","ביטל/ה"), text: e => t("{n} canceló {d}.","{n} cancelled {d}.","{n} cancelou {d}.","{n} ביטל/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
+    post_created: { icon:"✍️", filterLabel:t("Cargó","Logged","Carregou","רשם/ה"), text: e => t("{n} cargó {d}.","{n} logged {d}.","{n} carregou {d}.","{n} רשם/ה את {d}.",{n:e.actorName,d:e.detail || t("una actividad","an activity","uma atividade","פעילות")}) },
+    post_edited: { icon:"✏️", filterLabel:t("Editó","Edited","Editou","ערך/ה"), text: e => t("{n} editó {d}.","{n} edited {d}.","{n} editou {d}.","{n} ערך/ה את {d}.",{n:e.actorName,d:e.detail || t("una actividad","an activity","uma atividade","פעילות")}) },
+    post_cancelled: { icon:"🚫", filterLabel:t("Canceló","Cancelled","Cancelou","ביטל/ה"), text: e => t("{n} canceló {d}.","{n} cancelled {d}.","{n} cancelou {d}.","{n} ביטל/ה את {d}.",{n:e.actorName,d:e.detail || t("una actividad","an activity","uma atividade","פעילות")}) },
     // Unificar dos cuentas (Administración › Personas): lo anota la base,
     // con la cuenta vieja en target y la nueva en detail (6/10/2026).
     accounts_merged: { icon:"🔀", filterLabel:t("Unificó cuentas","Merged accounts","Unificou contas","איחד/ה חשבונות"), text: e => t("{n} pasó todo lo de {target} a {d}.","{n} moved everything from {target} to {d}.","{n} passou tudo de {target} para {d}.","{n} העביר/ה את כל מה של {target} אל {d}.",{n:e.actorName,target:e.targetEmail,d:e.detail || ""}) },
-    post_deleted: { icon:"🗑️", filterLabel:t("Borró","Deleted","Apagou","מחק/ה"), text: e => t("{n} borró {d}.","{n} deleted {d}.","{n} apagou {d}.","{n} מחק/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
+    post_deleted: { icon:"🗑️", filterLabel:t("Borró","Deleted","Apagou","מחק/ה"), text: e => t("{n} borró {d}.","{n} deleted {d}.","{n} apagou {d}.","{n} מחק/ה את {d}.",{n:e.actorName,d:e.detail || t("una actividad","an activity","uma atividade","פעילות")}) },
   };
 }
 // Paginado de a 30 (ver botón "Ver más" más abajo) en vez de mostrar toda
@@ -14542,7 +14655,7 @@ function renderAuditoriaView(){
   const rotuloDia = iso => iso === today ? t("Hoy","Today","Hoje","היום") : iso === ayer ? t("Ayer","Yesterday","Ontem","אתמול") : fmtISO(iso, { weekday:"long", day:"numeric", month:"long" });
   let diaAnterior = null;
   const list = !filtered.length
-    ? `<div class="empty-state"><div class="big">🔎</div>${t("Ningún registro coincide con el filtro.","No record matches the filter.","Nenhum registro coincide com o filtro.","אף רשומה לא תואמת למסנן.")}</div>`
+    ? `<div class="empty-state"><div class="big">🔎</div>${t("Ninguna actividad coincide con el filtro.","No activity matches the filter.","Nenhuma atividade coincide com o filtro.","אף פעילות לא תואמת למסנן.")}</div>`
     : `<div class="audit-list">${renderAuditColumnsHeader()}${visible.map(e=>{
         const info = auditLabels()[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
         let cabeza = "";
@@ -14764,7 +14877,7 @@ function tiposFootnote(d){
   const rutinas = countPostsByType("rutina");
   const huerfanos = state.posts.filter(p=> p.activityType !== "rutina" && !keys.has(p.activityType));
   const parts = [];
-  parts.push(state.posts.length === 1 ? t("1 posteo en total.","1 post in total.","1 postagem no total.","פוסט אחד בסך הכול.", {n:state.posts.length}) : t("{n} posteos en total.","{n} posts in total.","{n} postagens no total.","{n} פוסטים בסך הכול.", {n:state.posts.length}));
+  parts.push(state.posts.length === 1 ? t("1 actividad en total.","1 activity in total.","1 atividade no total.","פעילות אחת בסך הכול.", {n:state.posts.length}) : t("{n} actividades en total.","{n} activities in total.","{n} atividades no total.","{n} פעילויות בסך הכול.", {n:state.posts.length}));
   if(rutinas) parts.push(rutinas === 1
     ? t("1 es Rutina (no se cuenta acá).","1 is a Routine (not counted here).","1 é Rotina (não conta aqui).","1 הוא שגרה (לא נספר כאן).")
     : t("{n} son Rutinas (no se cuentan acá).","{n} are Routines (not counted here).","{n} são Rotinas (não contam aqui).","{n} הם שגרות (לא נספרים כאן).",{n:rutinas}));
@@ -14798,7 +14911,7 @@ function renderTiposSection(){
         ? t("Archivado: ya no se ofrece al cargar un evento","Archived: no longer offered when logging an event","Arquivado: já não é oferecido ao criar um evento","בארכיון: לא מוצע עוד ברישום אירוע")
         : (docs ? esc(docs) : t("Sin documentos","No documents","Sem documentos","ללא מסמכים"))}</span></span>
       <span class="tipo-cal${ty.calendarSync ? "" : " off"}"><span class="tipo-dot" aria-hidden="true"></span>${ty.calendarSync ? "Calendar" : t("Sin Calendar","No Calendar","Sem Calendar","ללא יומן")}</span>
-      <span class="lp-when">${count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:count})}</span>
+      <span class="lp-when">${count === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{n:count})}</span>
       <svg class="lp-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="${flecha}"/></svg>
     </button>`;
   }).join("");
@@ -14819,7 +14932,7 @@ function renderTiposSection(){
 function renderTipoPanel(d, ty){
   const count = countPostsByType(ty.key);
   const idx = d.types.indexOf(ty);
-  const posteos = count === 1 ? t("1 posteo con este tipo","1 post with this type","1 postagem com este tipo","פוסט אחד עם הסוג הזה") : t("{n} posteos con este tipo","{n} posts with this type","{n} postagens com este tipo","{n} פוסטים עם הסוג הזה",{n:count});
+  const posteos = count === 1 ? t("1 actividad con este tipo","1 activity with this type","1 atividade com este tipo","פעילות אחת עם הסוג הזה") : t("{n} actividades con este tipo","{n} activities with this type","{n} atividades com este tipo","{n} פעילויות עם הסוג הזה",{n:count});
   return `<aside class="lp-panel" aria-label="${esc(ty.label)}">
     <div class="lp-ph">
       <button type="button" class="btn-text-add lp-back" data-action="tipo-cerrar">${isRTL() ? "→" : "←"} ${t("Tipos","Types","Tipos","סוגים")}</button>
@@ -14854,9 +14967,9 @@ function renderTipoPanel(d, ty){
       <span class="lp-cuidado">${t("Zona de cuidado","Handle with care","Zona de cuidado","אזור זהירות")}</span>
       ${ty.archived
         ? `<button type="button" class="btn-ghost lp-peligro" data-action="tipos-archive" data-key="${esc(ty.key)}">📂 ${t("Desarchivar","Unarchive","Desarquivar","שחזור מהארכיון")}</button><span class="hint">${t("Vuelve a ofrecerse al cargar un evento.","It's offered again when logging an event.","Volta a ser oferecido ao criar um evento.","יוצע שוב ברישום אירוע.")}</span>`
-        : `<button type="button" class="btn-ghost danger lp-peligro" data-action="tipos-archive" data-key="${esc(ty.key)}">📦 ${t("Archivar este tipo","Archive this type","Arquivar este tipo","העברת הסוג לארכיון")}</button><span class="hint">${t("Deja de ofrecerse al cargar un evento; los posteos que ya lo tienen no cambian.","It's no longer offered when logging an event; posts that already have it don't change.","Deixa de ser oferecido ao criar um evento; as postagens que já o têm não mudam.","לא יוצע עוד ברישום אירוע; פוסטים שכבר משויכים אליו לא משתנים.")}</span>`}
+        : `<button type="button" class="btn-ghost danger lp-peligro" data-action="tipos-archive" data-key="${esc(ty.key)}">📦 ${t("Archivar este tipo","Archive this type","Arquivar este tipo","העברת הסוג לארכיון")}</button><span class="hint">${t("Deja de ofrecerse al cargar un evento; las actividades que ya lo tienen no cambian.","It's no longer offered when logging an event; activities that already have it don't change.","Deixa de ser oferecido ao criar um evento; as atividades que já o têm não mudam.","לא יוצע עוד ברישום אירוע; פעילויות שכבר משויכות אליו לא משתנות.")}</span>`}
       ${count > 0
-        ? `<span class="hint">${count === 1 ? t("No se puede eliminar: hay 1 posteo con este tipo.","Can't delete: there's 1 post with this type.","Não dá para excluir: há 1 postagem com este tipo.","אי אפשר למחוק: יש פוסט אחד עם הסוג הזה.") : t("No se puede eliminar: hay {n} posteos con este tipo.","Can't delete: there are {n} posts with this type.","Não dá para excluir: há {n} postagens com este tipo.","אי אפשר למחוק: יש {n} פוסטים עם הסוג הזה.",{n:count})}</span>`
+        ? `<span class="hint">${count === 1 ? t("No se puede eliminar: hay 1 actividad con este tipo.","Can't delete: there's 1 activity with this type.","Não dá para excluir: há 1 atividade com este tipo.","אי אפשר למחוק: יש פעילות אחת עם הסוג הזה.") : t("No se puede eliminar: hay {n} actividades con este tipo.","Can't delete: there are {n} activities with this type.","Não dá para excluir: há {n} atividades com este tipo.","אי אפשר למחוק: יש {n} פעילויות עם הסוג הזה.",{n:count})}</span>`
         : `<button type="button" class="btn-ghost danger lp-peligro" data-action="tipos-remove" data-key="${esc(ty.key)}">🗑️ ${t("Eliminar","Delete","Excluir","מחיקה")}</button>`}
     </div>
   </aside>`;
@@ -14924,7 +15037,7 @@ function renderLugaresSection(){
   return `
       ${!items.length ? `<div class="empty-state"><div class="big">📍</div>${t("No hay ciudades nuevas pendientes de revisar.","No new cities pending review.","Não há cidades novas pendentes de revisão.","אין ערים חדשות שממתינות לבדיקה.")}</div>` : `
       <div class="lp-rows">
-        ${items.map(it=>{ const posteos = it.count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:it.count}); return `
+        ${items.map(it=>{ const posteos = it.count === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{n:it.count}); return `
           <div class="lp-row estatica">
             <span class="tipo-ico" aria-hidden="true">📍</span>
             <span class="lp-who"><b>${esc(it.city)}</b><span>${esc(countryLabel(it.country))}<span class="lp-angosto"> · ${posteos}</span></span></span>
@@ -15003,7 +15116,7 @@ function renderCalendarImportBlock(d){
         <div class="hint">${t("Desde qué fecha se traen los eventos del Calendar cuando se lee entero. Vacío = todo el historial. Los que ya están no se duplican.","From which date Calendar events are fetched on a full read. Empty = the whole history. Existing ones aren't duplicated.","A partir de que data os eventos do Calendar são trazidos numa leitura completa. Vazio = todo o histórico. Os que já existem não se duplicam.","מאיזה תאריך מובאים אירועי היומן בקריאה מלאה. ריק = כל ההיסטוריה. הקיימים לא משוכפלים.")}</div>
       </div>
       ${d.confirmWord && d.confirmMode === "reimport" ? `<div class="confirm-box" role="alert">
-        ${t("Vas a releer el Calendar entero: cada evento que falte entra como posteo nuevo. Para confirmar, escribí la palabra","You're about to re-read the whole Calendar: every missing event comes in as a new post. To confirm, type the word","Você vai reler o Calendar inteiro: cada evento que falte entra como postagem nova. Para confirmar, escreva a palavra","את/ה עומד/ת לקרוא מחדש את כל היומן: כל אירוע חסר ייכנס כפוסט חדש. לאישור, הקלד/י את המילה")} <b>${esc(d.confirmWord)}</b>
+        ${t("Vas a releer el Calendar entero: cada evento que falte entra como actividad nueva. Para confirmar, escribí la palabra","You're about to re-read the whole Calendar: every missing event comes in as a new activity. To confirm, type the word","Você vai reler o Calendar inteiro: cada evento que falte entra como atividade nova. Para confirmar, escreva a palavra","את/ה עומד/ת לקרוא מחדש את כל היומן: כל אירוע חסר ייכנס כפעילות חדשה. לאישור, הקלד/י את המילה")} <b>${esc(d.confirmWord)}</b>
         <input type="text" id="calendarConfirmInput" value="${esc(d.typed)}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="${esc(t("Palabra de confirmación","Confirmation word","Palavra de confirmação","מילת אישור"))}">
         <div class="modal-actions" style="margin-top:10px;">
           <button type="button" class="btn-secondary" data-action="calendar-reimport-cancel">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
@@ -15111,7 +15224,7 @@ function renderAdjuntosSection(){
           <span class="setting-icon">🖼️</span>
           <div class="setting-text">
             <div class="setting-label" id="adjLbl1">${t("Máximo de imágenes","Maximum images","Máximo de imagens","מקסימום תמונות")}</div>
-            <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:LIMITES_DE_LA_BASE.imagenes})}</div>
+            <div class="setting-sub">${t("Por actividad — tope de la base: {n}","Per activity — cap of the database: {n}","Por atividade — limite da base: {n}","לכל פעילות — תקרת מסד הנתונים: {n}",{n:LIMITES_DE_LA_BASE.imagenes})}</div>
           </div>
           <div class="setting-control">
             <input type="number" aria-labelledby="adjLbl1" id="adjMaxImages" min="1" max="${LIMITES_DE_LA_BASE.imagenes}" value="${d.maxImages}">
@@ -15121,7 +15234,7 @@ function renderAdjuntosSection(){
           <span class="setting-icon">📄</span>
           <div class="setting-text">
             <div class="setting-label" id="adjLbl2">${t("Máximo de documentos","Maximum documents","Máximo de documentos","מקסימום מסמכים")}</div>
-            <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:LIMITES_DE_LA_BASE.archivos})}</div>
+            <div class="setting-sub">${t("Por actividad — tope de la base: {n}","Per activity — cap of the database: {n}","Por atividade — limite da base: {n}","לכל פעילות — תקרת מסד הנתונים: {n}",{n:LIMITES_DE_LA_BASE.archivos})}</div>
           </div>
           <div class="setting-control">
             <input type="number" aria-labelledby="adjLbl2" id="adjMaxFiles" min="1" max="${LIMITES_DE_LA_BASE.archivos}" value="${d.maxFiles}">
@@ -15510,6 +15623,50 @@ function vigilarTeclado(){
   medir();
 }
 vigilarTeclado();
+/* --- El botón «Atrás» (Y8, auditoría del 20/11/2026) ---------------------------------------------------------------------
+   La app no usaba el historial del navegador: de la ficha de un país, «Atrás» (el gesto más natural en un teléfono) sacaba
+   de la página en vez de volver a Países. Ahora cada cambio de pantalla (la solapa, la ficha de un país o de una zona)
+   suma una entrada, y «Atrás» vuelve a la anterior; una ventana abierta suma otra, y «Atrás» la cierra (como Escape).
+   Desde la primera pantalla, «Atrás» sale de la página, como en cualquier sitio. */
+let histArranco = false, histFirma = null, histModal = false, histIgnorar = 0, histRestaurando = false;
+const firmaDeNavegacion = () => JSON.stringify([state.view, state.countryDrill || null, state.zonaDrill || null]);
+const hayModalAbierto = () => [...document.querySelectorAll('[aria-modal="true"]')].some(e => e.getClientRects().length > 0);
+function sincronizarHistorial(){
+  if(!window.history || typeof history.pushState !== "function" || !isAuthorized()) return;
+  const firma = firmaDeNavegacion();
+  if(!histArranco){ histArranco = true; histFirma = firma; try{ history.replaceState({ ra: 1, firma }, "", location.href); }catch(e){} return; }
+  if(histRestaurando){ histFirma = firma; return; }
+  if(firma !== histFirma){ histFirma = firma; try{ history.pushState({ ra: 1, firma }, "", location.href); }catch(e){} }
+}
+function sincronizarModal(){
+  if(!histArranco) return;
+  const abierto = hayModalAbierto();
+  if(abierto === histModal) return;
+  histModal = abierto;
+  try{
+    if(abierto) history.pushState({ ra: 1, firma: histFirma, modal: true }, "", location.href);
+    else if(history.state && history.state.modal){ histIgnorar++; history.back(); }   // se cerró con un botón: se saca su entrada
+  }catch(e){ /* sin historial: queda como antes */ }
+}
+if(typeof MutationObserver === "function") new MutationObserver(sincronizarModal).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["hidden", "class", "style"], childList: true });
+window.addEventListener("popstate", e => {
+  if(histIgnorar > 0){ histIgnorar--; return; }
+  if(hayModalAbierto()){
+    // «Atrás» con una ventana abierta la cierra, igual que Escape. Si no se cierra (pide confirmar), vuelve su entrada.
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    setTimeout(() => {
+      if(hayModalAbierto()){ try{ history.pushState({ ra: 1, firma: histFirma, modal: true }, "", location.href); }catch(err){} }
+      else histModal = false;
+    }, 80);
+    return;
+  }
+  if(!isAuthorized()) return;
+  let f = null; try{ f = e.state && e.state.firma ? JSON.parse(e.state.firma) : null; }catch(err){}
+  if(!Array.isArray(f)) f = ["feed", null, null];
+  histRestaurando = true;
+  try{ state.view = f[0]; state.countryDrill = f[1]; state.zonaDrill = f[2]; render(); scrollToTop(); }
+  finally{ histRestaurando = false; }
+});
 // Pestañas en pantallas angostas (ver nav.tabs en el CSS): traer la activa
 // a la vista —si no, cambiar de solapa desde la campanita o el menú dejaba
 // la barra mostrando otras— y marcar por qué lado sigue habiendo pestañas.
@@ -15827,7 +15984,7 @@ function renderPanelDeFiltros(){
   // no la suma de las dos: con el número de las dos, el botón prometía más de lo que se veía.
   const hoy = todayISO(), enProximos = solapaAlAplicar(f, b.nivel) === "futuro";
   const total = getVisiblePosts(f, b.nivel).filter(({ post }) => esProximo(post, hoy) === enProximos).length;
-  const ver = total === 1 ? t("Ver 1 posteo","See 1 post","Ver 1 postagem","הצגת פוסט אחד") : t("Ver {n} posteos","See {n} posts","Ver {n} postagens","הצגת {n} פוסטים",{ n:total });
+  const ver = total === 1 ? t("Ver 1 actividad","See 1 activity","Ver 1 atividade","הצגת פעילות אחת") : t("Ver {n} actividades","See {n} activities","Ver {n} atividades","הצגת {n} פעילויות",{ n:total });
   const hayAlgo = FILTROS_CON_FICHA.some(k => valorDelFiltro(k, f, b.nivel));
   const opciones = { actividad:fpOpcionesActividad, lugar:fpOpcionesLugar, fecha:fpOpcionesFecha, persona:fpOpcionesPersona, guardados:fpOpcionesGuardados }[cat](b);
   return `<div class="fp-velo${entra}" data-action="fp-cerrar"></div>
@@ -16091,7 +16248,22 @@ function matchesTextFilter(text, record){
     normalize(record.authorName||"").includes(n) ||
     normalize(participantsLabel(record.participants) || record.organizer||"").includes(n) ||
     normalize(record.location||"").includes(n) ||
-    normalize(textoDeLugares(record.scopes)).includes(n);
+    normalize(textoDeLugares(record.scopes)).includes(n) ||
+    coincideEnElContenido(record, n);
+}
+// Lo que se habló y lo que dice el Cierre (Y10, auditoría del 20/11/2026): las respuestas del hilo, el resumen que sale
+// de un Formulario de Cierre (resumen ejecutivo, objetivos, pasos), los hitos de un proyecto y los nombres de los
+// archivos. Antes el buscador solo miraba el título, los comentarios, el autor, la gente, el lugar y el alcance, y la
+// cadena documento → resumen → ficha, que es lo más valioso de la memoria, no se podía buscar por lo que dice.
+// Va al final de la cuenta: solo se mira lo que no coincidió por lo demás.
+function coincideEnElContenido(record, n){
+  const hay = x => normalize(x || "").includes(n);
+  const rs = record.id && state.repliesByPost ? state.repliesByPost[record.id] : null;
+  if(Array.isArray(rs) && rs.some(r => r && !r.system && hay(r.content))) return true;
+  if(Array.isArray(record.milestones) && record.milestones.some(m => m && hay(m.label))) return true;
+  const partes = record.resumen && Array.isArray(record.resumen.partes) ? record.resumen.partes : [];
+  if(partes.some(pt => pt && (hay(pt.ejecutivo) || (Array.isArray(pt.objetivos) && pt.objetivos.some(o => o && hay(o.t))) || (Array.isArray(pt.pasos) && pt.pasos.some(x => x && hay(x.t)))))) return true;
+  return Array.isArray(record.files) && record.files.some(a => a && hay(a.name));
 }
 // El alcance de un posteo, como texto para buscar: la ciudad, el país o
 // la región, como se ven en la tarjeta (en el idioma de la app) y como
@@ -16126,7 +16298,7 @@ function matchesPlaceOrZoneFilter(record, f = state.filters, nivel = placeLevel(
 // de este mes); antes era uno solo a la vez (state.filters.quick).
 function etiquetaFiltroRapido(k){
   return {
-    mine: t("Mis posteos","My posts","Minhas postagens","הפוסטים שלי"),
+    mine: t("Mis actividades","My activities","Minhas atividades","הפעילויות שלי"),
     participo: t("Donde participo","Where I take part","Onde participo","איפה שאני משתתף/ת"),
     docs: t("Les falta documentación","Missing documents","Falta documentação","חסרים מסמכים"),
     mes: t("Este mes","This month","Este mês","החודש"),
@@ -16289,11 +16461,14 @@ function notaDeActividades(pasados){
   if(!per || feedSolapa !== "pasado" || !pasados.length) return "";
   const veces = pasados.reduce((n, it) => n + vecesDelPeriodo(it.post), 0);
   if(veces === pasados.length) return "";
-  const posteos = pasados.length === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{ n: pasados.length });
+  // «17 veces en 3 actividades»: Reportes cuenta cada vez que ocurrió algo que se repite; el Inicio lista una tarjeta por actividad.
+  // (Hasta el 20/11/2026 decía «17 actividades en 3 posteos»; con «actividad» para todo (D25) habría dicho «17 actividades en 3 actividades».)
+  const posteos = pasados.length === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{ n: pasados.length });
+  const cuantasVeces = veces === 1 ? t("1 vez","1 time","1 vez","פעם אחת") : t("{n} veces","{n} times","{n} vezes","{n} פעמים",{ n: veces });
   return `<div class="fb-nota" role="note">${t("<b>{a}</b> en <b>{b}</b>. Lo que se repite cuenta cada vez: tocá «se repite…» en su tarjeta para ver cuántas.",
     "<b>{a}</b> in <b>{b}</b>. Anything that repeats counts every time: tap “repeats…” on its card to see how many.",
     "<b>{a}</b> em <b>{b}</b>. O que se repete conta a cada vez: toque em «repete-se…» no cartão para ver quantas.",
-    "<b>{a}</b> ב-<b>{b}</b>. מה שחוזר נספר בכל פעם: לחצו על «חוזר…» בכרטיס כדי לראות כמה.", { a: esc(cuantasActividades(veces)), b: esc(posteos) })}</div>`;
+    "<b>{a}</b> ב-<b>{b}</b>. מה שחוזר נספר בכל פעם: לחצו על «חוזר…» בכרטיס כדי לראות כמה.", { a: esc(cuantasVeces), b: esc(posteos) })}</div>`;
 }
 function renderFeedView(){
   // El composer de Rutina va SIEMPRE arriba, sin importar la solapa.
@@ -16304,8 +16479,8 @@ function renderFeedView(){
   const vacio = feedSolapa === "futuro"
     ? (filtro ? t("Nada de lo que viene coincide con el filtro.","Nothing upcoming matches the filter.","Nada do que vem coincide com o filtro.","שום דבר מהקרוב לא תואם למסנן.")
               : t("No hay nada planificado todavía.","Nothing is planned yet.","Ainda não há nada planejado.","עדיין לא תוכנן כלום."))
-    : (filtro ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
-              : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים."));
+    : (filtro ? t("Todavía no hay actividades que coincidan con el filtro.","No activities match the filter yet.","Ainda não há atividades que coincidam com o filtro.","עדיין אין פעילויות שתואמות למסנן.")
+              : t("Todavía no hay actividades.","There are no activities yet.","Ainda não há atividades.","עדיין אין פעילויות."));
   return `<div class="feed-layout"><div class="feed-main">
     ${canWrite() ? renderRutinaComposer() : ""}
     ${renderFilterBar(notaDeActividades(pasados))}
@@ -16422,7 +16597,7 @@ function renderGlobalSearch(){
     </button>`;
   };
   const html =
-    grupo(t("Posteos","Posts","Postagens","פוסטים"), r.posts.map(p=>ficha(p, "gs-post"))) +
+    grupo(t("Actividades","Activities","Atividades","פעילויות"), r.posts.map(p=>ficha(p, "gs-post"))) +
     grupo(t("Proyectos","Projects","Projetos","פרויקטים"), r.proyectos.map(p=>ficha(p, "gs-project"))) +
     grupo(t("Ciudades","Cities","Cidades","ערים"), r.ciudades.map(c=>`<button type="button" class="gs-item" data-action="gs-city" data-country="${esc(c.country)}" data-city="${esc(c.city)}"><span class="gs-ico">📍</span><span class="gs-txt"><b>${esc(cityLabel(c.country, c.city))}</b><small>${esc(countryLabel(c.country))}</small></span></button>`)) +
     grupo(t("Países","Countries","Países","מדינות"), r.paises.map(c=>`<button type="button" class="gs-item" data-action="gs-country" data-country="${esc(c.name)}"><span class="gs-ico">🗺️</span><span class="gs-txt"><b>${esc(countryLabel(c.name))}</b></span></button>`)) +
@@ -16432,7 +16607,7 @@ function renderGlobalSearch(){
     grupo(t("Instituciones","Organizations","Instituições","מוסדות"), r.instituciones.map(x => `<button type="button" class="gs-item" data-action="gs-institucion" data-id="${esc(x.id)}"><span class="gs-ico">🏛️</span><span class="gs-txt"><b dir="auto">${esc(x.name)}</b><small dir="auto">${esc([x.tipo, lugarTexto(x)].filter(Boolean).join(" · "))}</small></span></button>`));
   panel.innerHTML = (html || `<div class="gs-empty">${t("Sin resultados para “{q}”","No results for “{q}”","Sem resultados para “{q}”","אין תוצאות עבור “{q}”",{q:esc(q)})}</div>`) +
     (state.instituciones.length ? `<button type="button" class="gs-item gs-all" data-action="gs-agenda" data-q="${esc(q)}"><span class="gs-ico">📇</span><span class="gs-txt"><b>${t("Buscar “{q}” en la Agenda","Search “{q}” in the Directory","Buscar “{q}” na Agenda","חיפוש “{q}” בספר הטלפונים",{q:esc(q)})}</b></span></button>` : "") +
-    `<button type="button" class="gs-item gs-all" data-action="gs-feed"><span class="gs-ico">🔎</span><span class="gs-txt"><b>${t("Buscar “{q}” en el Feed","Search “{q}” in the Feed","Buscar “{q}” no Feed","חיפוש “{q}” בפיד",{q:esc(q)})}</b></span></button>`;
+    `<button type="button" class="gs-item gs-all" data-action="gs-feed"><span class="gs-ico">🔎</span><span class="gs-txt"><b>${t("Buscar “{q}” en Inicio","Search “{q}” in Home","Buscar “{q}” no Início","חיפוש “{q}” בדף הראשי",{q:esc(q)})}</b></span></button>`;
   // Cada resultado es una opción de la lista (siguen siendo botones: la opción
   // es un rol permitido en un <button>).
   panel.querySelectorAll(".gs-item").forEach(b => b.setAttribute("role", "option"));
@@ -16541,9 +16716,34 @@ function filtrosDeGuardado(g){
    día. Usa el mismo posts/{postId} de siempre (activityType:"rutina"),
    solo que el título/fechas se completan solos del lado del cliente.
    ====================================================================== */
+/* --- Lo que se está escribiendo se guarda en el aparato (Y9, auditoría del 20/11/2026) ---------------------------
+   En el celular el navegador recarga la página solo al volver de otra aplicación (WhatsApp, la cámara), y un texto
+   largo escrito en un viaje se perdía. Se guarda el TEXTO (no las fotos ni los archivos) de la rutina, del título y los
+   comentarios de un evento nuevo y de cada respuesta, a medida que se escribe; se borra al publicarlo y al cerrar
+   sesión. Sin localStorage (o lleno), no pasa nada: queda como antes. */
+const CLAVE_BORRADORES = "ra_borradores_v1", CLAVE_DUENO_BORRADORES = "ra_borradores_de";
+const borradores = (() => { try{ const j = JSON.parse(localStorage.getItem(CLAVE_BORRADORES) || "{}"); return j && typeof j === "object" && !Array.isArray(j) ? j : {}; }catch(e){ return {}; } })();
+function borradorDe(clave){ return typeof borradores[clave] === "string" ? borradores[clave] : ""; }
+function guardarBorrador(clave, valor){
+  if(typeof valor === "string" && valor.trim()) borradores[clave] = valor.slice(0, 20000); else delete borradores[clave];
+  try{
+    if(Object.keys(borradores).length){
+      localStorage.setItem(CLAVE_BORRADORES, JSON.stringify(borradores));
+      localStorage.setItem(CLAVE_DUENO_BORRADORES, String((state.auth.user && state.auth.user.email) || "").toLowerCase());   // de quién es: no pasa a otra cuenta
+    } else { localStorage.removeItem(CLAVE_BORRADORES); localStorage.removeItem(CLAVE_DUENO_BORRADORES); }
+  }catch(e){ /* sin dónde guardar: queda como antes */ }
+}
+function borrarTodosLosBorradores(){ Object.keys(borradores).forEach(k => delete borradores[k]); try{ localStorage.removeItem(CLAVE_BORRADORES); localStorage.removeItem(CLAVE_DUENO_BORRADORES); }catch(e){} }
+// Cada vez que cambia la sesión: si se cerró, o entró OTRA cuenta, lo guardado se borra; si es la misma (la página se
+// recargó), se conserva.
+function borradoresDeOtraSesion(user){
+  let dueno = ""; try{ dueno = localStorage.getItem(CLAVE_DUENO_BORRADORES) || ""; }catch(e){}
+  const quien = String((user && user.email) || "").toLowerCase();
+  if(!quien || (dueno && dueno !== quien)) borrarTodosLosBorradores();
+}
 function newRutinaDraft(){
   return {
-    content:"", images:[], links:[], files:[],
+    content: borradorDe("rutina"), images:[], links:[], files:[],
     scopes:[], placeQuery:"", placeHighlight:0,
     mentionQuery:null, mentionCaret:0, mentionHighlight:0,
     error:"",
@@ -16625,6 +16825,7 @@ async function submitRutina(){
   d.submitting = true; render();
   try{
     const rutinaId = await createPost(postData);
+    guardarBorrador("rutina", "");
     rutinaDraft = newRutinaDraft();
     render();
     ofrecerCumplir({ ...postData, id: rutinaId });
@@ -16650,11 +16851,21 @@ function newReplyDraft(){
   return { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, scopes:[], placeQuery:"", placeHighlight:0, scopeError:"" };
 }
 function getReplyDraft(postId){
-  if(!replyDrafts[postId]) replyDrafts[postId] = newReplyDraft();
+  if(!replyDrafts[postId]){ replyDrafts[postId] = newReplyDraft(); replyDrafts[postId].content = borradorDe("respuesta:" + postId); }
   return replyDrafts[postId];
 }
 function resetReplyDraft(postId){
+  guardarBorrador("respuesta:" + postId, "");
   replyDrafts[postId] = newReplyDraft();
+}
+// Al volver a abrir la página, las respuestas a medio escribir vuelven con su formulario abierto (si no, el texto
+// guardado queda escondido detrás de un botón que nadie sabe que tiene algo).
+function reabrirRespuestasEnCurso(){
+  Object.keys(borradores).forEach(k => {
+    if(!k.startsWith("respuesta:")) return;
+    const id = k.slice("respuesta:".length);
+    if(getPostById(id)) openReplyForms.add(id); else guardarBorrador(k, "");
+  });
 }
 
 // Alcances, links e imágenes de un posteo o una respuesta (misma forma
@@ -16900,15 +17111,15 @@ async function adjuntarDocumento(postId, docId, file){
   const resto = post.files || [];
   if(resto.length >= maxArchivos()){
     await appAlert(maxArchivos() === 1 ? t(
-      "Este posteo ya tiene 1 archivo, que es el máximo. Quitalo para poder sumar este.",
-      "This post already has 1 file, which is the maximum. Remove it to add this one.",
-      "Esta postagem já tem 1 arquivo, que é o máximo. Remova-o para somar este.",
-      "לפוסט הזה כבר יש קובץ אחד, שזה המקסימום. הסר/י אותו כדי להוסיף את זה.", { n: maxArchivos() }
+      "Este actividad ya tiene 1 archivo, que es el máximo. Quitalo para poder sumar este.",
+      "This activity already has 1 file, which is the maximum. Remove it to add this one.",
+      "Esta atividade já tem 1 arquivo, que é o máximo. Remova-o para somar este.",
+      "לפעילות הזו כבר יש קובץ אחד, שזה המקסימום. הסר/י אותו כדי להוסיף את זה.", { n: maxArchivos() }
     ) : t(
-      "Este posteo ya tiene {n} archivos, que es el máximo. Quitá uno para poder sumar este.",
-      "This post already has {n} files, which is the maximum. Remove one to add this.",
-      "Esta postagem já tem {n} arquivos, que é o máximo. Remova um para somar este.",
-      "לפוסט הזה כבר יש {n} קבצים, שזה המקסימום. הסר/י אחד כדי להוסיף את זה.", { n: maxArchivos() }
+      "Este actividad ya tiene {n} archivos, que es el máximo. Quitá uno para poder sumar este.",
+      "This activity already has {n} files, which is the maximum. Remove one to add this.",
+      "Esta atividade já tem {n} arquivos, que é o máximo. Remova um para somar este.",
+      "לפעילות הזו כבר יש {n} קבצים, שזה המקסימום. הסר/י אחד כדי להוסיף את זה.", { n: maxArchivos() }
     ));
     return;
   }
@@ -17489,10 +17700,21 @@ document.addEventListener("pointerdown", e => {
 // En la compu sigue al botón: si se mueve la página, se cierra (salvo un desplazamiento que venía de antes y termina justo después de abrirla).
 window.addEventListener("scroll", e => { if(respPopAbierto() && !respPopEl.contains(e.target) && Date.now() - respAbiertoEn > 400) cerrarRespPop(false); }, true);
 // Al salir el teclado del celular la pantalla cambia de alto: no se cierra, se vuelve a ubicar.
+let respRevisar = null;
 const reubicarRespPop = () => {
   if(!respPopAbierto() || !respDisparador || !respDisparador.isConnected) return;
-  if(window.matchMedia("(pointer:coarse)").matches) respBotonALaVista(respDisparador);
+  const tactil = window.matchMedia("(pointer:coarse)").matches;
+  if(tactil) respBotonALaVista(respDisparador);
   ubicarRespPop(respDisparador);
+  // El navegador a veces mueve la página solo, un instante después de cambiar el alto (el desplazamiento suave de
+  // html{scroll-behavior:smooth}): el botón podía terminar pegado al borde de arriba, cortado. Se vuelve a mirar cuando
+  // ese movimiento terminó (20/11/2026: con los botones de 44 px de Z2 las tarjetas de arriba crecieron y pasó a verse).
+  clearTimeout(respRevisar);
+  respRevisar = setTimeout(() => {
+    if(!respPopAbierto() || !respDisparador || !respDisparador.isConnected) return;
+    if(tactil) respBotonALaVista(respDisparador);
+    ubicarRespPop(respDisparador);
+  }, 350);
 };
 window.addEventListener("resize", reubicarRespPop);
 if(window.visualViewport) window.visualViewport.addEventListener("resize", reubicarRespPop);
@@ -17800,9 +18022,33 @@ function resumenDelLugar(country, city){
     ultimaConResumen: ultima && { post: ultima.post, ejecutivo: ultima.partes.find(p => p.ejecutivo).ejecutivo } };
 }
 
+// La dirección de esta página sin lo que ya traiga (?post=, ?gasto=…) ni el # : lo que abren los correos.
+// Las horas de un evento son de UNA sola zona, la del Calendar compartido (hoy Argentina): una visita en Ciudad de México
+// cargada con la hora de allá quedaba 3 horas corrida para quienes reciben la invitación y la pantalla no lo decía (Y4 de
+// la auditoría del 20/11/2026; D22-A: Buenos Aires para todo, pero escrito).
+const nombreDeLaZonaHoraria = () => lugarDeLaZona(zonaDelCalendario());
+const textoDeLaZonaHoraria = () => t("Hora de {z}, la del Calendar del equipo.","Time in {z}, the team Calendar's.","Horário de {z}, o do Calendar da equipe.","שעה לפי {z}, כמו ביומן הצוות.", { z: nombreDeLaZonaHoraria() });
+const enlaceDelPosteo = id => `${location.href.split(/[?#]/)[0]}?post=${encodeURIComponent(id)}`;
+async function copiarEnlaceDelPosteo(id){
+  const url = enlaceDelPosteo(id);
+  let copiado = false;
+  try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(url); copiado = true; } }catch(e){ /* algunas vistas lo niegan: se prueba el otro camino */ }
+  if(!copiado){
+    const ta = document.createElement("textarea");
+    ta.value = url; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;";
+    document.body.appendChild(ta); ta.select();
+    try{ copiado = document.execCommand("copy"); }catch(e){ copiado = false; }
+    ta.remove();
+  }
+  showCalendarNotice(copiado
+    ? { ok:true, message:t("Enlace copiado: pegalo donde quieras.","Link copied: paste it anywhere.","Link copiado: cole onde quiser.","הקישור הועתק: הדביקו אותו בכל מקום.") }
+    : { ok:false, message:t("No se pudo copiar. El enlace es: {u}","Couldn't copy it. The link is: {u}","Não foi possível copiar. O link é: {u}","לא ניתן להעתיק. הקישור: {u}", { u:url }) });
+}
 function renderPostMenu(post, { editable, canCancel }){
   const items = [];
   if(editable) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="edit-post" data-post-id="${esc(post.id)}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>`);
+  // Un enlace que abre justo esta actividad (el mismo ?post= de los correos): para mandarla por WhatsApp (Y11, 20/11/2026).
+  items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="copy-post-link" data-post-id="${esc(post.id)}">🔗 ${t("Copiar enlace","Copy link","Copiar link","העתקת קישור")}</button>`);
   // Repetir: un evento nuevo con los mismos datos (tipo, lugar, gente,
   // texto), para la visita de todos los meses sin volver a cargar todo.
   if(canWrite() && post.activityType !== "rutina") items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="duplicate-post" data-post-id="${esc(post.id)}">🔁 ${t("Repetir este evento","Repeat this event","Repetir este evento","לחזור על האירוע הזה")}</button>`);
@@ -17866,7 +18112,7 @@ function renderPostCard(post, replies){
   const spanDays = post.endDate && post.endDate > baseStart ? Math.round((isoDate(post.endDate) - isoDate(baseStart)) / 86400000) : 0;
   const endDate = occ ? (spanDays ? addDaysISO(startDate, spanDays) : startDate) : (post.endDate || startDate);
   const cuando = fechaDeTarjeta(startDate, endDate, post.startTime, post.endTime);
-  const dateLabel = `${esc(cuando.dias)}${cuando.hora ? `<span class="hora"> · ${esc(cuando.hora)}</span>` : ""}` + renderOccurrencePicker(post, occ);
+  const dateLabel = `${esc(cuando.dias)}${cuando.hora ? `<span class="hora" title="${esc(textoDeLaZonaHoraria())}"> · ${esc(cuando.hora)}</span>` : ""}` + renderOccurrencePicker(post, occ);
   const metaBits = [];
   if(post.participants && post.participants.length) metaBits.push(`<span class="post-quien">👥 ${participantsHtml(post.participants)}</span>`);
   // Quién lo cargó. En los eventos importados del Calendar el authorName
@@ -19313,7 +19559,6 @@ function zDelCambio(a, b, nAhora, nAntes){
   if(!p || p >= 1) return 0;
   return (a / nAhora - b / nAntes) / Math.sqrt(p * (1 - p) * (1 / nAhora + 1 / nAntes));
 }
-function diasEntre(desdeISO, hastaISO){ return Math.round((isoDate(hastaISO) - isoDate(desdeISO)) / 86400000); }
 // ---- Tendencias ----
 // Qué cambió en los últimos 90 días, contra los 90 anteriores (pedido del usuario, 13/10/2026): lugares, tipos
 // y temas que subieron, bajaron, aparecieron o se apagaron. Es la misma cuenta en Reportes y en el costado del
@@ -19327,6 +19572,13 @@ const TENDENCIAS_DIAS = 90;
 const TENDENCIAS_MIN_POSTS = 8;     // con menos posteos en los 180 días no hay de qué hablar
 const TENDENCIAS_MIN = 3;           // lo que sube o baja llega a 3 en alguno de los dos tramos
 const TENDENCIAS_MAX = 10;          // nunca se muestran más de 10, en ninguna parte
+// Lugares y tipos también tienen que apartarse del azar (la misma prueba que los temas, pero más exigente: son
+// ~20 comparaciones a la vez). Con 12 a 80 actividades puestas al azar, sin ninguna tendencia, «Tendencias» mostraba
+// cambios («Chile 4 → 0 se apagó») en 12 de 12 equipos (auditoría del 20/11/2026, Y5; D23-A).
+const TENDENCIAS_Z = 3;
+// Para las pruebas de las reglas viejas (tendencias_test.mjs, con cuentas a mano de pocos posteos) se apaga con
+// window.__tendenciasZ = 0, como window.__pruebasSinIntegridad; tendencias_azar_test.mjs prueba la regla de verdad.
+const zDeLugaresYTipos = () => typeof window.__tendenciasZ === "number" ? window.__tendenciasZ : TENDENCIAS_Z;
 const TENDENCIAS_PRIMERAS = 6;      // en Reportes: las que se ven antes de «Ver las otras»
 const TENDENCIAS_LATERAL = 5;       // en el Inicio: las primeras, y «Ver más» suma de a 5
 // Las claves de las palabras que no cuentan como tema porque ya las cuentan otras partes de «Tendencias»: lugares
@@ -19374,6 +19626,8 @@ function temaConEseNombre(texto){
 }
 // ¿Cambió lo bastante como para destacarlo? Hay que llegar a TENDENCIAS_MIN en alguno de los dos tramos y que
 // sea nuevo, que se haya apagado, o que haya subido o bajado una vez y media (y por lo menos 2). null si no.
+const TEXTO_SIN_TENDENCIAS = () => t("Nada cambió más de lo que podría ser azar.","Nothing changed more than chance could explain.","Nada mudou mais do que o acaso poderia explicar.","שום דבר לא השתנה יותר ממה שהמקרה יכול להסביר.");
+const TEXTO_POCOS_DATOS = () => t("Todavía hay pocos datos para hablar de tendencias.","There isn't enough data yet to talk about trends.","Ainda há poucos dados para falar de tendências.","עדיין אין מספיק נתונים כדי לדבר על מגמות.");
 function cambioDeTendencia(ahora, antes){
   if(Math.max(ahora, antes) < TENDENCIAS_MIN) return null;
   if(!antes) return "nuevo";
@@ -19406,6 +19660,7 @@ function calcularTendencias(f){
   const rAhora = armarReporte(ahora.desde, ahora.hasta, f), rAntes = armarReporte(antes.desde, antes.hasta, f);
   const items = [];
   const sumar = (kind, key, label, icono, a, b, extra) => {
+    if((kind === "lugar" || kind === "tipo") && Math.abs(zDelCambio(a, b, rAhora.total, rAntes.total)) < zDeLugaresYTipos()) return;
     const tipo = cambioDeTendencia(a, b);
     if(tipo) items.push({ kind, key, label, icono, ahora:a, antes:b, tipo, dif:a - b, ...extra });
   };
@@ -19469,7 +19724,7 @@ function cuerpoDeTendencias(T){
   const vistos = verTodo ? todos : todos.slice(0, TENDENCIAS_PRIMERAS);
   const max = Math.max(1, ...vistos.map(x => Math.max(x.ahora, x.antes)));
   const chip = (k, txt) => `<button type="button" class="chip-toggle${filtro === k ? " active" : ""}" data-action="tendencias-filtro" data-key="${k}" aria-pressed="${filtro === k}">${txt}</button>`;
-  const sinNada = t("Nada cambió lo suficiente.","Nothing changed enough.","Nada mudou o bastante.","שום דבר לא השתנה מספיק.");
+  const sinNada = TEXTO_SIN_TENDENCIAS();
   const resto = todos.length - TENDENCIAS_PRIMERAS;
   return `<div class="rep-tend-cab"><div class="rep-tend-chips" role="group" aria-label="${esc(t("Qué mostrar","What to show","O que mostrar","מה להציג"))}">
       ${chip("todo", esc(t("Todo","All","Tudo","הכול")))}${chip("lugar", "📍 " + esc(t("Lugares","Places","Lugares","מקומות")))}${chip("tipo", "🏷 " + esc(t("Tipos","Types","Tipos","סוגים")))}${chip("tema", "💬 " + esc(t("Temas","Topics","Temas","נושאים")))}</div>
@@ -19478,7 +19733,9 @@ function cuerpoDeTendencias(T){
 }
 function renderTendencias(f){
   const T = tendenciasDe(f);
-  if(T.poca) return "";
+  if(T.poca) return `<div id="repTendencias">` + seccionDelReporte(t("Tendencias","Trends","Tendências","מגמות"),
+    t("Últimos 90 días, contra los 90 anteriores","Last 90 days, against the 90 before","Últimos 90 dias, contra os 90 anteriores","90 הימים האחרונים, מול 90 הקודמים"),
+    `<div class="rep-bloque rep-tend"><p class="rep-tend-vacio">${esc(TEXTO_POCOS_DATOS())}</p></div>`) + `</div>`;
   return `<div id="repTendencias">` + seccionDelReporte(t("Tendencias","Trends","Tendências","מגמות"),
     t("Últimos 90 días, contra los 90 anteriores","Last 90 days, against the 90 before","Últimos 90 dias, contra os 90 anteriores","90 הימים האחרונים, מול 90 הקודמים"),
     `<div class="rep-bloque rep-tend">${cuerpoDeTendencias(T)}</div>`) + `</div>`;
@@ -19563,7 +19820,8 @@ function despuesDeTendencias(){
 // fila abre el Inicio con eso; la flecha ↗ de la fila (y «Reportes ↗») abre Reportes ahí.
 function renderTendenciasLateral(){
   const T = tendenciasDe(null);
-  if(T.poca || !T.items.length) return "";
+  if(T.poca || !T.items.length) return `<section class="fs-box fs-tendencias fs-sin"><div class="fs-cab"><h4>📈 ${esc(t("Tendencias","Trends","Tendências","מגמות"))}</h4></div>
+      <p class="fs-poco">${esc(T.poca ? TEXTO_POCOS_DATOS() : TEXTO_SIN_TENDENCIAS())}</p></section>`;
   const todos = T.items.slice(0, TENDENCIAS_MAX), n = Math.min(todos.length, Math.max(TENDENCIAS_LATERAL, tendLateral));
   const arriba = isRTL() ? "↖" : "↗";
   const fila = x => {
@@ -19626,10 +19884,12 @@ function sugerenciasDelReporte(v, r, rAnt, f){
     const sube = Object.keys(r.porPais).map(n => ({ n, d: r.porPais[n] - (rAnt.porPais[n] || 0) })).filter(x => x.d >= 3).sort((a, b) => b.d - a.d)[0];
     if(sube) out.push({ ico:"🌱", txt: t("{p} creció de {a} a {b}: vale la pena ver qué funcionó ahí.","{p} grew from {a} to {b}: worth seeing what worked there.","{p} cresceu de {a} para {b}: vale ver o que funcionou lá.","{p} גדלה מ-{a} ל-{b}: כדאי לבדוק מה עבד שם.",{ p: nombrePais(sube.n), a: rAnt.porPais[sube.n] || 0, b: r.porPais[sube.n] }) });
   }
-  // 4. Meses vacíos (solo los que ya pasaron).
+  // 4. Meses vacíos (solo los que ya pasaron, y desde el primer mes con algo cargado: los de antes de que el equipo
+  // usara el sistema no estuvieron «vacíos», no existían; Y6 de la auditoría del 20/11/2026).
   const hoyMes = todayISO().slice(0, 7);
+  const primerMes = state.posts.reduce((min, p) => { const d = String(p.startDate || p.date || "").slice(0, 7); return !p.cancelled && d && (!min || d < min) ? d : min; }, "");
   const vacios = [];
-  for(let m = v.desde.slice(0, 7); m <= v.hasta.slice(0, 7) && m < hoyMes; m = addMonthsISO(m + "-01", 1).slice(0, 7)){
+  if(primerMes) for(let m = v.desde.slice(0, 7) > primerMes ? v.desde.slice(0, 7) : primerMes; m <= v.hasta.slice(0, 7) && m < hoyMes; m = addMonthsISO(m + "-01", 1).slice(0, 7)){
     if(!r.porMes[m]) vacios.push(fmtISO(m + "-01", { month:"long" }));
   }
   if(vacios.length && vacios.length < 12) out.push({ ico:"🗓️", txt: (vacios.length === 1 ? t("No hubo actividad en {m}: conviene planificar algo para ese mes.","There was no activity in {m}: worth planning something for that month.","Não houve atividade em {m}: convém planejar algo para esse mês.","לא הייתה פעילות ב-{m}: כדאי לתכנן משהו לחודש הזה.", { m: lista(vacios) }) : t("No hubo actividad en {m}: conviene planificar algo para esos meses.","There was no activity in {m}: worth planning something for those months.","Não houve atividade em {m}: convém planejar algo para esses meses.","לא הייתה פעילות ב-{m}: כדאי לתכנן משהו לחודשים האלה.", { m: lista(vacios) })) });
@@ -19644,7 +19904,8 @@ function sugerenciasDelReporte(v, r, rAnt, f){
   if(r.sinLugar) out.push({ ico:"📍", txt: r.sinLugar === 1
     ? t("Una actividad no tiene lugar: completarla hace más útil este reporte.","One activity has no place: filling it in makes this report more useful.","Uma atividade não tem lugar: completá-la torna este relatório mais útil.","לפעילות אחת אין מקום: השלמתה תהפוך את הדוח לשימושי יותר.")
     : t("{n} actividades no tienen lugar: completarlas hace más útil este reporte.","{n} activities have no place: filling them in makes this report more useful.","{n} atividades não têm lugar: completá-las torna este relatório mais útil.","ל-{n} פעילויות אין מקום: השלמתן תהפוך את הדוח לשימושי יותר.",{ n: r.sinLugar }) });
-  if(r.total >= 5 && r.conParticipantes / r.total < 0.5) out.push({ ico:"👥", txt: t("Solo el {p}% de las actividades tiene participantes cargados: sumarlos muestra mejor quién hizo qué.","Only {p}% of activities have participants: adding them shows better who did what.","Só {p}% das atividades têm participantes: somá-los mostra melhor quem fez o quê.","רק ל-{p}% מהפעילויות יש משתתפים: הוספתם מראה טוב יותר מי עשה מה.",{ p: Math.round(r.conParticipantes * 100 / r.total) }) });
+  if(r.total >= 5 && r.conParticipantes === 0) out.push({ ico:"👥", txt: t("Ninguna actividad tiene participantes cargados: sumarlos muestra mejor quién hizo qué.","No activity has participants: adding them shows better who did what.","Nenhuma atividade tem participantes: somá-los mostra melhor quem fez o quê.","לאף פעילות אין משתתפים: הוספתם מראה טוב יותר מי עשה מה.") });
+  else if(r.total >= 5 && r.conParticipantes / r.total < 0.5) out.push({ ico:"👥", txt: t("Solo el {p}% de las actividades tiene participantes cargados: sumarlos muestra mejor quién hizo qué.","Only {p}% of activities have participants: adding them shows better who did what.","Só {p}% das atividades têm participantes: somá-los mostra melhor quem fez o quê.","רק ל-{p}% מהפעילויות יש משתתפים: הוספתם מראה טוב יותר מי עשה מה.",{ p: Math.round(r.conParticipantes * 100 / r.total) }) });
   return out.slice(0, 7);
 }
 function renderSugerencias(v, r, rAnt, f){
@@ -19730,7 +19991,7 @@ function renderPaisesView(){
     // que en RTL quede del lado correcto) — pisarlo acá con la propiedad
     // física vieja lo dejaba sin color en RTL (el navegador ya no pinta
     // border-left ahí, solo border-right).
-    const unit = cnt === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות");
+    const unit = cnt === 1 ? t("actividad","activity","atividade","פעילות") : t("actividades","activities","atividades","פעילויות");
     const a = act[c.name] || {};
     const cuando = p => fmtISO(p.startDate || p.date, { day:"numeric", month:"short" });
     const linea = a.proxima
@@ -19756,7 +20017,7 @@ function renderPaisesView(){
     const n = state.posts.filter(p => !p.cancelled && nivelEnFicha(p, { zona: z.key }) === "own").length;
     return `<button type="button" class="paises-zona" data-action="drill-zone" data-zona="${esc(z.key)}">
       <span class="dot" style="background:${safeColor(z.color)}"></span><b>${esc(regionLabel(z.key))}</b>
-      <small>${n} ${n === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות")}</small><span class="pz-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`;
+      <small>${n} ${n === 1 ? t("actividad","activity","atividade","פעילות") : t("actividades","activities","atividades","פעילויות")}</small><span class="pz-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`;
   }).join("");
   return `${toolbar}${resumen}<div class="paises-zonas">${zonas}</div><div class="country-grid">${cards}</div>${plegados}${latamFootnote()}`;
 }
@@ -19820,8 +20081,8 @@ function latamFootnote(){
   const n = latamPostCount();
   if(!n) return "";
   return `<div class="latam-footnote">🌎 ${n === 1
-    ? t("Además, <b>1 posteo de toda LatAm</b> aplica a todos los países.","Also, <b>1 LatAm-wide post</b> applies to every country.","Além disso, <b>1 postagem de toda a LatAm</b> se aplica a todos os países.","בנוסף, <b>פוסט אחד של כל LatAm</b> חל על כל המדינות.")
-    : t("Además, <b>{n} posteos de toda LatAm</b> aplican a todos los países.","Also, <b>{n} LatAm-wide posts</b> apply to every country.","Além disso, <b>{n} postagens de toda a LatAm</b> se aplicam a todos os países.","בנוסף, <b>{n} פוסטים של כל LatAm</b> חלים על כל המדינות.",{n})}
+    ? t("Además, <b>1 actividad de toda LatAm</b> aplica a todos los países.","Also, <b>1 LatAm-wide activity</b> applies to every country.","Além disso, <b>1 atividade de toda a LatAm</b> se aplica a todos os países.","בנוסף, <b>פעילות אחת של כל LatAm</b> חלה על כל המדינות.")
+    : t("Además, <b>{n} actividades de toda LatAm</b> aplican a todos los países.","Also, <b>{n} LatAm-wide activities</b> apply to every country.","Além disso, <b>{n} atividades de toda a LatAm</b> se aplicam a todos os países.","בנוסף, <b>{n} פעילויות של כל LatAm</b> חלות על כל המדינות.",{n})}
     <button type="button" class="btn-text-add latam-footnote-btn" data-action="goto-latam">${t("Verlos","See them","Vê-los","להציג אותם")} ${isRTL() ? "←" : "→"}</button></div>`;
 }
 
@@ -19841,7 +20102,7 @@ const MAP_MARKER_SIZE = 40; // diámetro fijo, en px, de TODOS los círculos (no
 function mapMarkerSpecs(counts, countries){
   const specs = [];
   const seeMemory = t("Ver historial {a}","See history {a}","Ver histórico {a}","צפייה בהיסטוריה {a}",{a:isRTL()?"←":"→"});
-  const nLabel = n => n === 1 ? t("1 registro","1 record","1 registro","רשומה אחת") : t("{n} registros","{n} records","{n} registros","{n} רשומות",{n});
+  const nLabel = n => n === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{n});
   countries.forEach(c=>{
     const d = counts[c.name];
     const color = safeColor(ZONES[c.zone]?.color);
@@ -20421,8 +20682,8 @@ function renderConfigNotificacionesSection(){
         ${prefRow("👥", t("Solo donde participo","Only where I take part","Somente onde participo","רק איפה שאני משתתף/ת"),
           t("Avisar únicamente de los eventos que creé yo o donde estoy entre los participantes.","Only notify about events I created or where I'm listed as a participant.","Avisar somente dos eventos que criei ou onde estou entre os participantes.","להתריע רק על אירועים שיצרתי או שאני ברשימת המשתתפים."),
           prefSwitch("notifyOnlyMine", !!p.notifyOnlyMine))}
-        ${prefRow("💬", t("Respuestas a mis posteos","Replies to my posts","Respostas às minhas postagens","תגובות לפוסטים שלי"),
-          t("Sumar a la campanita las respuestas nuevas de otros en posteos míos.","Add other people's new replies on my posts to the bell.","Somar ao sino as respostas novas de outros nas minhas postagens.","להוסיף לפעמון תגובות חדשות של אחרים לפוסטים שלי."),
+        ${prefRow("💬", t("Respuestas a mis actividades","Replies to my activities","Respostas às minhas atividades","תגובות לפעילויות שלי"),
+          t("Sumar a la campanita las respuestas nuevas de otros en actividades mías.","Add other people's new replies on my activities to the bell.","Somar ao sino as respostas novas de outros nas minhas atividades.","להוסיף לפעמון תגובות חדשות של אחרים לפעילויות שלי."),
           prefSwitch("notifyReplies", p.notifyReplies !== false))}
         ${prefRow("📆", t("Recordatorio en Google Calendar","Reminder in Google Calendar","Lembrete no Google Calendar","תזכורת ב-Google Calendar"),
           t("Al crear o editar un evento, pedirle a Google que te recuerde con la misma antelación de arriba. Es lo único que te llega con la app cerrada, y aplica a los eventos que cargues vos.","When you create or edit an event, ask Google to remind you with the same lead time above. It's the only thing that reaches you with the app closed, and it applies to the events you add.","Ao criar ou editar um evento, pedir ao Google que te lembre com a mesma antecedência acima. É o único que chega com o app fechado, e vale para os eventos que você carregar.","ביצירה או עריכה של אירוע, לבקש מגוגל להזכיר לך באותו טווח זמן. זה הדבר היחיד שמגיע כשהאפליקציה סגורה, והוא חל על האירועים שאת/ה מוסיף/ה."),
@@ -20447,7 +20708,7 @@ function renderConfigNotificacionesSection(){
 // a las 9, menciones y respuestas (y pedidos de acceso, para los admins).
 const TEMAS_DE_CORREO = () => [
   { key:"menciones", label:t("@ Cuando me mencionan","@ When I'm mentioned","@ Quando me mencionam","@ כשמזכירים אותי") },
-  { key:"respuestas", label:"💬 " + t("Respuestas a mis posteos","Replies to my posts","Respostas às minhas postagens","תגובות לפוסטים שלי") },
+  { key:"respuestas", label:"💬 " + t("Respuestas a mis actividades","Replies to my activities","Respostas às minhas atividades","תגובות לפעילויות שלי") },
   { key:"nuevos", label:"🆕 " + t("Actividades nuevas del equipo","New team activities","Atividades novas da equipe","פעילויות חדשות של הצוות") },
   { key:"proximos", label:"⏰ " + t("Eventos que empiezan pronto","Events starting soon","Eventos que começam em breve","אירועים שמתחילים בקרוב") },
   ...(isAdmin() ? [{ key:"pedidos", label:"🔑 " + t("Pedidos de acceso","Access requests","Pedidos de acesso","בקשות גישה") }] : []),
@@ -22173,10 +22434,10 @@ function tourSteps(){
   const enMas = txt => t("En «Más»: ","Under “More”: ","Em «Mais»: ","תחת «עוד»: ") + txt;
   const inicio = { id:"inicio", cubre:["feed"], target: tourNav("feed"),
     title: t("Inicio","Home","Início","ראשי"),
-    text: t("Todo lo que carga el equipo. «Lo que pasó» y «Próximos» van separados; con «Filtros» y el buscador llegás a lo que necesitás por lugar, fecha, tipo o persona. En la compu, a un costado, «Tendencias» muestra qué subió o bajó en los últimos 90 días.",
-      "Everything the team logs. “What happened” and “Upcoming” are kept apart; with “Filters” and the search you find what you need by place, date, type or person. On a computer, on the side, “Trends” shows what went up or down in the last 90 days.",
-      "Tudo o que a equipe carrega. «O que aconteceu» e «Próximos» ficam separados; com «Filtros» e a busca você chega ao que precisa por lugar, data, tipo ou pessoa. No computador, ao lado, «Tendências» mostra o que subiu ou desceu nos últimos 90 dias.",
-      "כל מה שהצוות מתעד. «מה קרה» ו«בקרוב» מופרדים; עם «מסננים» והחיפוש אפשר למצוא הכול לפי מקום, תאריך, סוג או אדם. במחשב, בצד, «מגמות» מראה מה עלה או ירד ב-90 הימים האחרונים.") };
+    text: t("Todo lo que carga el equipo. «Lo que pasó» y «Próximos» van separados; con «Filtros» y el buscador llegás a lo que necesitás por lugar, fecha, tipo o persona. Con suficientes actividades, en la compu, a un costado, «Tendencias» muestra qué subió o bajó en los últimos 90 días.",
+      "Everything the team logs. “What happened” and “Upcoming” are kept apart; with “Filters” and the search you find what you need by place, date, type or person. With enough activities, on a computer, on the side, “Trends” shows what went up or down in the last 90 days.",
+      "Tudo o que a equipe carrega. «O que aconteceu» e «Próximos» ficam separados; com «Filtros» e a busca você chega ao que precisa por lugar, data, tipo ou pessoa. Com atividades suficientes, no computador, ao lado, «Tendências» mostra o que subiu ou desceu nos últimos 90 dias.",
+      "כל מה שהצוות מתעד. «מה קרה» ו«בקרוב» מופרדים; עם «מסננים» והחיפוש אפשר למצוא הכול לפי מקום, תאריך, סוג או אדם. כשיש מספיק פעילויות, במחשב, בצד, «מגמות» מראה מה עלה או ירד ב-90 הימים האחרונים.") };
   const comun = [
     { id:"paises", cubre:["paises"], target: tourNav("paises"),
       title: t("Países","Countries","Países","מדינות"),
@@ -22199,28 +22460,28 @@ function tourSteps(){
       textoMas: true },
     ...(gastosVisible() ? [{ id:"gastos", cubre:["gastos"], target: [...tourNav("gastos"), TOUR_MAS],
       title: t("Gastos","Expenses","Despesas","הוצאות"),
-      text: t("Subí las fotos o los PDF de tus comprobantes: el sistema los lee y vos confirmás. En «Por rendir» está lo que tenés que completar y mandar; en «Rendiciones», todo lo que ya mandaste, en «Cuenta corriente», lo que te deben o debés, y en «Mis estadísticas», en qué gastaste, mes a mes y por actividad.",
-        "Upload photos or PDFs of your receipts: the system reads them and you confirm. “To report” has what you need to complete and send; “Expense reports”, everything you've sent; “Running balance”, what you're owed or owe; and “My statistics”, what you spent on, month by month and by activity.",
-        "Envie as fotos ou os PDF dos seus comprovantes: o sistema lê e você confirma. Em «A prestar» está o que você precisa completar e mandar; em «Prestações», tudo o que já mandou; em «Conta corrente», o que te devem ou você deve; e em «Minhas estatísticas», em que você gastou, mês a mês e por atividade.",
-        "העלו תמונות או קובצי PDF של הקבלות: המערכת קוראת אותן ואתם מאשרים. ב«לדיווח» יש את מה שצריך להשלים ולשלוח; ב«דוחות הוצאות» — כל מה ששלחתם; ב«חשבון שוטף» — מה שחייבים לכם או שאתם חייבים; וב«הסטטיסטיקות שלי» — על מה הוצאתם, חודש אחר חודש ולפי פעילות.")
+      text: t("Subí las fotos o los PDF de tus comprobantes: el sistema los lee y vos confirmás. «Por rendir» es lo que tenés que completar y mandar; «Rendiciones», lo que ya mandaste; «Cuenta corriente», lo que te deben o debés; «Mis estadísticas», en qué gastaste.",
+      "Upload photos or PDFs of your receipts: the system reads them and you confirm. “To report” is what you need to complete and send; “Expense reports”, what you've already sent; “Running balance”, what you're owed or owe; “My statistics”, what you spent on.",
+      "Envie as fotos ou os PDF dos seus comprovantes: o sistema lê e você confirma. «A prestar» é o que você precisa completar e mandar; «Prestações», o que já mandou; «Conta corrente», o que te devem ou você deve; «Minhas estatísticas», em que você gastou.",
+      "העלו תמונות או קובצי PDF של הקבלות: המערכת קוראת אותן ואתם מאשרים. «לדיווח» הוא מה שצריך להשלים ולשלוח; «דוחות הוצאות» — מה ששלחתם; «חשבון שוטף» — מה שחייבים לכם או שאתם חייבים; «הסטטיסטיקות שלי» — על מה הוצאתם.")
         // Quien gestiona los gastos de todos (un admin o Finanzas) tiene dos secciones más.
         + (esGestor() ? " " + t("Como te toca revisar, también tenés «Para aprobar» y «Resumen».","Since you review expenses, you also have “To approve” and “Summary”.","Como você revisa as despesas, também tem «Para aprovar» e «Resumo».","מאחר שאתם בודקים הוצאות, יש לכם גם «לאישור» ו«סיכום».") : ""),
       textoMas: true }] : []),
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
-      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y en «Tendencias» qué lugares, tipos y temas subieron o bajaron en los últimos 90 días. Tocá un mes del gráfico para ver su ficha, «✨ Mi año» para tu resumen personal con una tarjeta para compartir, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
-        "How many activities there were by month, country, type and person, against the previous period, and in “Trends” which places, types and topics went up or down in the last 90 days. Tap a month in the chart to see its card, “✨ My year” for your personal summary with a card to share, or “Present” to show the report full screen, as slides, or print it.",
-        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e em «Tendências» quais lugares, tipos e temas subiram ou desceram nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, em «✨ Meu ano» para o seu resumo pessoal com um cartão para compartilhar, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
-        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, וב«מגמות» אילו מקומות, סוגים ונושאים עלו או ירדו ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, על «✨ השנה שלי» לסיכום האישי שלך עם כרטיס לשיתוף, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
+      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior; con suficientes datos, también qué subió o bajó en los últimos 90 días («Tendencias»). Tocá un mes para ver su ficha, «✨ Mi año» para tu resumen con una tarjeta para compartir, o «Presentar» para mostrarlo como diapositivas o imprimirlo.",
+      "How many activities there were by month, country, type and person, against the previous period; with enough data, also what went up or down in the last 90 days (“Trends”). Tap a month to see its card, “✨ My year” for your summary with a card to share, or “Present” to show it as slides or print it.",
+      "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior; com dados suficientes, também o que subiu ou desceu nos últimos 90 dias («Tendências»). Toque em um mês para ver a ficha dele, em «✨ Meu ano» para o seu resumo com um cartão para compartilhar, ou em «Apresentar» para mostrá-lo como slides ou imprimi-lo.",
+      "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת; כשיש מספיק נתונים, גם מה עלה או ירד ב-90 הימים האחרונים («מגמות»). הקש/י על חודש כדי לראות את הכרטיס שלו, על «✨ השנה שלי» לסיכום שלך עם כרטיס לשיתוף, או על «הצגה» כדי להציג אותו כשקופיות או להדפיס."),
       textoMas: true },
     // El buscador de arriba: en la compu es la barra; en el celular, la lupa que la abre (T4 de la auditoría del 28/10/2026: la
     // lupa entró en la tanda 104 sin su paso). Busca en lo mismo que resultadosGlobales().
     { id:"buscar", cubre:[], target: ["#globalSearch", "#globalSearchToggle"],
       title: t("Buscar en todo","Search everything","Buscar em tudo","חיפוש בהכול"),
-      text: t("Buscá en todo el Registro desde cualquier solapa: posteos, proyectos, países y ciudades, personas del equipo y la Agenda de contactos. En el celular, es la lupa de arriba.",
-        "Search the whole Log from any tab: posts, projects, countries and cities, team members and the contact Directory. On a phone, it's the magnifier at the top.",
-        "Busque em todo o Registro de qualquer aba: postagens, projetos, países e cidades, pessoas da equipe e a Agenda de contatos. No celular, é a lupa no topo.",
-        "חיפוש בכל היומן מכל לשונית: פוסטים, פרויקטים, מדינות וערים, חברי הצוות וספר הטלפונים. בטלפון, זו המגדלת שבראש המסך.") },
+      text: t("Buscá en todo el Registro desde cualquier solapa: actividades, proyectos, países y ciudades, personas del equipo y la Agenda de contactos. En el celular, es la lupa de arriba.",
+        "Search the whole Log from any tab: activities, projects, countries and cities, team members and the contact Directory. On a phone, it's the magnifier at the top.",
+        "Busque em todo o Registro de qualquer aba: atividades, projetos, países e cidades, pessoas da equipe e a Agenda de contatos. No celular, é a lupa no topo.",
+        "חיפוש בכל היומן מכל לשונית: פעילויות, פרויקטים, מדינות וערים, חברי הצוות וספר הטלפונים. בטלפון, זו המגדלת שבראש המסך.") },
     { id:"novedades", cubre:[], target: ["#mentionsBell .bell-btn"],
       title: t("Novedades","Updates","Novidades","עדכונים"),
       text: t("Acá ves si te mencionan, si te responden, si alguien cambia uno de tus eventos y qué viene en estos días.",
@@ -22240,10 +22501,10 @@ function tourSteps(){
     return [
       { id:"observador", cubre:["feed"], target: tourNav("feed"),
         title: t("Tu cuenta ve todo, sin publicar","Your account sees everything, without posting","Sua conta vê tudo, sem publicar","החשבון שלך רואה הכול, בלי לפרסם"),
-        text: t("Entrás como observador: podés leer todo el registro del equipo, pero no cargar ni editar posteos. Este recorrido te muestra dónde encontrar cada cosa.",
-          "You're in as an observer: you can read the whole team log, but not create or edit posts. This tour shows you where to find everything.",
-          "Você entra como observador: pode ler todo o registro da equipe, mas não criar ou editar postagens. Este tour mostra onde encontrar cada coisa.",
-          "נכנסת כמשקיף/ה: אפשר לקרוא את כל יומן הצוות, אך לא ליצור או לערוך פרסומים. הסיור הזה מראה איפה למצוא הכול.") },
+        text: t("Entrás como observador: podés leer todo el registro del equipo, pero no cargar ni editar actividades. Este recorrido te muestra dónde encontrar cada cosa.",
+          "You're in as an observer: you can read the whole team log, but not create or edit activities. This tour shows you where to find everything.",
+          "Você entra como observador: pode ler todo o registro da equipe, mas não criar ou editar atividades. Este tour mostra onde encontrar cada coisa.",
+          "נכנסת כמשקיף/ה: אפשר לקרוא את כל יומן הצוות, אך לא ליצור או לערוך פעילויות. הסיור הזה מראה איפה למצוא הכול.") },
       ...comun,
     ];
   }
@@ -22251,10 +22512,10 @@ function tourSteps(){
     inicio,
     { id:"composer", cubre:[], target: [".quick-composer"],
       title: t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","מה עשית היום?"),
-      text: t("Contá tu día en una línea. Podés sumarle lugar, foto, PDF o link. Sale al Feed al instante.",
-        "Tell your day in one line. You can add a place, photo, PDF or link. It goes straight to the Feed.",
-        "Conte seu dia em uma linha. Você pode somar lugar, foto, PDF ou link. Sai no Feed na hora.",
-        "ספר/י על היום שלך בשורה אחת. אפשר להוסיף מקום, תמונה, PDF או קישור. זה עולה לפיד מיד.") },
+      text: t("Contá tu día en una línea. Podés sumarle lugar, foto, PDF o link. Sale a Inicio al instante.",
+        "Tell your day in one line. You can add a place, photo, PDF or link. It goes straight to Home.",
+        "Conte seu dia em uma linha. Você pode somar lugar, foto, PDF ou link. Sai no Início na hora.",
+        "ספר/י על היום שלך בשורה אחת. אפשר להוסיף מקום, תמונה, PDF או קישור. זה עולה לדף הראשי מיד.") },
     { id:"crear", cubre:[], target: ["#fab"],
       title: t("Crear","Create","Criar","יצירה"),
       text: t("El + está en todas las solapas. Desde acá cargás un Evento —con fecha, lugar y participantes, sincronizado al Calendar de Team LatAm— o una Rutina. Cada tipo de evento pide sus documentos; la tarjeta te dice cuántos faltan.",
@@ -22365,6 +22626,8 @@ window.addEventListener("scroll", ()=>{ if(!tourLayer.hidden) renderTourStep(); 
 
 function openComposer(){
   composerDraft = newComposerDraft();
+  composerDraft.title = borradorDe("evento:titulo");
+  composerDraft.content = borradorDe("evento:contenido");
   composerSnapshot = snapshotComposer();
   postModalTitle.textContent = t("Nuevo evento","New event","Novo evento","אירוע חדש");
   postModalOverlay.hidden = false;
@@ -22696,7 +22959,8 @@ function renderComposer(){
           <input type="text" inputmode="${uses12h() ? "text" : "numeric"}" autocomplete="off" class="dt-time-input" id="cStartTime" data-time-field="start" placeholder="${esc(typedTimePlaceholder())}" aria-label="${esc(t("Hora de inicio","Start time","Hora de início","שעת התחלה"))}" value="${esc(fmtTypedTime(d.startTime))}">
           <span class="dt-sep">${isRTL()?"←":"→"}</span>
           <input type="text" inputmode="${uses12h() ? "text" : "numeric"}" autocomplete="off" class="dt-time-input" id="cEndTime" data-time-field="end" placeholder="${esc(typedTimePlaceholder())}" aria-label="${esc(t("Hora de fin","End time","Hora de fim","שעת סיום"))}" value="${esc(fmtTypedTime(d.endTime))}">
-        </div>` : ""}
+        </div>
+        <div class="field-hint" id="cZonaHoraria">🕘 ${esc(textoDeLaZonaHoraria())}</div>` : ""}
         ${errDe("inicio", "fin", "horaInicio", "horaFin")}
       </div>
     </div>
@@ -22708,7 +22972,7 @@ function renderComposer(){
           ${d.placeQuery ? renderPlaceSuggestions(d, "post", "new") : ""}
         </div>
         ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-post", i, "new")).join("")}</div>` : ""}
-        <div class="field-hint">${t("Ciudad, país o región. Con esto se filtra el Feed y se arma el mapa.","City, country or region. This is what filters the Feed and builds the map.","Cidade, país ou região. É o que filtra o Feed e monta o mapa.","עיר, מדינה או אזור. לפי זה מסננים את הפיד ובונים את המפה.")}
+        <div class="field-hint">${t("Ciudad, país o región. Con esto se filtra Inicio y se arma el mapa.","City, country or region. This is what filters Home and builds the map.","Cidade, país ou região. É o que filtra o Início e monta o mapa.","עיר, מדינה או אזור. לפי זה מסננים את הדף הראשי ובונים את המפה.")}
           ${(d.location || d.locationOpen) ? "" : `<button type="button" class="btn-text-add" data-action="composer-toggle-location">+ ${t("Agregar dirección exacta (opcional)","Add an exact address (optional)","Adicionar endereço exato (opcional)","הוספת כתובת מדויקת (אופציונלי)")}</button>`}
         </div>
         ${errDe("lugar")}
@@ -22761,7 +23025,7 @@ function renderComposer(){
         <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, documento, audio o link","Add image, document, audio or link","Adicionar imagem, documento, áudio ou link","הוספת תמונה, מסמך, אודיו או קישור")}</button>
       `}
     </div>
-    ${puedeQuedarSinCalendar(d) ? `<label class="allday-toggle sin-calendar"><input type="checkbox" id="cSinCalendar" ${d.sinCalendar?"checked":""}> ${t("No pasarlo a Google Calendar","Don't add it to Google Calendar","Não passar para o Google Calendar","לא להוסיף ל-Google Calendar")}</label>` : ""}
+    ${puedeQuedarSinCalendar(d) ? `<label class="allday-toggle sin-calendar"><input type="checkbox" id="cSinCalendar" ${d.sinCalendar?"checked":""}> ${t("Solo en Toldot (sin Google Calendar)","Only in Toldot (no Google Calendar)","Só no Toldot (sem Google Calendar)","רק ב-Toldot (בלי Google Calendar)")}</label>` : ""}
     ${campoConError ? "" : htmlFormError(d.error)}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" data-action="cancel-composer">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
@@ -23149,14 +23413,14 @@ function renderUserProfile(){
     <div class="lp-kv up-kv">
       <span><small>${t("En el equipo desde","On the team since","Na equipe desde","בצוות מאז")}</small><b>${esc(desde)}</b></span>
       <span><small>${t("Actividad","Activity","Atividade","פעילות")}</small><b>${tier.icon} ${esc(tier.label)}</b></span>
-      <span><small>${t("Posteos","Posts","Postagens","פוסטים")}</small><b>${total}</b></span>
+      <span><small>${t("Actividades","Activities","Atividades","פעילויות")}</small><b>${total}</b></span>
       ${uv ? `<span><small>${t("Última vez","Last seen","Última vez","לאחרונה")}</small><b class="${uv.clase}">${esc(uv.texto)}</b></span>` : ""}
     </div>
     ${serie.some(n=>n) ? `<div class="lp-serie up-serie">${renderSerieMensual(serie, "var(--celeste-dark)")}<span class="hint">${recientes === 1
-      ? t("1 posteo en los últimos 6 meses","1 post in the last 6 months","1 postagem nos últimos 6 meses","פוסט אחד ב-6 החודשים האחרונים")
-      : t("{n} posteos en los últimos 6 meses","{n} posts in the last 6 months","{n} postagens nos últimos 6 meses","{n} פוסטים ב-6 החודשים האחרונים",{n:recientes})}</span></div>` : ""}
+      ? t("1 actividad en los últimos 6 meses","1 activity in the last 6 months","1 atividade nos últimos 6 meses","פעילות אחת ב-6 החודשים האחרונים")
+      : t("{n} actividades en los últimos 6 meses","{n} activities in the last 6 months","{n} atividades nos últimos 6 meses","{n} פעילויות ב-6 החודשים האחרונים",{n:recientes})}</span></div>` : ""}
     <div class="up-posts">
-      <div class="up-posts-title">${t("Últimos posteos","Recent posts","Postagens recentes","פוסטים אחרונים")}</div>
+      <div class="up-posts-title">${t("Últimas actividades","Recent activities","Atividades recentes","פעילויות אחרונות")}</div>
       ${postsHtml}
     </div>
     <div class="lp-botones up-botones">
@@ -24866,17 +25130,6 @@ async function xlsxDeTabla(tabla, { derechaAIzquierda = false, formatoDeFecha = 
   ];
   return zipDe(archivos);
 }
-// El mismo contenido como CSV (punto y coma y BOM, para que Excel lea los acentos).
-function csvDeTabla(tabla){
-  const fila = (valores, tipos) => valores.map((v, j) => {
-    if(tipos[j] === "enlace") return celdaCsv(v && v.url);
-    if(tipos[j] === "numero") return v == null ? "" : String(v);
-    return celdaCsv(v);
-  }).join(";");
-  const tipos = tabla.columnas.map(c => c.tipo);
-  return [tabla.columnas.map(c => celdaCsv(c.titulo)).join(";"), ...tabla.filas.map(f => fila(f, tipos))].join("\r\n");
-}
-
 // Las columnas de la planilla de actividades. `valor(p)` saca el dato de un posteo.
 function lugaresDePosteo(p){
   const paises = new Set(), ciudades = new Set(), zonas = new Set();
@@ -24911,7 +25164,7 @@ const COLUMNAS_DE_PLANILLA = () => {
     c(t("Mes","Month","Mês","חודש"), "numero", 8, p => Number(iniDePosteo(p).slice(5, 7)) || null),
     c(t("Tipo","Type","Tipo","סוג"), "texto", 14, p => { const ty = ACTIVITY_BY_KEY[p.activityType]; return ty ? ty.label : (p.activityType || ""); }),
     c(t("Título","Title","Título","כותרת"), "texto", 44, p => p.title || ""),
-    c(t("Texto del posteo","Post text","Texto da postagem","טקסט הפוסט"), "texto", 70, p => p.content || ""),
+    c(t("Texto de la actividad","Activity text","Texto da atividade","טקסט הפעילות"), "texto", 70, p => p.content || ""),
     c(t("Países","Countries","Países","מדינות"), "texto", 22, p => lugaresDePosteo(p).paises),
     c(t("Ciudades","Cities","Cidades","ערים"), "texto", 22, p => lugaresDePosteo(p).ciudades),
     c(t("Zonas","Zones","Zonas","אזורים"), "texto", 18, p => lugaresDePosteo(p).zonas),
@@ -25094,7 +25347,7 @@ function renderProblema(){
     <textarea id="problemaTexto" class="problema-texto" maxlength="600" rows="4" aria-label="${esc(t("Qué pasó","What happened","O que aconteceu","מה קרה"))}" placeholder="${esc(t("Por ejemplo: al tocar Reportes se queda en blanco.","For example: when I tap Reports it goes blank.","Por exemplo: ao tocar em Relatórios fica em branco.","למשל: כשאני לוחץ על דוחות המסך נשאר ריק."))}">${esc(p.texto)}</textarea>
     <label class="problema-tecnico"><span>${t("Mandar también los datos técnicos","Also send the technical details","Mandar também os dados técnicos","לשלוח גם את הפרטים הטכניים")}</span>
       <span class="pref-switch"><input type="checkbox" id="problemaTecnico" ${p.tecnico ? "checked" : ""}><span class="pref-slider"></span></span></label>
-    <p class="setting-sub" style="margin:6px 0 0;">${t("Son la pantalla, el tipo de teléfono y navegador, el idioma y los últimos errores. Nunca lo que escribiste en un posteo ni lo de la Agenda.","They're the screen, the phone and browser type, the language and the latest errors. Never what you wrote in a post or anything from the Directory.","São a tela, o tipo de celular e navegador, o idioma e os últimos erros. Nunca o que você escreveu numa postagem nem o da Agenda.","אלה המסך, סוג הטלפון והדפדפן, השפה והשגיאות האחרונות. לעולם לא מה שכתבתם בפוסט או מה שבספר הטלפונים.")}</p>
+    <p class="setting-sub" style="margin:6px 0 0;">${t("Son la pantalla, el tipo de teléfono y navegador, el idioma y los últimos errores. Nunca lo que escribiste en una actividad ni lo de la Agenda.","They're the screen, the phone and browser type, the language and the latest errors. Never what you wrote in an activity or anything from the Directory.","São a tela, o tipo de celular e navegador, o idioma e os últimos erros. Nunca o que você escreveu numa atividade nem o da Agenda.","אלה המסך, סוג הטלפון והדפדפן, השפה והשגיאות האחרונות. לעולם לא מה שכתבתם בפעילות או מה שבספר הטלפונים.")}</p>
     ${p.error ? `<div class="form-error" role="alert">${esc(p.error)}</div>` : ""}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" data-action="problema-cerrar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
@@ -30408,8 +30661,8 @@ function lecturaDeFicha(D, L){
   } else if(ultimoRegistro){
     out.push({ ic: "🕐", html: (() => { const d = Math.max(0, diasDesde(fechaDePost(ultimoRegistro)));
       return d === 0
-        ? t("Todavía no hay visitas cargadas. Último registro <b>hoy</b>.","No visits logged yet. Last record <b>today</b>.","Ainda não há visitas. Último registro <b>hoje</b>.","עדיין אין ביקורים. רשומה אחרונה <b>היום</b>.")
-        : t("Todavía no hay visitas cargadas. Último registro hace <b>{d}</b>.","No visits logged yet. Last record <b>{d}</b> ago.","Ainda não há visitas. Último registro há <b>{d}</b>.","עדיין אין ביקורים. רשומה אחרונה לפני <b>{d}</b>.",{ d: diasUnidad(d) }); })() });
+        ? t("Todavía no hay visitas cargadas. Última actividad <b>hoy</b>.","No visits logged yet. Last activity <b>today</b>.","Ainda não há visitas. Última atividade <b>hoje</b>.","עדיין אין ביקורים. פעילות אחרונה <b>היום</b>.")
+        : t("Todavía no hay visitas cargadas. Última actividad hace <b>{d}</b>.","No visits logged yet. Last activity <b>{d}</b> ago.","Ainda não há visitas. Última atividade há <b>{d}</b>.","עדיין אין ביקורים. פעילות אחרונה לפני <b>{d}</b>.",{ d: diasUnidad(d) }); })() });
   }
   if(D.objUltima && D.objUltima.total){
     out.push({ ic: "🎯", html: (D.objUltima.total === 1 ? t("En la última visita con Cierre se logró <b>{a} de 1 objetivo</b>.","The latest visit with a Closure achieved <b>{a} of 1 goal</b>.","Na última visita com Fechamento foi alcançado <b>{a} de 1 objetivo</b>.","בביקור האחרון עם סגירה הושג <b>{a} מתוך מטרה אחת</b>.", { a: D.objUltima.si, b: D.objUltima.total }) : t("En la última visita con Cierre se lograron <b>{a} de {b} objetivos</b>.","The latest visit with a Closure achieved <b>{a} of {b} goals</b>.","Na última visita com Fechamento foram alcançados <b>{a} de {b} objetivos</b>.","בביקור האחרון עם סגירה הושגו <b>{a} מתוך {b} מטרות</b>.", { a: D.objUltima.si, b: D.objUltima.total }))
@@ -30443,8 +30696,8 @@ function lecturaDeFicha(D, L){
   const vienen = D.visibles.filter(p => fechaDePost(p).startsWith(anio) && fechaDePost(p).slice(0, 10) > hoyF && !p.cancelled).length;
   const anioPasado = D.visibles.filter(p => fechaDePost(p).startsWith(antes)).length;
   if(esteAnio || anioPasado){
-    let txt = esteAnio === 1 ? t("Este año: <b>1 registro</b>","This year: <b>1 record</b>","Este ano: <b>1 registro</b>","השנה: <b>רשומה אחת</b>")
-      : t("Este año: <b>{n} registros</b>","This year: <b>{n} records</b>","Este ano: <b>{n} registros</b>","השנה: <b>{n} רשומות</b>",{ n: esteAnio });
+    let txt = esteAnio === 1 ? t("Este año: <b>1 actividad</b>","This year: <b>1 activity</b>","Este ano: <b>1 atividade</b>","השנה: <b>פעילות אחת</b>")
+      : t("Este año: <b>{n} actividades</b>","This year: <b>{n} activities</b>","Este ano: <b>{n} atividades</b>","השנה: <b>{n} פעילויות</b>",{ n: esteAnio });
     if(anioPasado) txt += esteAnio > anioPasado ? t(", más que en {a} ({m}).",", more than in {a} ({m}).",", mais que em {a} ({m}).",", יותר מב-{a} ({m}).",{ a: antes, m: anioPasado })
       : esteAnio < anioPasado ? t(", menos que en {a} ({m}).",", fewer than in {a} ({m}).",", menos que em {a} ({m}).",", פחות מב-{a} ({m}).",{ a: antes, m: anioPasado })
       : t(", igual que en {a}.",", same as in {a}.",", igual a {a}.",", כמו ב-{a}.",{ a: antes });
@@ -30756,7 +31009,7 @@ function renderFichaLugar(L){
   const topeMes = Math.max(1, ...porMes.map(x => x.n));
   const enElAnio = porMes.reduce((n, x) => n + x.n, 0);
   const ritmo = porMes.some(x => x.n) ? `<div class="${claseDeLado("ritmo")}">${tituloDeLado("ritmo", t("Ritmo · últimos 12 meses","Pace · last 12 months","Ritmo · últimos 12 meses","קצב · 12 החודשים האחרונים"),
-    enElAnio === 1 ? t("1 registro en 12 meses","1 record in 12 months","1 registro em 12 meses","רישום 1 ב-12 חודשים") : t("{n} registros en 12 meses","{n} records in 12 months","{n} registros em 12 meses","{n} רישומים ב-12 חודשים",{ n: enElAnio }))}
+    enElAnio === 1 ? t("1 actividad en 12 meses","1 activity in 12 months","1 atividade em 12 meses","פעילות אחת ב-12 חודשים") : t("{n} actividades en 12 meses","{n} activities in 12 months","{n} atividades em 12 meses","{n} פעילויות ב-12 חודשים",{ n: enElAnio }))}
     <div class="fl-ritmo">${porMes.map(x => `<i class="${x.v ? "v" : ""}" style="height:${x.n ? Math.max(6, Math.round(x.n * 100 / topeMes)) : 0}%" title="${esc(fmtISO(x.m + "-01", { month:"long", year:"numeric" }))}: ${x.n}"></i>`).join("")}</div>
     <div class="fl-ritmo-ej"><span>${esc(fmtISO(meses[0] + "-01", { month:"short" }))}</span><span>${esc(fmtISO(meses[11] + "-01", { month:"short" }))}</span></div>
     <div class="hint fl-ritmo-ley"><i class="v"></i> ${t("con visita","with a visit","com visita","עם ביקור")}</div></div>` : "";
@@ -31469,7 +31722,7 @@ function selectPlaceMatch(scope, ownerId, match){
   if(match){
     const exists = draft.scopes.some(sc => JSON.stringify(sc) === JSON.stringify(match.scope));
     if(!exists && draft.scopes.length >= MAX_SCOPES){
-      setDraftError(draft, t("Máximo {n} lugares por posteo.","At most {n} places per post.","No máximo {n} lugares por postagem.","לכל היותר {n} מקומות לכל פוסט.",{n:MAX_SCOPES}));
+      setDraftError(draft, t("Máximo {n} lugares por actividad.","At most {n} places per activity.","No máximo {n} lugares por atividade.","לכל היותר {n} מקומות לכל פעילות.",{n:MAX_SCOPES}));
       render(); return;
     }
     if(!exists) draft.scopes.push(match.scope);
@@ -32367,6 +32620,11 @@ document.addEventListener("click", async e=>{
     "edit-post": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post) openEditComposer(post);
+  },
+    "copy-post-link": async (el, e, action, postId) => {
+    if(!getPostById(postId)) return;
+    postMenuOpen = null; render();
+    copiarEnlaceDelPosteo(postId);
   },
     "cancel-post": async (el, e, action, postId) => {
     const post = getPostById(postId);
@@ -33417,17 +33675,17 @@ document.addEventListener("click", async e=>{
     // que escribió, y volver a darle acceso lo revive con un nickname nuevo.
     const aviso = posteos
       ? (posteos === 1 ? t(
-          "Dejó 1 posteo: va a quedar firmado con su nombre de Google, sin @{nick} ni perfil.",
-          "They left 1 post: it will be signed with their Google name, without @{nick} or a profile.",
-          "Deixou 1 postagem: vai ficar assinada com o nome do Google, sem @{nick} nem perfil.",
-          "פוסט אחד שהשאיר/ה ייחתם בשם מ-Google, בלי @{nick} ובלי פרופיל.", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
+          "Dejó 1 actividad: va a quedar firmado con su nombre de Google, sin @{nick} ni perfil.",
+          "They left 1 activity: it will be signed with their Google name, without @{nick} or a profile.",
+          "Deixou 1 atividade: vai ficar assinada com o nome do Google, sem @{nick} nem perfil.",
+          "פעילות אחת שהשאיר/ה תיחתם בשם מ-Google, בלי @{nick} ובלי פרופיל.", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
         ) : t(
-          "Dejó {n} posteos: van a quedar firmados con su nombre de Google, sin @{nick} ni perfil.",
-          "They left {n} posts: those will be signed with their Google name, without @{nick} or a profile.",
-          "Deixou {n} postagens: vão ficar assinadas com o nome do Google, sem @{nick} nem perfil.",
-          "{n} פוסטים שהשאיר/ה ייחתמו בשם מ-Google, בלי @{nick} ובלי פרופיל.", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
+          "Dejó {n} actividades: van a quedar firmados con su nombre de Google, sin @{nick} ni perfil.",
+          "They left {n} activities: those will be signed with their Google name, without @{nick} or a profile.",
+          "Deixou {n} atividades: vão ficar assinadas com o nome do Google, sem @{nick} nem perfil.",
+          "{n} פעילויות שהשאיר/ה ייחתמו בשם מ-Google, בלי @{nick} ובלי פרופיל.", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
         ))
-      : t("No dejó posteos.","They left no posts.","Não deixou postagens.","לא השאיר/ה פוסטים.");
+      : t("No dejó actividades.","They left no activities.","Não deixou atividades.","לא השאיר/ה פעילויות.");
     const ok = await appConfirm(
       t("¿Borrar a {email} de la lista de ex integrantes? Es para siempre. {aviso}",
         "Remove {email} from the former members list? This is permanent. {aviso}",
@@ -33482,8 +33740,8 @@ document.addEventListener("click", async e=>{
     // revoca la app igual y se avisa dónde terminar: nunca aparece un
     // popup que nadie pidió al apretar este botón.
     if(await appConfirm(t(
-      `¿Revocar el acceso de {email}? Va a dejar de poder ver y cargar posteos, y se le saca el acceso al Calendar compartido de LatAm.`,
-      `Revoke {email}'s access? They'll no longer be able to see or post, and their access to LatAm's shared Calendar will be removed.`,
+      `¿Revocar el acceso de {email}? Va a dejar de poder ver y cargar actividades, y se le saca el acceso al Calendar compartido de LatAm.`,
+      `Revoke {email}'s access? They'll no longer be able to see or activity, and their access to LatAm's shared Calendar will be removed.`,
       `Revogar o acesso de {email}? Vai deixar de poder ver e postar, e o acesso ao Calendar compartilhado da LatAm será removido.`,
       `לבטל את הגישה של {email}? הוא/היא לא יוכלו יותר לראות או לפרסם, והגישה ליומן המשותף של LatAm תוסר.`,
       { email }
@@ -33512,7 +33770,7 @@ document.addEventListener("click", async e=>{
     const usedByPosts = state.posts.some(p =>
       (p.scopes||[]).some(sc=>sc.type==="region" && sc.region===key) ||
       (state.repliesByPost[p.id]||[]).some(r=>(r.scopes||[]).some(sc=>sc.type==="region" && sc.region===key)));
-    if(usedByPosts){ d.error = t("Hay posteos con alcance en esta zona; no se puede borrar.","There are posts scoped to this zone; it can't be deleted.","Há postagens com alcance nesta zona; não dá para excluí-la.","יש פוסטים שמשויכים לאזור הזה; אי אפשר למחוק אותו."); render(); return; }
+    if(usedByPosts){ d.error = t("Hay actividades con alcance en esta zona; no se puede borrar.","There are activities scoped to this zone; it can't be deleted.","Há atividades com alcance nesta zona; não dá para excluí-la.","יש פעילויות שמשויכות לאזור הזה; אי אפשר למחוק אותו."); render(); return; }
     delete d.zones[key];
     d.zoneOrder = d.zoneOrder.filter(k=>k!==key);
     d.error = "";
@@ -33595,7 +33853,7 @@ document.addEventListener("click", async e=>{
     "tipos-remove": async (el, e, action, postId) => {
     const d = getTiposDraft();
     const key = el.dataset.key;
-    if(countPostsByType(key) > 0){ d.error = t("Hay posteos con este tipo — no se puede eliminar.","There are posts with this type — it can't be deleted.","Há postagens com este tipo — não é possível excluir.","יש פוסטים עם הסוג הזה — לא ניתן למחוק."); render(); return; }
+    if(countPostsByType(key) > 0){ d.error = t("Hay actividades con este tipo — no se puede eliminar.","There are activities with this type — it can't be deleted.","Há atividades com este tipo — não é possível excluir.","יש פעילויות עם הסוג הזה — לא ניתן למחוק."); render(); return; }
     d.types = d.types.filter(x=>x.key!==key);
     if(tipoAbierto === key) tipoAbierto = null;
     d.error = "";
@@ -33903,10 +34161,11 @@ document.addEventListener("input", e=>{
     state.usuariosFilters.text = el.value; render();
   } else if(el.id === "nicknameInput"){
     nicknameDraft = el.value; nicknameError = null; render();
-  } else if(el.id === "cTitle"){ composerDraft.title = el.value; }
+  } else if(el.id === "cTitle"){ composerDraft.title = el.value; if(!composerDraft.editingPost) guardarBorrador("evento:titulo", el.value); }
   else if(el.id === "cLocation"){ composerDraft.location = el.value; scheduleLocationSearch(composerDraft); }
   else if(el.id === "cContent"){
     composerDraft.content = el.value;
+    if(!composerDraft.editingPost) guardarBorrador("evento:contenido", el.value);
     const prevQuery = composerDraft.mentionQuery;
     updateMentionState(composerDraft, el);
     if(prevQuery !== composerDraft.mentionQuery) render();
@@ -33926,6 +34185,7 @@ document.addEventListener("input", e=>{
   }
   else if(el.id === "rutinaContent"){
     rutinaDraft.content = el.value;
+    guardarBorrador("rutina", el.value);
     // Solo habilita/deshabilita el botón Publicar al tipear — evita un
     // render() completo (y perder el foco/cursor) en cada letra, salvo
     // que se esté escribiendo una @mención (ahí sí hace falta re-renderizar
@@ -33948,6 +34208,7 @@ document.addEventListener("input", e=>{
   else if(el.dataset.replyField === "content"){
     const draft = getReplyDraft(el.dataset.postId);
     draft.content = el.value;
+    guardarBorrador("respuesta:" + el.dataset.postId, el.value);
     const prevQuery = draft.mentionQuery;
     updateMentionState(draft, el);
     if(prevQuery !== draft.mentionQuery) render();
@@ -34168,6 +34429,16 @@ postForm.addEventListener("submit", async e=>{
     if(d.editingPost){
       const postId = d.editingPost.id;
       const original = d.editingPost;
+      // Si otra persona cambió, mientras tanto, justo lo mismo que esta: se pregunta antes de pisarlo.
+      const pisados = camposPisados(original, postData, getPostById(postId));
+      if(pisados.length && !(await appConfirm(
+        t("Mientras editabas, otra persona cambió {c}. Si guardás, lo tuyo reemplaza lo de ella. ¿Guardar igual?",
+          "While you were editing, someone else changed {c}. If you save, yours replaces theirs. Save anyway?",
+          "Enquanto você editava, outra pessoa mudou {c}. Se salvar, o seu substitui o dela. Salvar mesmo assim?",
+          "בזמן שערכתם, מישהו אחר שינה {c}. אם תשמרו, מה שלכם יחליף את שלו. לשמור בכל זאת?", { c: textoDeLosCamposPisados(pisados) }),
+        { okLabel: t("Guardar lo mío","Save mine","Salvar o meu","לשמור את שלי") }))){
+        d.submitting = false; render(); return;
+      }
       closeComposer();
       const fuentes = fuentesDelBorrador(postData.files);
       updatePostAndSync(postId, original, postData).then(res=>{
@@ -34181,6 +34452,7 @@ postForm.addEventListener("submit", async e=>{
       });
     } else {
       const postId = await createPost(postData);
+      guardarBorrador("evento:titulo", ""); guardarBorrador("evento:contenido", "");
       closeComposer();
       const fuentes = fuentesDelBorrador(postData.files);
       if(fuentes.length && postId) actualizarResumen(postId, fuentes).catch(err => console.warn("No se pudo leer el resumen:", err));
@@ -34191,11 +34463,11 @@ postForm.addEventListener("submit", async e=>{
           // en vez de tragarse el error.
           if(res.ok && res.eventId) updatePostDoc(postId, { calendarEventId: res.eventId }).catch(err=>{
             console.error("No se pudo guardar el vínculo con el evento de Calendar:", err);
-            showCalendarNotice({ ok:false, message:t("El evento se creó en Calendar pero no se pudo vincular al posteo ({msg}). Editá el posteo una vez para re-vincularlo.","The event was created in Calendar but couldn't be linked to the post ({msg}). Edit the post once to re-link it.","O evento foi criado no Calendar mas não foi possível vinculá-lo à postagem ({msg}). Edite a postagem uma vez para vinculá-lo de novo.","האירוע נוצר ביומן אך לא ניתן היה לקשר אותו לפוסט ({msg}). ערוך/ערכי את הפוסט פעם אחת כדי לקשר מחדש.",{msg:detalleDeError(err)}) });
+            showCalendarNotice({ ok:false, message:t("El evento se creó en Calendar pero no se pudo vincular a la actividad ({msg}). Editá la actividad una vez para re-vincularlo.","The event was created in Calendar but couldn't be linked to the activity ({msg}). Edit the activity once to re-link it.","O evento foi criado no Calendar mas não foi possível vinculá-lo à atividade ({msg}). Edite a atividade uma vez para vinculá-lo de novo.","האירוע נוצר ביומן אך לא ניתן היה לקשר אותו לפעילות ({msg}). ערוך/ערכי את הפעילות פעם אחת כדי לקשר מחדש.",{msg:detalleDeError(err)}) });
           });
           showCalendarNotice(res.ok
             ? { ok:true, message:t("Se sumó también al Calendar compartido de LatAm.","It was also added to LatAm's shared Calendar.","Também foi somado ao Calendar compartilhado da LatAm.","הוא נוסף גם ליומן המשותף של LatAm.") }
-            : { ok:false, message:t("El posteo se guardó, pero no se pudo sumar al Calendar ({reason}).","The post was saved, but it couldn't be added to the Calendar ({reason}).","A postagem foi salva, mas não foi possível somar ao Calendar ({reason}).","הפוסט נשמר, אך לא ניתן היה להוסיפו ליומן ({reason}).",{reason:res.reason}) });
+            : { ok:false, message:t("La actividad se guardó, pero no se pudo sumar al Calendar ({reason}).","The activity was saved, but it couldn't be added to the Calendar ({reason}).","A atividade foi salva, mas não foi possível somar ao Calendar ({reason}).","הפעילות נשמרה, אך לא ניתן היה להוסיף אותה ליומן ({reason}).",{reason:res.reason}) });
         });
       }
     }

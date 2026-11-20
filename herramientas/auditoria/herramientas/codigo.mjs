@@ -70,8 +70,17 @@ out.push(hallazgo("código", "dato", "Puntos de quiebre", "", Object.entries(med
 
 /* --- Tamaño --- */
 const kb = n => Math.round(n / 1024);
-out.push(hallazgo("rendimiento", "dato", `index.html: ${kb(Buffer.byteLength(html))} KB, ${kb(zlib.gzipSync(html).length)} KB comprimido`, "", `${html.split("\n").length} líneas`));
-if(zlib.gzipSync(html).length > 500 * 1024) out.push(hallazgo("rendimiento", "medio", "index.html pasa los 500 KB comprimido", "", "cada visita lo baja entero"));
+// Lo que baja cada visita es lo que SE PUBLICA: el fuente achicado (herramientas/publicar/achicar.mjs, desde el 20/11/2026).
+// Se mide eso, y el fuente como dato. El límite que nos pusimos (D1, 6/10) es 600 KB comprimidos.
+let publicado = null;
+try{ publicado = (await import("../../publicar/achicar.mjs")).achicar(html); }
+catch(e){ out.push(hallazgo("rendimiento", "bajo", "No se pudo medir la página achicada", "herramientas/publicar/achicar.mjs", `${e.message} (¿falta «cd herramientas/publicar && npm ci --ignore-scripts»?)`)); }
+out.push(hallazgo("rendimiento", "dato", `index.html (fuente): ${kb(Buffer.byteLength(html))} KB, ${kb(zlib.gzipSync(html, { level: 9 }).length)} KB comprimido`, "", `${html.split("\n").length} líneas`));
+if(publicado){
+  const gz = zlib.gzipSync(publicado, { level: 9 }).length;
+  out.push(hallazgo("rendimiento", "dato", `Lo que se publica (achicado): ${kb(Buffer.byteLength(publicado))} KB, ${kb(gz)} KB comprimido`, "", "es lo que baja cada visita"));
+  if(gz > 600 * 1024) out.push(hallazgo("rendimiento", "medio", "Lo que se publica pasa los 600 KB comprimido", "", "cada visita lo baja entero: mirar qué sumó la última tanda (D1, D21)"));
+}
 const grab = hacerGrab(html);
 const largas = [...vistos].map(n => { try{ const c = grab(n); return [n, c.split("\n").length]; }catch(e){ return [n, 0]; } })
   .filter(([, l]) => l > 120).sort((a, b) => b[1] - a[1]);

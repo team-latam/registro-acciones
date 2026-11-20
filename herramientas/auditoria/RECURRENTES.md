@@ -667,3 +667,32 @@ del otro en cada tarjeta, y el nombre de una persona, 92×15 (Z2). *Por qué:* u
 solo-ícono se achica al ancho del ícono, y el área de toque es el botón. *Se detecta:* `masa`.
 *Regla:* todo control del celular mide 24×24 como piso (WCAG 2.2) y apunta a 44; si el dibujo es
 más chico, el área de toque se agranda con relleno o un `::after` invisible.
+
+**Un armador de páginas de prueba con una lista fija de nombres.** `armar_reportes.py` arma la
+página de `reportes_dom_test` sacando del `index.html` las funciones que nombra a mano. Al sumar
+al código de Reportes y Tendencias cuatro nombres nuevos (`TENDENCIAS_Z`, `zDeLugaresYTipos`,
+`TEXTO_SIN_TENDENCIAS`, `TEXTO_POCOS_DATOS`), la página de prueba dejó de dibujar
+(`ReferenceError`) y recién se vio al correr la suite entera (20/11/2026). *Por qué:* la lista es
+una copia a mano de lo que la app usa. *Se detecta:* `reportes_dom_test` (rojo con «is not
+defined»). *Regla:* al agregar un nombre a lo que usa Reportes o Tendencias, se suma a esa lista
+en el mismo cambio, y se corre `correr.sh reportes` antes de seguir.
+
+**Comparar dos corridas completas (fuente contra achicada, antes contra después).** Tres
+trampas que se pisaron armando `achicar_test` (D21): (1) leer la salida de un proceso hijo
+pedazo por pedazo corta los caracteres de varios bytes (hebreo, emoji) y aparecen «�» que parecen
+una diferencia de la página; hay que leer con `setEncoding("utf8")`. (2) Una pantalla que se
+está asentando (una lista que termina de dibujarse, un color a mitad de una transición) da
+diferencias que no son de nada: se apagan las animaciones y se espera a que el texto y la
+cantidad de elementos dejen de cambiar. (3) Una prueba de comparación se prueba **rompiendo a
+propósito** lo que compara, y la rotura tiene que tocar algo que esas pantallas dibujan (la
+primera, sobre un selector de un contexto que no se ve, «no se detectó» y era la prueba, no el
+código). *Regla:* antes de confiar en una comparación, se le mete un daño de JavaScript y otro de
+CSS y se ve que cada uno la pone en rojo.
+
+**Un «sin uso» improvisado.** `codigo.mjs` marca las funciones sin llamador (el 20/11 dio dos:
+`diasEntre` y `csvDeTabla`, muertas de verdad). Una búsqueda improvisada de todos los nombres de
+nivel superior con una sola aparición dio cinco, y tres sí se usan (`getCitiesWithoutCoord`,
+`datosDeAsignacion`, `proximaFecha`): las llamaban como `...datosDeAsignacion(p)`, con un punto
+delante que el patrón no entendía. *Regla:* un «sin uso» se verifica con `grep -n` antes de
+borrar, y se mira también quién lo usa afuera de `index.html` (`diasEntre` figuraba en la lista
+de nombres de `armar_reportes.py`; `csvDeTabla`, en `xlsx_test`).

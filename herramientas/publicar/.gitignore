@@ -1,0 +1,2 @@
+# Lo baja «npm ci» (esbuild, para achicar.mjs); no se versiona.
+node_modules

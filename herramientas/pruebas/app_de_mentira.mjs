@@ -27,7 +27,10 @@ const FALSO_UMD = () => FALSO.replace("export function createClient", "function 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 
 export const ADMIN = "benny@team-latam.com";
-export const hace = d => new Date(Date.now() - d * 86400000).toISOString();
+// AHORA_FIJO (milisegundos): arma todos los datos con el mismo «ahora». Lo usa achicar_test, que compara dos corridas: sin
+// esto, dos actividades «del mismo instante» quedaban con 1 ms de diferencia en un proceso y empatadas en el otro, y el
+// empate se resolvía en otro orden (una diferencia que no era de la página).
+export const hace = d => new Date((process.env.AHORA_FIJO ? +process.env.AHORA_FIJO : Date.now()) - d * 86400000).toISOString();
 export const dia = d => hace(d).slice(0, 10);
 export const PERS = [
   { email: ADMIN, name: "Benny Rosenthal", nickname: "benny", role: "admin" },

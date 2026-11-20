@@ -36,16 +36,16 @@ await page.locator('.row-x[data-email="julia@x.com"]').click();
 const msg = await page.evaluate(()=>window.__ultimoConfirm);
 eq("avisa que es para siempre", msg.includes("Es para siempre"), true);
 eq("nombra a quién", msg.includes("julia@x.com"), true);
-eq("dice cuántos posteos deja", msg.includes("Dejó 2 posteos") || msg.includes("2 posteos"), true);
+eq("dice cuántas actividades deja", msg.includes("Dejó 2 actividades"), true);
 eq("y que se van a quedar sin @nickname", msg.includes("@julia"), true);
 eq("el confirm va en rojo", await page.evaluate(()=>window.__ultimoOpts.danger), true);
 eq("si se dice que no, no borra", await page.evaluate(()=>window.__borradosStore), []);
 eq("y la fila sigue", await page.locator(".row-x").count(), 2);
 
-// ---- sin posteos, el aviso lo dice ----
+// ---- sin actividades, el aviso lo dice ----
 await page.evaluate(()=>window.setFormers([{ email:"sofia@x.com", name:"Sofia P", nickname:"sofia", approvedAt:1, revokedAt:3 }], []));
 await page.locator('.row-x[data-email="sofia@x.com"]').click();
-eq("sin posteos, lo aclara", (await page.evaluate(()=>window.__ultimoConfirm)).includes("No dejó posteos"), true);
+eq("sin actividades, lo aclara", (await page.evaluate(()=>window.__ultimoConfirm)).includes("No dejó actividades"), true);
 
 // ---- si se confirma, borra ----
 await page.evaluate(()=>{ window.__confirmado = true; window.__falla = false; window.__alertas = []; });

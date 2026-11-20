@@ -19,8 +19,8 @@ codigo = "\n".join(grab(n) for n in [
     "ultimaActividadPorPais","haceCuanto","renderCobertura","renderEquipoDelReporte",
     "sugerenciasDelReporte","renderSugerencias",
     "TEMAS_MIN","TEMAS_JUNTAS","TEMAS_MISMO","TEMAS_SUBTEMA","TEMAS_COMUN","TEMAS_Z","TEMAS_RELLENO","TEMAS_RELLENO_HE","TEMAS_CHARLA","esVerboDeTema","claveDePalabra",
-    "formaCanonicaDeTema","tirasDeTema","formaDeTema","conMayuscula","temasDeLosTextos","zDelCambio","diasEntre",
-    "TENDENCIAS_DIAS","TENDENCIAS_MIN_POSTS","TENDENCIAS_MIN","TENDENCIAS_MAX","TENDENCIAS_PRIMERAS","TENDENCIAS_LATERAL",
+    "formaCanonicaDeTema","tirasDeTema","formaDeTema","conMayuscula","temasDeLosTextos","zDelCambio",
+    "TENDENCIAS_DIAS","TENDENCIAS_Z","zDeLugaresYTipos","TEXTO_SIN_TENDENCIAS","TEXTO_POCOS_DATOS","TENDENCIAS_MIN_POSTS","TENDENCIAS_MIN","TENDENCIAS_MAX","TENDENCIAS_PRIMERAS","TENDENCIAS_LATERAL",
     "fueraCalculado","fueraDeTemas","tokensDePosteo","textoDeUnPosteo","posteoHabla","temaElegido","temaConEseNombre","cambioDeTendencia","calcularTendencias","tendenciasCache","tendenciasDe",
     "etiquetaDelCambio","claseDelCambio","flechaDelCambio","tituloDeTendencia","ariaDeTendencia","tendFiltro","fichaDeTendencia","cuerpoDeTendencias","renderTendencias",
     "hasOwn","GRUPOS","grupoExiste","grupoPaises","gruposDe","grupoLabel","grupoIconoDe"])

@@ -22,7 +22,7 @@ const secciones = p => p.$$eval('.admin-menu [data-action="gastos-seccion"]', l 
 const irGastos = async p => { await p.click('#tabs button[data-view="gastos"]'); await p.waitForSelector(".gastos-view"); await p.waitForTimeout(200); };
 const irSeccion = async (p, k) => { await p.click(`[data-action="gastos-seccion"][data-key="${k}"]`); await p.waitForTimeout(250); };
 const tiles = p => p.$$eval('.gx-imp .gxe-tiles .gxe-tile', l => l.map(e => e.querySelector('.gxe-k').textContent.trim() + ' ' + e.querySelector('.gxe-v').textContent.trim()));
-const FIN = { email: "fabi@team-latam.com", name: "Fabi Finanzas", nickname: "fabi", role: "finance" };
+const FIN = { email: "fabi@x.com", name: "Fabi Finanzas", nickname: "fabi", role: "finance" };
 
 const T = ["Concepto", "Fecha", "Monto", "Moneda", "Tipo", "Actividad", "Cuenta", "Forma de pago", "Quién pagó", "Factura", "Observaciones"];
 const SEP = [[], T,

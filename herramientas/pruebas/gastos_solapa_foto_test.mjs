@@ -115,7 +115,7 @@ const vp = { width: 1280, height: 900 }, celu = { width: 390, height: 844 };
   eq("en Gastos, en la compu, está el «+» (como en las demás solapas)", await p.evaluate(() => { const f = document.getElementById("fab"), m = document.getElementById("fabMain"); const r = m.getBoundingClientRect();
     return !f.hidden && getComputedStyle(f).display !== "none" && r.width > 0 && r.bottom <= innerHeight && r.right <= innerWidth; }), true);
   await p.click("#fabMain"); await p.waitForTimeout(150);
-  eq("…y tiene lo de siempre, con «Subir comprobantes»", await p.$$eval(".fab-action", l => l.filter(b => !b.hidden).map(b => b.textContent.trim())), ["📝Nuevo posteo", "📅Nuevo evento", "🧾Subir comprobantes"]);
+  eq("…y tiene lo de siempre, con «Subir comprobantes»", await p.$$eval(".fab-action", l => l.filter(b => !b.hidden).map(b => b.textContent.trim())), ["📝Nueva actividad", "📅Nuevo evento", "🧾Subir comprobantes"]);
   await p.click("#fabGastos");
   eq("«Subir comprobantes» del + lleva a «¿De qué son estos comprobantes?», con el foco ahí", await hasta(p, () => document.activeElement && document.activeElement.id === "gxDestino"), true);
   // En una rendición, el «+» sigue estando.

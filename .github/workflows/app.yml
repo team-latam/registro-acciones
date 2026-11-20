@@ -48,7 +48,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: herramientas/pruebas/package-lock.json
+          cache-dependency-path: |
+            herramientas/pruebas/package-lock.json
+            herramientas/publicar/package-lock.json
+
+      # esbuild: lo usan achicar_test.mjs y csp_publicada_test.mjs para armar la página como la publica «Publicar el sitio».
+      - name: esbuild (para probar la página achicada)
+        working-directory: herramientas/publicar
+        run: npm ci --ignore-scripts
 
       - name: Playwright
         working-directory: herramientas/pruebas

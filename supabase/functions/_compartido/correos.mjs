@@ -38,6 +38,10 @@ const TX = {
     prPre:"Correo de prueba: así te van a llegar los avisos.", prEtiqueta:"Correo de prueba", prTitulo:"Hola{n}, así te llegan los avisos",
     prParrafo:"Si estás leyendo esto, los avisos por correo del Registro te llegan bien. Revisá que no haya ido a Spam; si fue, marcalo como «No es spam» y los próximos van a llegar a la bandeja de entrada.",
     abrir:"Abrir el Registro", prPie:"Te llega porque lo pediste desde Mis preferencias.",
+    accAsunto:"Ya podés entrar a Toldot", accTexto:"Hola{n}: te aprobaron el acceso a Toldot. Ya podés entrar con tu cuenta de Google.",
+    accPre:"Te aprobaron el acceso: ya podés entrar.", accEtiqueta:"Acceso aprobado", accTitulo:"Hola{n}, ya podés entrar",
+    accParrafo:"Un administrador aprobó tu pedido. Entrá con la misma cuenta de Google con la que lo pediste: la primera vez te mostramos un recorrido corto.",
+    accBoton:"Entrar a Toldot", accPie:"Te llega porque pediste entrar a Toldot.",
     mencion:["mención","menciones"], respuesta:["respuesta","respuestas"], nueva:["actividad nueva","actividades nuevas"], proximo:["evento próximo","eventos próximos"],
     reTituloSem:"Lo que pasó del {a} al {b}", reTituloDia:"Lo que pasó desde ayer", reSem:"Tu resumen de la semana", reDia:"Tu resumen del día",
     reMenc:"Te mencionaron", reResp:"Respuestas a tus posteos", reNuevo:"Nuevo en el Registro", reProx:"Empiezan pronto",
@@ -60,6 +64,10 @@ const TX = {
     prPre:"Test email: this is how notifications will reach you.", prEtiqueta:"Test email", prTitulo:"Hi{n}, this is how notifications reach you",
     prParrafo:"If you're reading this, the Log's email notifications reach you fine. Check it didn't land in Spam; if it did, mark it as “Not spam” and the next ones will reach your inbox.",
     abrir:"Open the Log", prPie:"You're getting this because you asked for it in My preferences.",
+    accAsunto:"You can now sign in to Toldot", accTexto:"Hi{n}: your access to Toldot was approved. You can now sign in with your Google account.",
+    accPre:"Your access was approved: you can sign in now.", accEtiqueta:"Access approved", accTitulo:"Hi{n}, you can sign in now",
+    accParrafo:"An administrator approved your request. Sign in with the same Google account you used to ask: the first time you'll see a short tour.",
+    accBoton:"Sign in to Toldot", accPie:"You're getting this because you asked to join Toldot.",
     mencion:["mention","mentions"], respuesta:["reply","replies"], nueva:["new activity","new activities"], proximo:["upcoming event","upcoming events"],
     reTituloSem:"What happened from {a} to {b}", reTituloDia:"What happened since yesterday", reSem:"Your weekly summary", reDia:"Your daily summary",
     reMenc:"You were mentioned", reResp:"Replies to your posts", reNuevo:"New in the Log", reProx:"Starting soon",
@@ -82,6 +90,10 @@ const TX = {
     prPre:"E-mail de teste: assim vão chegar os avisos.", prEtiqueta:"E-mail de teste", prTitulo:"Olá{n}, assim chegam os avisos",
     prParrafo:"Se você está lendo isto, os avisos por e-mail do Registro chegam bem. Confira se não foi para o Spam; se foi, marque como «Não é spam» e os próximos vão chegar na caixa de entrada.",
     abrir:"Abrir o Registro", prPie:"Chega porque você pediu em Minhas preferências.",
+    accAsunto:"Você já pode entrar no Toldot", accTexto:"Olá{n}: seu acesso ao Toldot foi aprovado. Você já pode entrar com sua conta do Google.",
+    accPre:"Seu acesso foi aprovado: você já pode entrar.", accEtiqueta:"Acesso aprovado", accTitulo:"Olá{n}, você já pode entrar",
+    accParrafo:"Um administrador aprovou seu pedido. Entre com a mesma conta do Google com a qual você pediu: na primeira vez mostramos um tour curto.",
+    accBoton:"Entrar no Toldot", accPie:"Chega porque você pediu para entrar no Toldot.",
     mencion:["menção","menções"], respuesta:["resposta","respostas"], nueva:["atividade nova","atividades novas"], proximo:["evento próximo","eventos próximos"],
     reTituloSem:"O que aconteceu de {a} a {b}", reTituloDia:"O que aconteceu desde ontem", reSem:"Seu resumo da semana", reDia:"Seu resumo do dia",
     reMenc:"Mencionaram você", reResp:"Respostas às suas postagens", reNuevo:"Novo no Registro", reProx:"Começam em breve",
@@ -104,6 +116,10 @@ const TX = {
     prPre:"מייל ניסיון: כך יגיעו אליך ההתראות.", prEtiqueta:"מייל ניסיון", prTitulo:"שלום{n}, כך מגיעות ההתראות",
     prParrafo:"אם את/ה קורא/ת את זה, ההתראות במייל מהיומן מגיעות אליך כמו שצריך. כדאי לבדוק שזה לא הגיע לספאם; אם כן, סמנו «לא ספאם» והבאות יגיעו לתיבת הדואר הנכנס.",
     abrir:"לפתיחת היומן", prPie:"זה מגיע אליך כי ביקשת את זה מההעדפות שלי.",
+    accAsunto:"אפשר להיכנס לתולדות", accTexto:"שלום{n}: הגישה שלך לתולדות אושרה. אפשר להיכנס עם חשבון Google שלך.",
+    accPre:"הגישה אושרה: אפשר להיכנס עכשיו.", accEtiqueta:"הגישה אושרה", accTitulo:"שלום{n}, אפשר להיכנס",
+    accParrafo:"מנהל/ת אישר/ה את הבקשה שלך. היכנסו עם אותו חשבון Google שבו ביקשת: בפעם הראשונה יוצג סיור קצר.",
+    accBoton:"כניסה לתולדות", accPie:"זה מגיע אליך כי ביקשת להצטרף לתולדות.",
     mencion:["אזכור","אזכורים"], respuesta:["תגובה","תגובות"], nueva:["פעילות חדשה","פעילויות חדשות"], proximo:["אירוע קרוב","אירועים קרובים"],
     reTituloSem:"מה קרה בין {a} ל־{b}", reTituloDia:"מה קרה מאתמול", reSem:"הסיכום השבועי שלך", reDia:"הסיכום היומי שלך",
     reMenc:"הזכירו אותך", reResp:"תגובות לפוסטים שלך", reNuevo:"חדש ביומן", reProx:"מתחילים בקרוב",
@@ -431,6 +447,24 @@ export function correoInforme({ mes, vence, lang, zona, prueba = false }){
 }
 
 /* ---------- Correo de prueba ---------- */
+// Al aprobar un pedido de acceso (D26-A, 20/11/2026): le llega a quien lo pidió, a la dirección con la que entró con Google.
+// No lleva «Mis preferencias»: todavía no tiene. De momento va en español (todavía no tiene idioma elegido).
+export function correoAcceso({ nombre, lang }){
+  const L = idioma(lang), T = TX[L];
+  const primero = nombre ? String(nombre).split(" ")[0] : "";
+  return {
+    subject: T.accAsunto,
+    text: `${conVars(T.accTexto, { n: primero ? " " + primero : "" })}\n${APP}\n`,
+    html: marco({ lang: L,
+      pre: T.accPre,
+      etiqueta: T.accEtiqueta, titulo: conVars(T.accTitulo, { n: primero ? suyo(esc(primero)).replace(/^/, " ") : "" }),
+      cuerpo: `<p style="font-size:15px;line-height:1.6;margin:0;">${T.accParrafo}</p>
+      ${boton(T.accBoton, APP, L)}`,
+      pie: T.accPie,
+    }),
+  };
+}
+
 export function correoPrueba({ nombre, lang }){
   const L = idioma(lang), T = TX[L];
   const primero = nombre ? " " + String(nombre).split(" ")[0] : "";

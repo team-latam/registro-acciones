@@ -60,7 +60,7 @@ const b = await abrirNavegador();
   eq("celular: el título de la compu no se ve; el renglón sí", [await visible(p, ".fl-lado .fl-lado-t"), await visible(p, ".fl-lado .fl-pliegue")], [false, true]);
   eq("celular: «Lo que sigue» y «Lo que pasó» no se pliegan", await p.$$eval(".fl-sigue .fl-pliegue, .fl-historia .fl-pliegue", l => l.length), 0);
   eq("celular: cada renglón trae un resumen", await p.$$eval(".fl-lado .fl-pliegue .r", l => l.every(e => e.textContent.trim().length > 0 && !!e.offsetParent)), true);
-  eq("celular: Ritmo cuenta los registros del año", /^\d+ registros en 12 meses$/.test(await resumen(p, "ritmo")), true);
+  eq("celular: Ritmo cuenta las actividades del año", /^\d+ actividades en 12 meses$/.test(await resumen(p, "ritmo")), true);
   eq("celular: Proyectos dice cuántos abiertos y los hitos vencidos", await resumen(p, "proy"), "1 abierto · 1 hito vencido");
   eq("celular: todo entra a lo ancho, nada se corta", await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 
@@ -192,7 +192,7 @@ const b = await abrirNavegador();
 {
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 }, base: conMucha(), lang: "he" });
   await aArgentina(p);
-  eq("hebreo: el resumen va traducido", /רישומים/.test(await resumen(p, "ritmo") || ""), true);
+  eq("hebreo: el resumen va traducido", /פעילויות/.test(await resumen(p, "ritmo") || ""), true);
   eq("hebreo: la flechita apunta hacia el lado de lectura", await p.$eval('.fl-pliegue[data-que="ritmo"] .chev', e => e.textContent).catch(() => null), "‹");
   eq("hebreo: sin errores", errores, []);
   await p.close();
