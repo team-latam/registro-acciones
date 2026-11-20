@@ -21,7 +21,7 @@ const textos = (p, sel) => p.$$eval(sel, l => l.map(e => e.textContent.replace(/
 const secciones = p => p.$$eval('.admin-menu [data-action="gastos-seccion"]', l => l.map(e => e.dataset.key));
 const irGastos = async p => { await p.click('#tabs button[data-view="gastos"]'); await p.waitForSelector(".gastos-view"); await p.waitForTimeout(200); };
 const irSeccion = async (p, k) => { await p.click(`[data-action="gastos-seccion"][data-key="${k}"]`); await p.waitForTimeout(250); };
-const tiles = p => p.$$eval('.gx-imp .gx-tiles .gx-tile', l => l.map(e => e.querySelector('.gx-tile-k').textContent.trim() + ' ' + e.querySelector('b').textContent.trim()));
+const tiles = p => p.$$eval('.gx-imp .gxe-tiles .gxe-tile', l => l.map(e => e.querySelector('.gxe-k').textContent.trim() + ' ' + e.querySelector('.gxe-v').textContent.trim()));
 const FIN = { email: "fabi@team-latam.com", name: "Fabi Finanzas", nickname: "fabi", role: "finance" };
 
 const T = ["Concepto", "Fecha", "Monto", "Moneda", "Tipo", "Actividad", "Cuenta", "Forma de pago", "Quién pagó", "Factura", "Observaciones"];
@@ -56,27 +56,27 @@ const elegir = async p => { const [fc] = await Promise.all([p.waitForEvent("file
   eq("al entrar, solo el botón para elegir la planilla (nada cargado)", [(await textos(p, '[data-action="gastos-imp-archivo"]')), await p.$$('.gx-imp-rend').then(l => l.length)], [["📂 Elegir la planilla (Excel)"], 0]);
   await elegir(p);
   eq("deja la solapa «Resumen» afuera, avisando", await textos(p, ".gx-imp > .gx-suave"), ["Solapas que no son de un mes y no se leyeron: Resumen"]);
-  eq("las cuentas: solapas, a cargar (los tipos que se reconocen por su nombre), dudosas, repetidas y de empleados", await tiles(p), ["Solapas leídas 1", "Para cargar 3", "Dudosas 2", "Repetidas 0", "De empleados (para después) 1"]);
+  eq("las cuentas: solapas, a cargar (los tipos que se reconocen por su nombre; «Cuenta = Empleados» no deja nada afuera), dudosas y repetidas", await tiles(p), ["Solapas leídas 1", "Para cargar 4", "Dudosas 2", "Repetidas 0"]);
   eq("dudosas: «Papelería» sin elegir y la sin fecha", await textos(p, ".gx-imp-duda li"), ["SEP26 · fila 6 Librería — Elegí a qué tipo corresponde", "SEP26 · fila 8 Sin fecha — No se entiende la fecha"]);
   // Elegir los tipos de la planilla
   await p.selectOption('select[data-gimp="tipo"][data-k="papeleria"]', "material"); await p.waitForTimeout(150);
   const tiles2 = await tiles(p);
-  eq("al elegir el tipo que faltaba, esa fila entra; queda dudosa solo la sin fecha", [tiles2[1], tiles2[2]], ["Para cargar 4", "Dudosas 1"]);
+  eq("al elegir el tipo que faltaba, esa fila entra; queda dudosa solo la sin fecha", [tiles2[1], tiles2[2]], ["Para cargar 5", "Dudosas 1"]);
   eq("la sigla «ORG» se propone como tarjeta de la organización; lo vacío no es una sigla, no aparece", await p.$$eval('select[data-gimp="pago"]', l => l.map(s => [s.dataset.k, s.value])), [["org", "organizacion"]]);
   eq("dos rendiciones: la rutina de septiembre y el viaje, con enlace propuesto a la Agenda", await textos(p, ".gx-imp-rend .gx-imp-cab b"), ["Rutina de septiembre de 2026", "Visita a Montevideo"]);
-  eq("…con sus totales por moneda", await textos(p, ".gx-imp-rend .gx-imp-cab span"), ["1 gastos · USD 25.00", "3 gastos · USD 385.50"]);
+  eq("…con sus totales por moneda", await textos(p, ".gx-imp-rend .gx-imp-cab span"), ["1 gastos · USD 25.00", "4 gastos · USD 465.50"]);
   eq("…y el enlace elegido es la actividad de esa fecha", await p.$eval('select[data-gimp="rend"][data-c="postId"]', s => s.value), "p9");
   eq("las dos son históricas (antes de octubre): marcadas", await p.$$eval('input[data-c="historica"]', l => l.map(i => i.checked)), [true, true]);
-  eq("la suma de lo que se carga, por moneda, para comparar con la planilla", (await textos(p, ".gx-imp-suma"))[0].startsWith("Suma de lo que se va a cargar: USD 410.50"), true);
-  eq("el botón dice cuántos gastos se importan", await textos(p, '[data-action="gastos-imp-importar"]'), ["Importar 4 gastos"]);
+  eq("la suma de lo que se carga, por moneda, para comparar con la planilla", (await textos(p, ".gx-imp-suma"))[0].startsWith("Suma de lo que se va a cargar: USD 490.50"), true);
+  eq("el botón dice cuántos gastos se importan", await textos(p, '[data-action="gastos-imp-importar"]'), ["Importar 5 gastos"]);
   await p.click('[data-action="gastos-imp-importar"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
   await hasta(p, () => window.__sb.rpc.some(r => r[0] === "gastos_importar"));
-  eq("se llama a la base una vez, con las dos rendiciones y sus gastos", await p.evaluate(() => window.__sb.rpc.filter(r => r[0] === "gastos_importar").map(r => [r[1].p_rendiciones.length, r[1].p_rendiciones.reduce((n, x) => n + x.gastos.length, 0)])), [[2, 4]]);
+  eq("se llama a la base una vez, con las dos rendiciones y sus gastos", await p.evaluate(() => window.__sb.rpc.filter(r => r[0] === "gastos_importar").map(r => [r[1].p_rendiciones.length, r[1].p_rendiciones.reduce((n, x) => n + x.gastos.length, 0)])), [[2, 5]]);
   eq("quedan en la base: aprobadas, a nombre del admin, históricas y con el lote", await hasta(p, () => window.__sb.tablas.gastos_rendiciones.length === 2), true);
   eq("…con lo que corresponde", await p.evaluate(() => window.__sb.tablas.gastos_rendiciones.map(r => [r.estado, r.autor, r.historica, !!r.lote_id, r.post_id]).sort().map(String)), [["aprobada", "benny@team-latam.com", true, true, ""].toString(), ["aprobada", "benny@team-latam.com", true, true, "p9"].toString()].sort());
   eq("la cena en pesos mexicanos quedó en MXN y rendida en dólares", await p.evaluate(() => window.__sb.tablas.gastos.filter(g => g.moneda === "MXN").map(g => [g.monto, g.rendido_moneda, g.rendido_monto])), [[2834, "USD", 45.5]]);
-  eq("aviso de que se cargó", (await textos(p, ".gx-imp .admin-ok"))[0].startsWith("✅ Listo: se cargaron 2 rendiciones con 4 gastos"), true);
-  eq("aparece la tanda, para poder deshacerla", await textos(p, ".gx-imp-tanda span"), ["2 rendiciones, 4 gastos"]);
+  eq("aviso de que se cargó", (await textos(p, ".gx-imp .admin-ok"))[0].startsWith("✅ Listo: se cargaron 2 rendiciones con 5 gastos"), true);
+  eq("aparece la tanda, para poder deshacerla", await textos(p, ".gx-imp-tanda span"), ["2 rendiciones, 5 gastos"]);
   // Lo histórico no inventa deuda
   await irSeccion(p, "cuenta");
   eq("la cuenta corriente del admin no muestra deuda ni gastado de lo importado", (await p.$$eval(".gx-cuenta-mon .gx-saldo", l => l.map(e => e.textContent.trim()))).every(x => /^0(\.00)?$/.test(x)), true);
@@ -99,7 +99,7 @@ const elegir = async p => { const [fc] = await Promise.all([p.waitForEvent("file
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base, iniciar: XLSX_FALSO });
   await irGastos(p); await irSeccion(p, "importar"); await elegir(p);
   await p.selectOption('select[data-gimp="tipo"][data-k="papeleria"]', "material"); await p.waitForTimeout(150);
-  eq("el taxi que ya estaba cargado queda como repetido y no se vuelve a cargar", (await tiles(p)).slice(1, 4), ["Para cargar 3", "Dudosas 1", "Repetidas 1"]);
+  eq("el taxi que ya estaba cargado queda como repetido y no se vuelve a cargar", (await tiles(p)).slice(1, 4), ["Para cargar 4", "Dudosas 1", "Repetidas 1"]);
   eq("sin errores de página", errores, []);
   await p.close();
 }

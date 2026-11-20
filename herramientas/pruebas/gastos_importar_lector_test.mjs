@@ -18,7 +18,7 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if
 const RAIZ = __aRuta(new URL("../..", import.meta.url));
 const src = fs.readFileSync(process.env.INDEX || RAIZ + "index.html", "utf8");
 const g = hacerGrab(src);
-const trozos = ["impNorm", "IMP_CORTE", "impNumero", "impIso", "impFecha", "IMP_MESES", "impMesDeHoja", "impMonedaOriginal", "IMP_COLUMNAS", "impLeerHoja", "impDias", "impFirma", "impArmar", "impParaLaBase"];
+const trozos = ["impNorm", "IMP_CORTE", "impNumero", "impIso", "impFecha", "IMP_MESES", "impMesDeHoja", "impMonedaOriginal", "IMP_SIN_CENTAVOS", "IMP_COLUMNAS", "impLeerHoja", "impDias", "impFirma", "impArmar", "impParaLaBase"];
 const A = new Function(`${trozos.map(n => g(n)).join("\n")}\nreturn { impNumero, impFecha, impMesDeHoja, impMonedaOriginal, impLeerHoja, impArmar, impParaLaBase, impNorm };`)();
 
 // Montos
@@ -66,34 +66,44 @@ const SEP = hoja([
   ["Suscripción", "5-9-2026", 20, "USD", "Software nuevo", "Rutina", "", "Tarjeta", "ORG", "Si", ""],
   ["Pasaje de Iván", "14-9-2026", 80, "USD", "Pasaje", "Visita", "Empleados", "Tarjeta", "ORG", "Si", ""],
   ["Sin fecha", "", 10, "USD", "Comida", "Rutina", "", "", "", "Si", ""],
-  ["Fecha de otro mes", "3-8-2026", 10, "USD", "Comida", "Rutina", "", "", "", "Si", ""],
+  ["Fecha de otro mes", "3-6-2026", 10, "USD", "Comida", "Rutina", "", "", "", "Si", ""],
   ["Monto raro", "6-9-2026", "mucho", "USD", "Comida", "Rutina", "", "", "", "Si", ""],
+  [null, null, null, null, null, null, null, null, null, null, null],
+  ["Hotel del otro viaje", "11-9-2026", 100, "USD", "Alojamiento", "Visita", "", "Tarjeta", "ORG", "Si", ""],
   ["Total", null, 9999, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null],
 ]);
 const H = A.impLeerHoja(SEP, "SEP26");
-eq("la solapa se reconoce: septiembre de 2026, 9 filas (sin el «Total» ni las vacías)", [H.anio, H.mes, H.filas.length], [2026, 9, 9]);
+eq("la solapa se reconoce: septiembre de 2026, 10 filas (sin el «Total» ni las vacías)", [H.anio, H.mes, H.filas.length], [2026, 9, 10]);
 eq("una solapa que no es de un mes no se lee", A.impLeerHoja(SEP, "Resumen"), null);
 eq("una hoja sin fila de títulos no se lee", A.impLeerHoja([["a", "b"], [1, 2]], "SEP26"), null);
 const cena = H.filas[2];
 eq("la cena en otra moneda: gasto en MXN 2834, rendido USD 45.5", [cena.moneda, cena.monto, cena.rendidoMoneda, cena.rendidoMonto, cena.factura], ["MXN", 2834, "USD", 45.5, false]);
 eq("«$1.500,00» en pesos", [H.filas[3].moneda, H.filas[3].monto], ["ARS", 1500]);
-eq("las dudas de cada fila", H.filas.map(x => x.dudas), [[], [], [], [], [], [], ["fecha"], ["fecha_fuera_de_la_hoja"], ["monto"]]);
+eq("las dudas de cada fila", H.filas.map(x => x.dudas), [[], [], [], [], [], [], ["fecha"], ["fecha_fuera_de_la_hoja"], ["monto"], []]);
+eq("los bloques: lo separado por una fila en blanco es otro viaje", H.filas.map(x => x.bloque), [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+eq("un mes de distancia no es dudoso (un viaje cruza de mes); tres meses sí", A.impLeerHoja(hoja([["x", "3-8-2026", 1, "USD", "Comida", "Rutina", "", "", "", "Si", ""]]), "SEP26").filas[0].dudas, []);
 eq("la forma de pago", H.filas.slice(0, 4).map(x => x.formaPago), ["tarjeta", "tarjeta", "efectivo", "efectivo"]);
+
+// Monedas sin centavos: «13.599» en pesos chilenos es trece mil; en otras, «1.500» sigue siendo dudoso
+const mo = o => A.impLeerHoja(hoja([["x", "3-9-2026", 20, "USD", "Comida", "Visita", "", "", "", "Si", o]]), "SEP26").filas[0].dudas;
+eq("«Gasto por CLP 13.599.-» no es dudoso (el peso chileno no tiene centavos)", mo("Gasto por CLP 13.599.-"), []);
+eq("«Gasto por BZD 1.500.-» sí (puede ser 1500 o 1,5)", mo("Gasto por BZD 1.500.-"), ["monto_ambiguo"]);
 
 // Armado
 const mapaTipo = { transporte: "transporte", alojamiento: "alojamiento", comida: "comida", pasaje: "pasaje" }; // «Software nuevo» sin elegir
 const posts = [{ id: "p_mvd", title: "Visita a Montevideo", activityType: "visita", startDate: "2026-09-09", endDate: "2026-09-13" },
   { id: "p_otra", title: "Otra", activityType: "visita", startDate: "2026-03-01", endDate: "2026-03-03" },
+  { id: "p_largo", title: "Curso anual", activityType: "curso", startDate: "2026-01-05", endDate: "2026-12-18" },
   { id: "p_rut", title: "Rutina", activityType: "rutina", startDate: "2026-09-10", endDate: "2026-09-10" }];
 const R = A.impArmar(H.filas, { mapaTipo, mapaPago: { org: "organizacion" }, posts, existentes: [] });
-eq("los de «Empleados» quedan para después", R.empleados.map(x => x.concepto), ["Pasaje de Iván"]);
 eq("lo dudoso, aparte: el tipo sin elegir, la fecha que no se entiende, la de otro mes y el monto raro", R.dudosas.map(x => [x.concepto, x.dudas]), [["Suscripción", ["tipo"]], ["Sin fecha", ["fecha"]], ["Fecha de otro mes", ["fecha_fuera_de_la_hoja"]], ["Monto raro", ["monto"]]]);
-eq("dos rendiciones: el viaje y la rutina de septiembre", R.rends.map(r => [r.clave, r.gastos.length]), [["rutina|2026-09-01", 1], ["viaje|visita|2026-09-10", 3]]);
-const viaje = R.rends.find(r => r.actividad === "visita");
-eq("el viaje: fechas, enlace propuesto con la Agenda (no con la rutina) y totales por moneda", [viaje.desde, viaje.hasta, viaje.postId, viaje.totales], ["2026-09-10", "2026-09-12", "p_mvd", { USD: 385.5 }]);
-eq("septiembre es histórico (antes del 1/10/2026)", R.rends.map(r => r.historica), [true, true]);
-eq("quién pagó: la sigla es la tarjeta de la organización, lo vacío es de bolsillo", viaje.gastos.map(x => x.pago), ["organizacion", "organizacion", "persona"]);
+eq("tres rendiciones: la rutina y dos viajes con fechas que se pisan (un bloque cada uno)", R.rends.map(r => [r.clave, r.gastos.length]), [["rutina|2026-09-01", 1], ["viaje|SEP26|0|visita", 4], ["viaje|SEP26|1|visita", 1]]);
+const viaje = R.rends.find(r => r.clave === "viaje|SEP26|0|visita");
+eq("«Cuenta = Empleados» no deja una fila afuera (la columna no cambia de quién es el gasto)", viaje.gastos.map(x => x.concepto), ["Taxi aeropuerto", "Hotel", "Cena", "Pasaje de Iván"]);
+eq("el viaje: fechas, enlace propuesto con la Agenda (no con la rutina) y totales por moneda", [viaje.desde, viaje.hasta, viaje.postId, viaje.totales], ["2026-09-10", "2026-09-14", "p_mvd", { USD: 465.5 }]);
+eq("septiembre es histórico (antes del 1/10/2026)", R.rends.map(r => r.historica), [true, true, true]);
+eq("quién pagó: la sigla es la tarjeta de la organización, lo vacío es de bolsillo", viaje.gastos.map(x => x.pago), ["organizacion", "organizacion", "persona", "organizacion"]);
 const rut = R.rends.find(r => r.rutinaMes);
 eq("la rutina del mes lleva su mes y su total en pesos", [rut.rutinaMes, rut.totales], ["2026-09-01", { ARS: 1500 }]);
 
@@ -105,16 +115,19 @@ const R3 = A.impArmar([...H.filas, H.filas[1]], { mapaTipo, mapaPago: {}, posts:
 eq("un gasto repetido en la misma planilla tampoco", R3.repetidas.map(x => x.concepto), ["Hotel"]);
 
 // Octubre en adelante no es histórico; y los viajes lejanos no se mezclan
-const OCT = hoja([["Taxi", "3-10-2026", 10, "USD", "Transporte", "Visita", "", "", "", "Si", ""], ["Taxi 2", "20-10-2026", 12, "USD", "Transporte", "Visita", "", "", "", "Si", ""]]);
+const OCT = hoja([["Taxi", "3-10-2026", 10, "USD", "Transporte", "Visita", "", "", "", "Si", ""], [null, null, null, null, null, null, null, null, null, null, null], ["Taxi 2", "20-10-2026", 12, "USD", "Transporte", "Visita", "", "", "", "Si", ""]]);
 const R4 = A.impArmar(A.impLeerHoja(OCT, "OCT26").filas, { mapaTipo, mapaPago: {}, posts: [], existentes: [] });
-eq("dos viajes distintos por estar separados más de cuatro días, no históricos, sin enlace", R4.rends.map(r => [r.desde, r.historica, r.postId]), [["2026-10-03", false, ""], ["2026-10-20", false, ""]]);
+eq("dos viajes por estar separados por una fila en blanco, no históricos, sin enlace", R4.rends.map(r => [r.desde, r.historica, r.postId]), [["2026-10-03", false, ""], ["2026-10-20", false, ""]]);
+const OCT2 = hoja([["Taxi", "3-10-2026", 10, "USD", "Transporte", "Visita", "", "", "", "Si", ""], ["Taxi 2", "20-10-2026", 12, "USD", "Transporte", "Visita", "", "", "", "Si", ""]]);
+eq("sin la fila en blanco es un solo viaje, aunque haya semanas entre las fechas", A.impArmar(A.impLeerHoja(OCT2, "OCT26").filas, { mapaTipo, mapaPago: {}, posts: [], existentes: [] }).rends.map(r => [r.desde, r.hasta]), [["2026-10-03", "2026-10-20"]]);
 
 // Lo que viaja a la base
 const P = A.impParaLaBase(R.rends.map(r => r === viaje ? { ...r, lugar: "Ciudad X", pais: "Chile" } : r));
-eq("a la base: lo enlazado no lleva lugar ni país (los da la actividad)", [P[1].post_id, P[1].lugar, P[1].pais, P[1].historica, P[0].rutina_mes], ["p_mvd", null, null, true, "2026-09-01"]);
-eq("…y cada gasto lleva solo lo que la base pide", Object.keys(P[1].gastos[0]).sort(), ["concepto", "factura", "fecha", "forma_pago", "moneda", "monto", "observaciones", "pago", "rendido_moneda", "rendido_monto", "tipo"]);
+const Pv = P.findIndex(x => x.post_id === "p_mvd");
+eq("a la base: lo enlazado no lleva lugar ni país (los da la actividad)", [P[Pv].post_id, P[Pv].lugar, P[Pv].pais, P[Pv].historica, P[0].rutina_mes], ["p_mvd", null, null, true, "2026-09-01"]);
+eq("…y cada gasto lleva solo lo que la base pide", Object.keys(P[Pv].gastos[0]).sort(), ["concepto", "factura", "fecha", "forma_pago", "moneda", "monto", "observaciones", "pago", "rendido_moneda", "rendido_monto", "tipo"]);
 const P2 = A.impParaLaBase(R.rends.map(r => ({ ...r, postId: "", lugar: "Ciudad X", pais: "Chile", excluida: r === rut })));
-eq("sin enlace lleva lugar y país; una excluida no viaja", [P2.length, P2[0].lugar, P2[0].pais], [1, "Ciudad X", "Chile"]);
+eq("sin enlace lleva lugar y país; una excluida no viaja", [P2.length, P2[0].lugar, P2[0].pais], [2, "Ciudad X", "Chile"]);
 
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

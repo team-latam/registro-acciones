@@ -819,6 +819,22 @@
 
   /* ---------- Gastos y rendiciones (ver renderGastosView) ---------- */
   .gx-lista{ display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+  /* Importar (20/11) */
+  .gx-imp{ max-width:980px; }
+  .gx-imp-map{ display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr)); gap:10px 14px; margin-bottom:8px; }
+  .gx-imp-map label{ display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600; min-width:0; overflow-wrap:anywhere; }
+  .gx-imp select, .gx-imp input[type=text]{ width:100%; min-width:0; min-height:40px; font:inherit; font-weight:400; padding:6px 10px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); color:var(--text); }
+  .gx-imp .gx-tarjeta.gx-imp-rend{ display:block; }
+  .gx-imp-cab{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:4px 12px; margin-bottom:10px; }
+  .gx-imp-cab span{ font-size:13px; color:var(--text-muted); }
+  .gx-imp-ctl{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:10px 14px; align-items:end; }
+  .gx-imp-ctl label{ display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600; min-width:0; }
+  .gx-imp-ctl label.gx-imp-chk{ flex-direction:row; align-items:center; gap:8px; font-weight:400; min-height:40px; }
+  .gx-imp-chk input{ width:18px; height:18px; min-height:0; flex:none; }
+  .gx-imp-fuera{ opacity:.55; }
+  .gx-imp-duda{ margin:0 0 12px; padding-inline-start:20px; font-size:13px; display:flex; flex-direction:column; gap:4px; }
+  .gx-imp-suma{ margin:6px 0 14px; }
+  .gx-imp-tanda{ justify-content:space-between; }
   /* «Mis estadísticas» (19/11) */
   .gxe-ctl{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px; }
   .gxe-et{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
@@ -25281,6 +25297,7 @@ function impMonedaOriginal(obs){
   const num = impNumero(m[2]);
   return { moneda: cod, monto: num ? num.n : null, amb: !!(num && num.amb) };
 }
+const IMP_SIN_CENTAVOS = ["CLP", "COP", "PYG", "JPY", "KRW", "VND", "ISK", "UGX", "XOF", "XAF"];
 const IMP_COLUMNAS = { fecha: ["fecha"], concepto: ["concepto", "detalle", "descripcion"], actividad: ["actividad"], tipo: ["tipo", "categoria"],
   cuenta: ["cuenta"], moneda: ["moneda"], monto: ["monto", "importe"], formaPago: ["forma de pago", "forma pago"], quien: ["quien pago", "pagado por"],
   factura: ["factura"], obs: ["observaciones", "observacion", "obs"] };
@@ -25300,16 +25317,20 @@ function impLeerHoja(filas, nombre){
   const val = (f, k) => col[k] == null ? null : f[col[k]];
   const txt = (f, k) => { const v = val(f, k); return v == null ? "" : String(v).trim(); };
   const salida = [];
+  // Cada viaje (o la rutina) es un BLOQUE de filas separado de los otros por una fila en blanco: es lo que mejor los agrupa (las
+  // fechas no alcanzan: en un mes de dos viajes se pisan, y los pasajes se compran antes de viajar).
+  let bloque = 0, hueco = false;
   for(let i = h + 1; i < filas.length; i++){
     const f = filas[i] || [];
-    if(f.every(x => x == null || String(x).trim() === "")) continue;
     const concepto = txt(f, "concepto"), cn = impNorm(concepto);
+    if(!concepto && val(f, "fecha") == null && val(f, "monto") == null){ hueco = true; continue; }
     if(cn === "total" || cn === "totales" || cn === "subtotal") continue;
-    if(!concepto && val(f, "fecha") == null && val(f, "monto") == null) continue;
+    if(hueco){ bloque++; hueco = false; }
     const dudas = [];
     const fecha = impFecha(val(f, "fecha"));
     if(!fecha) dudas.push("fecha");
-    else if(+fecha.slice(0, 4) !== mes.anio || +fecha.slice(5, 7) !== mes.mes) dudas.push("fecha_fuera_de_la_hoja");
+    // Un viaje puede cruzar de mes (pasajes comprados antes, gastos del regreso): solo se duda si cae a más de un mes de la solapa.
+    else if(Math.abs((+fecha.slice(0, 4) * 12 + +fecha.slice(5, 7)) - (mes.anio * 12 + mes.mes)) > 1) dudas.push("fecha_fuera_de_la_hoja");
     if(!concepto) dudas.push("concepto");
     const num = impNumero(val(f, "monto"));
     if(!num) dudas.push("monto"); else if(num.amb) dudas.push("monto_ambiguo");
@@ -25322,10 +25343,11 @@ function impLeerHoja(filas, nombre){
     const orig = moneda === "USD" ? impMonedaOriginal(obs) : null;
     if(orig && orig.moneda !== "USD"){
       if(orig.monto == null) dudas.push("moneda_original");
-      else { moneda = orig.moneda; monto = orig.monto; if(orig.amb) dudas.push("monto_ambiguo"); }
+      // Monedas sin centavos (CLP, COP, PYG…): «13.599» es trece mil, no hay duda. En las demás, «1.500» puede ser 1500 o 1,5.
+      else { moneda = orig.moneda; monto = orig.monto; if(orig.amb && !IMP_SIN_CENTAVOS.includes(orig.moneda)) dudas.push("monto_ambiguo"); }
     }
     const fp = impNorm(txt(f, "formaPago"));
-    salida.push({ hoja: String(nombre), fila: i + 1, fecha, concepto: concepto.slice(0, 140), actividad: txt(f, "actividad"), tipoOrig: txt(f, "tipo"),
+    salida.push({ hoja: String(nombre), fila: i + 1, bloque, fecha, concepto: concepto.slice(0, 140), actividad: txt(f, "actividad"), tipoOrig: txt(f, "tipo"),
       cuenta: txt(f, "cuenta"), moneda, monto, rendidoMoneda, rendidoMonto, formaPago: /tarjeta/.test(fp) ? "tarjeta" : /efectivo/.test(fp) ? "efectivo" : /transfer/.test(fp) ? "transferencia" : null,
       quien: txt(f, "quien"), factura: !/^(no|n|0|false)$/i.test(txt(f, "factura")), obs: obs.slice(0, 500), dudas });
   }
@@ -25338,52 +25360,51 @@ function impFirma(g){ return [g.fecha, impNorm(g.concepto), g.monto, g.moneda].j
 // (las firmas de lo ya cargado, para no repetir).
 function impArmar(filas, o){
   const mapaTipo = o.mapaTipo || {}, mapaPago = o.mapaPago || {}, vistas = new Set(o.existentes || []);
-  const buenas = [], dudosas = [], repetidas = [], empleados = [];
+  const buenas = [], dudosas = [], repetidas = [];
   filas.forEach(f => {
-    if(impNorm(f.cuenta).includes("empleado")){ empleados.push(f); return; }
     const tipo = mapaTipo[impNorm(f.tipoOrig)] || null;
     const dudas = f.dudas.slice();
     if(!tipo) dudas.push("tipo");
     if(dudas.length){ dudosas.push({ ...f, dudas }); return; }
     const g = { fecha: f.fecha, concepto: f.concepto, tipo, moneda: f.moneda, monto: f.monto, rendido_moneda: f.rendidoMoneda, rendido_monto: f.rendidoMonto,
-      pago: mapaPago[impNorm(f.quien)] || "persona", forma_pago: f.formaPago, factura: f.factura, observaciones: f.obs, actividad: impNorm(f.actividad), hoja: f.hoja, fila: f.fila };
+      pago: mapaPago[impNorm(f.quien)] || "persona", forma_pago: f.formaPago, factura: f.factura, observaciones: f.obs, actividad: impNorm(f.actividad), hoja: f.hoja, bloque: f.bloque, fila: f.fila };
     const firma = impFirma(g);
     if(vistas.has(firma)){ repetidas.push({ ...f }); return; }
     vistas.add(firma); buenas.push(g);
   });
   const grupos = new Map();
   const abrir = (clave, r) => { if(!grupos.has(clave)) grupos.set(clave, { clave, gastos: [], ...r }); return grupos.get(clave); };
-  const viajes = {};
-  [...buenas].sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(g => {
+  // Un viaje = un bloque de la planilla (y una actividad); la rutina, una por mes, junte los bloques que junte.
+  [...buenas].sort((a, b) => a.hoja.localeCompare(b.hoja) || a.fila - b.fila).forEach(g => {
     if(g.actividad === "rutina" || !g.actividad){
       const mes = g.fecha.slice(0, 7) + "-01";
       abrir("rutina|" + mes, { rutinaMes: mes, actividad: "rutina" }).gastos.push(g);
     }else{
-      const v = viajes[g.actividad] = viajes[g.actividad] || [];
-      let c = v[v.length - 1];
-      if(!c || impDias(c.hasta, g.fecha) > 4){ c = abrir(`viaje|${g.actividad}|${g.fecha}`, { actividad: g.actividad, desde: g.fecha, hasta: g.fecha }); v.push(c); }
-      c.gastos.push(g); if(g.fecha > c.hasta) c.hasta = g.fecha;
+      const c = abrir(`viaje|${g.hoja}|${g.bloque}|${g.actividad}`, { actividad: g.actividad, desde: g.fecha, hasta: g.fecha });
+      c.gastos.push(g); if(g.fecha < c.desde) c.desde = g.fecha; if(g.fecha > c.hasta) c.hasta = g.fecha;
     }
   });
   const rends = [...grupos.values()].map(r => {
-    const base = r.rutinaMes || r.desde;
+    const base = r.rutinaMes || r.hasta;
     const x = { ...r, postId: "", lugar: "", pais: "", historica: base < IMP_CORTE, totales: {} };
     if(!r.rutinaMes){
       // El enlace que se propone: la actividad de la Agenda que se solapa con las fechas (con dos días de margen).
-      let mejor = null, mejorSolape = -Infinity;
+      // La que mejor calza: la de fechas más parecidas (una actividad larga, como un curso de meses, se solapa con todo y no es el viaje).
+      let mejor = null, mejorDist = Infinity;
       (o.posts || []).forEach(p => {
         if(!p || p.activityType === "rutina") return;
         const d = String(p.startDate || p.date || "").slice(0, 10), h = String(p.endDate || p.startDate || p.date || "").slice(0, 10);
         if(!d) return;
-        const a = d > r.desde ? d : r.desde, b = h < r.hasta ? h : r.hasta, sol = impDias(a, b);
-        if(impDias(d, r.hasta) >= -2 && impDias(r.desde, h) >= -2 && sol > mejorSolape){ mejor = p; mejorSolape = sol; }
+        if(impDias(d, r.hasta) < -2 || impDias(r.desde, h) < -2) return;
+        const dist = Math.abs(impDias(d, r.desde)) + Math.abs(impDias(h, r.hasta));
+        if(dist < mejorDist){ mejor = p; mejorDist = dist; }
       });
       if(mejor) x.postId = mejor.id;
     }
     r.gastos.forEach(g => { const m = g.rendido_monto != null ? g.rendido_moneda : g.moneda, n = g.rendido_monto != null ? g.rendido_monto : g.monto; x.totales[m] = Math.round(((x.totales[m] || 0) + n) * 100) / 100; });
     return x;
   }).sort((a, b) => (a.rutinaMes || a.desde).localeCompare(b.rutinaMes || b.desde));
-  return { rends, dudosas, repetidas, empleados };
+  return { rends, dudosas, repetidas };
 }
 // Lo que viaja a la base (gastos_importar): una rendición con sus gastos, sin lo que solo sirve a la vista previa.
 function impParaLaBase(rends){
@@ -25421,7 +25442,7 @@ function impTituloDe(r){
 function impCargarHojas(hojas, archivo){
   const leidas = [], ignoradas = [];
   hojas.forEach(([nombre, filas]) => { const h = impLeerHoja(filas, nombre); if(h) leidas.push(h); else ignoradas.push(String(nombre)); });
-  const todas = leidas.flatMap(h => h.filas).filter(f => !impNorm(f.cuenta).includes("empleado"));
+  const todas = leidas.flatMap(h => h.filas);
   const mapaTipo = {}, mapaPago = {};
   const tipos = gastoTipos();
   todas.forEach(f => {
@@ -25483,7 +25504,7 @@ function renderGastosImportar(){
   const A = I.arm, aCargar = A.rends.filter(r => !r.excluida).reduce((n, r) => n + r.gastos.length, 0);
   const porMoneda = {};
   A.rends.filter(r => !r.excluida).forEach(r => Object.entries(r.totales).forEach(([m, n]) => { porMoneda[m] = Math.round(((porMoneda[m] || 0) + n) * 100) / 100; }));
-  const tile = (k, v, cl = "") => `<div class="gx-tile${cl}"><span class="gx-tile-k">${k}</span><b class="gx-num">${v}</b></div>`;
+  const tile = (k, v, cl = "") => `<div class="gxe-tile${cl}"><div class="gxe-k">${k}</div><div class="gxe-v">${v}</div></div>`;
   const tipos = gastoTipos().filter(x => !x.oculto);
   const tiposDe = [...new Set(I.filas.map(f => impNorm(f.tipoOrig)).filter(Boolean))];
   const nombreOrig = k => (I.filas.find(f => impNorm(f.tipoOrig) === k) || {}).tipoOrig || k;
@@ -25511,9 +25532,8 @@ function renderGastosImportar(){
   return `<div class="gx-imp">
     <p>${boton} <small>${esc(I.archivo)}</small></p>
     ${hecho}
-    <div class="gx-tiles">${tile(t("Solapas leídas","Tabs read","Abas lidas","לשוניות שנקראו"), I.leidas.length)}${tile(t("Para cargar","To load","Para carregar","לטעינה"), aCargar)}
-      ${tile(t("Dudosas","Doubtful","Duvidosas","מפוקפקות"), A.dudosas.length, A.dudosas.length ? " gxe-aviso" : "")}${tile(t("Repetidas","Duplicates","Repetidas","כפולות"), A.repetidas.length)}
-      ${tile(t("De empleados (para después)","Employees' (for later)","De funcionários (para depois)","של עובדים (לאחר כך)"), A.empleados.length)}</div>
+    <div class="gxe-tiles">${tile(t("Solapas leídas","Tabs read","Abas lidas","לשוניות שנקראו"), I.leidas.length)}${tile(t("Para cargar","To load","Para carregar","לטעינה"), aCargar)}
+      ${tile(t("Dudosas","Doubtful","Duvidosas","מפוקפקות"), A.dudosas.length, A.dudosas.length ? " gxe-aviso" : "")}${tile(t("Repetidas","Duplicates","Repetidas","כפולות"), A.repetidas.length)}</div>
     ${I.ignoradas.length ? `<p class="gx-suave">${esc(t("Solapas que no son de un mes y no se leyeron: {l}","Tabs that aren't a month and weren't read: {l}","Abas que não são de um mês e não foram lidas: {l}","לשוניות שאינן חודש ולא נקראו: {l}",{ l: I.ignoradas.join(", ") }))}</p>` : ""}
     <p class="gx-imp-suma"><b>${t("Suma de lo que se va a cargar","Sum of what will be loaded","Soma do que será carregado","סכום מה שייטען")}:</b> ${Object.entries(porMoneda).map(([m, n]) => esc(fmtMonto(m, n))).join(" · ") || "—"} <small>${t("(compará con los totales de la planilla)","(compare with the spreadsheet's totals)","(compare com os totais da planilha)","(השוו לסכומי הגיליון)")}</small></p>
     ${mapaTipo}${mapaPago}
@@ -25532,7 +25552,7 @@ async function impImportar(){
   if(!n) return;
   if(!await appConfirm(t("¿Importar {n} gastos en {r} rendiciones? Quedan aprobados y a tu nombre, y después podés deshacer la tanda entera.","Import {n} expenses in {r} reports? They are approved and in your name, and afterwards you can undo the whole batch.","Importar {n} despesas em {r} prestações? Ficam aprovadas e no seu nome, e depois você pode desfazer o lote inteiro.","לייבא {n} הוצאות ב-{r} דוחות? הן מאושרות ועל שמך, ואחר כך אפשר לבטל את כל הקבוצה.",{ n, r: payload.length }), { okLabel: t("Importar","Import","Importar","ייבוא") })) return;
   gastosOcupado = true; render();
-  try{ I.hecho = await store.gastos.importar(crypto.randomUUID(), payload); I.filas = []; I.arm = { rends: [], dudosas: [], repetidas: [], empleados: [] }; I.mapaTipo = {}; I.mapaPago = {}; I.leidas = []; }
+  try{ I.hecho = await store.gastos.importar(crypto.randomUUID(), payload); I.filas = []; I.arm = { rends: [], dudosas: [], repetidas: [] }; I.mapaTipo = {}; I.mapaPago = {}; I.leidas = []; }
   catch(err){ console.error("No se pudo importar:", err); appAlert(t("No se pudo importar (no se cargó nada): {m}","Couldn't import (nothing was loaded): {m}","Não foi possível importar (nada foi carregado): {m}","הייבוא נכשל (לא נטען דבר): {m}",{ m: detalleDeError(err) })); }
   gastosOcupado = false; render();
 }

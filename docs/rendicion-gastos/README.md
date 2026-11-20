@@ -482,7 +482,8 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
 - **Gastos que pagó otra persona:** se cargan a nombre del usuario (Benny); los empleados, cuando tengan cuenta.
 - **Octubre–noviembre de 2026:** nada ya cargado en la app; se importan y el usuario marca cuáles ya se devolvieron. Antes del 1/10/2026 la cuenta corriente arranca en cero (no hay deuda de años anteriores).
 - **Tipos nuevos:** se pregunta por cada uno en la vista previa.
-- **Cómo reconocer filas de otros:** por la columna «Cuenta» (Empleados); donde no existe o está vacía (2022, principios de 2025, algunas pestañas de 2026), **se cargan todas a nombre del usuario**, sin marcarlas.
+- **«Cuenta» no dice de quién es el gasto** (corregido el 20/11 al ver la planilla real): «Empleados» es la cuenta de donde salía la plata para luego rendir; en enero–julio dice «Empleados» en *todas* las filas, también en las del usuario. **Se cargan todos los gastos, todos a nombre del usuario** («lo que nos interesa es cargar los gastos que se tuvieron, para un gran entendimiento»). Por eso el importador ya no deja afuera nada por esa columna.
+- **Cómo se agrupa:** cada viaje es un **bloque de filas separado por una fila en blanco** (en un mes de dos viajes las fechas se pisan, y los pasajes se compran antes de viajar); un viaje puede cruzar de mes; la rutina es una por mes, junte los bloques que junte. Para proponer la actividad de la Agenda se elige la de fechas más parecidas (una actividad larga, como un curso, no).
 - **Viajes y Agenda:** se propone el enlace con la actividad de la Agenda (fechas lado a lado) y el usuario confirma; sin coincidencia, rendición histórica con lugar, país y fechas, sin crear nada en la Agenda.
 - **Rutina:** una rendición por mes con todo lo de rutina («Rutina septiembre»).
 - **Primera prueba real:** septiembre de 2026 (tiene un viaje); después el resto de 2026 y los años anteriores.
@@ -496,7 +497,7 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
 - **Pantalla** (Gastos → «Importar», solo admin): se elige el Excel (SheetJS, en el navegador del admin: los datos no pasan por el
   repo), se ve lo que se entendió, los tipos y «quién pagó» para elegir, las rendiciones que se crearían (rutina por mes; viajes por
   cercanía de fechas, con el enlace a la Agenda ya propuesto, o lugar y país a mano), la suma por moneda para comparar con la planilla,
-  lo dudoso aparte (no se carga), lo repetido (ya cargado o duplicado en la planilla) y lo de empleados («Cuenta» = Empleados) para después.
+  lo dudoso aparte (no se carga), lo repetido (ya cargado o duplicado en la planilla) (nada se deja afuera por la columna «Cuenta»).
 - **Lector** (funciones `imp…` de `index.html`): columnas por nombre, fechas y montos en los formatos de cada año, moneda original de
   Observaciones, fila de título en cualquier lugar de las primeras diez. Probado en `herramientas/pruebas/gastos_importar_lector_test.mjs`
   (puro) y `gastos_importar_test.mjs` (pantalla), con datos inventados.
