@@ -2127,8 +2127,11 @@
   .feed-main{ flex:1 1 0; min-width:0; }
   .feed-side{ display:none; }
   @media (min-width:1024px){
+    /* min-width:0 + max-width: el mínimo de un hijo flexible es su contenido, y una línea en nowrap (el título de
+       un evento de «Próximos», el hito de un proyecto) estiraba la columna de 276 a 565 px y apretaba el Feed
+       (auditoría del 20/11/2026, Y1). Lo largo se corta con puntos suspensivos, como ya estaba pensado. */
     .feed-side{
-      display:block; flex:0 0 276px; position:sticky; top:calc(var(--header-h, 96px) + 16px);
+      display:block; flex:0 0 276px; min-width:0; max-width:276px; position:sticky; top:calc(var(--header-h, 96px) + 16px);
     }
     /* Si la columna no entra entera en la pantalla no se queda fija: baja con la página, sin barra de scroll
        propia (ajustarColumnaLateral; pedido del usuario, 16/10/2026). */
@@ -15465,11 +15468,30 @@ function vigilarTeclado(){
     raiz.style.setProperty("--vvh", Math.round(vv ? vv.height : window.innerHeight) + "px");
     raiz.style.setProperty("--vvtop", Math.round(vv ? vv.offsetTop : 0) + "px");
   };
+  // Mientras hay un dedo (o el mouse) apoyado, el modo teclado NO se apaga: al apoyar el dedo en «Publicar» el campo
+  // suelta el foco, y si en ese instante se apagaba, el cuadro cambiaba de relleno, de alto y de lugar entre
+  // apoyar y levantar: el toque caía en otra parte y el primer toque en «Publicar» no hacía nada (auditoría del
+  // 20/11/2026, Z1; era el T10 del 28/10). Se apaga cuando el toque terminó, con el clic ya entregado.
+  let apoyado = false, soltarApoyo = null;
   const alFoco = () => {
     const activo = document.activeElement;
-    raiz.classList.toggle("teclado", angosto() && esCampoDeTexto(activo));
+    const quiere = angosto() && esCampoDeTexto(activo);
+    if(!quiere && apoyado && raiz.classList.contains("teclado")) return;
+    raiz.classList.toggle("teclado", quiere);
     medir();
   };
+  const terminarApoyo = () => {
+    clearTimeout(soltarApoyo);
+    // Un instante después: mouseup y click salen en la misma vuelta, y el cambio de diseño va después de ellos.
+    setTimeout(() => { apoyado = false; alFoco(); }, 0);
+  };
+  document.addEventListener("mousedown", () => {
+    apoyado = true;
+    // Si el mouseup nunca llega (se arrastró afuera, se cortó el toque), no se queda trabado.
+    clearTimeout(soltarApoyo); soltarApoyo = setTimeout(terminarApoyo, 1500);
+  }, true);
+  document.addEventListener("mouseup", terminarApoyo, true);
+  document.addEventListener("touchcancel", terminarApoyo, true);
   document.addEventListener("focusin", alFoco);
   // focusout llega antes de que el foco pase al campo siguiente: se mira
   // un instante después, para no hacer saltar la pantalla entre campos.
