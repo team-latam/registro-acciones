@@ -1,62 +1,65 @@
-# Auditoría completa — 28 de octubre de 2026
+# Auditoría completa — 20 de noviembre de 2026
 
-> Las anteriores están en `docs/informes/historial/`: la completa con
-> énfasis en seguridad del 24/10/2026 (códigos S y D10–D13), la completa del
-> 10/10 (R y D1–D9), la del 6/10 (U, I, M, B, O), la de lo nuevo del 7/10
-> (C, E, P, G) y la de la Agenda del 9/10 (A). Los de esta van con **T**, y
-> sus decisiones siguen la numeración: D14 en adelante. El método:
-> `herramientas/auditoria/METODO.md`.
+> Las anteriores están en `docs/informes/historial/`: la completa del 28/10/2026
+> (códigos T y X, con lo de Gastos del 19/11 y las decisiones D14–D19), la completa
+> con énfasis en seguridad del 24/10 (S y D10–D13), la completa del 10/10 (R y
+> D1–D9), la del 6/10 (U, I, M, B, O), la de lo nuevo del 7/10 (C, E, P, G) y la de
+> la Agenda del 9/10 (A). Los de esta van con **Y**, y sus decisiones siguen la
+> numeración: **D20** en adelante. El método: `herramientas/auditoria/METODO.md`.
 
-Pedido del usuario: una **review de todo el sistema** (empezó como una crítica
-de diseño; se arreglaron la legibilidad, el celular y el Inicio en las tandas 103
-y 104), y después **la auditoría completa**, sumando todo lo que no se había
-revisado: la crítica del uso, el recorrido de bienvenida, el teclado y el lector
-de pantalla, los flujos de borrar, de error y de carga, los cuatro idiomas, los
-datos variados, el rendimiento, la seguridad, los permisos de la base, los
-workflows, las copias, las integraciones, la privacidad y la operación.
+Pedido del usuario (20/11): **una revisión completa de todo el sistema**, con la
+crítica de diseño de `/impeccable` y la auditoría interna, buscando lo que no se
+veía «por estar tan metidos en la propia experiencia» y lo que depende de que el
+sistema **no tiene masa crítica**: pocas personas, pocas actividades, y casi nunca
+dos personas usándolo al mismo tiempo.
 
-El detalle de cada hallazgo (dónde, cómo se verificó) está en
-`docs/informes/2026-10-28-completa.md`. La página para el usuario, en palabras
-simples y con capturas: https://claude.ai/artifact/X2pEJqknBxPwLTSwDrWAzp (privada).
+El detalle de cada hallazgo (dónde, cómo se verificó, qué número dio) está en
+`docs/informes/2026-11-20-completa.md`. La página para el usuario, en palabras
+simples y con capturas: se enlaza abajo, al final de «Cómo quedó».
 
-**Cómo se hizo.** Sobre `ed42ad9` de `main`. Las herramientas completas:
-**3.969 comprobaciones de la app en 119 archivos, en verde**; Calendar, copias
-y las **990 de la base**, en verde; las pantallas, 578 vistas en 13
-combinaciones de tamaño, idioma, oscuro y letra ancha; datos variados con dos
-semillas (800 y 1.500 posteos). A mano: el uso por tareas (compu y celular,
-integrante y observador), el recorrido de bienvenida paso por paso (cinco
-cuentas), el teclado y el árbol de accesibilidad de Chrome (3.307 controles en
-45 vistas), los flujos de error con un Supabase de mentira al que se le pide
-que rechace, que no conteste o que tarde, la velocidad con el procesador 4 y 6
-veces más lento, las 45 pantallas en inglés, portugués y hebreo, una matriz de
-permisos de las funciones de la base por rol en un Postgres local (persona de
-afuera, observador, integrante, admin), y los 14 workflows con sus corridas de
-las últimas semanas.
+**Cómo se hizo.** Sobre `9769ab8` de `main`. Las herramientas completas: **5.009
+comprobaciones de la app** (1 en rojo, solo en este sandbox: ver Y14), Calendar y
+copias en verde, **1.298 de la base** en verde; 669 pantallas en 13 combinaciones
+de tamaño, idioma, oscuro y letra ancha, **sin un solo recorte**; datos variados
+con dos semillas (1.500 y 800 posteos); la carga con el procesador 4 y 6 veces más
+lento; el detector de diseño de impeccable (4 avisos, todos falsas alarmas). A
+mano, y esto es lo nuevo: **la app con tres equipos distintos** (recién creado, de
+3 personas, de 45 y 3.000 actividades), **dos personas editando lo mismo**, el
+registro de actividad lleno, el botón «Atrás» del celular, un texto a medio
+escribir, el buscador con lo que dice un hilo, lo que muestran «Tendencias» y
+«Sugerencias» con 12 a 80 actividades puestas **al azar**, y un título largo de
+verdad. Todo con la app de mentira; ningún dato real salió de acá.
 
 ---
 
 ## En una página
 
-**Nada urgente, y lo que se encontró ya está arreglado** (28/10, tanda 105).
-La base, la app y las copias estaban bien. No hay datos de personas nuevos en
-el repositorio. Lo que apareció estaba en el borde de lo que se ve al usar la
-app y en cómo se arma la copia del domingo.
+**Nada urgente.** La base, las copias y la seguridad están bien; no hay datos de
+personas nuevos en el repositorio. Lo que apareció es de otra clase: cosas que **el
+volumen real del equipo (de 2 a 6 actividades por mes) esconde o inventa**, y cosas
+que **solo ocurren cuando hay otra persona** o cuando se usa el sistema fuera de la
+oficina.
 
-**Lo que más pesaba, y cómo quedó:**
-
-1. **La copia del domingo se salteaba si su propia prueba estaba en rojo** (T1,
-   importante). El 18/10 la prueba estaba en rojo (la tabla `problemas`, S5 de la
-   anterior) y el trabajo «Copiar» figura como omitido: esa semana no hubo copia
-   y nada lo avisó más que el tilde rojo. El usuario eligió (D14) que copie igual
-   y avise: ✅.
-2. **Hebreo** (T2, medio): 112 textos tenían el signo de puntuación o las partes
-   en el orden en que se ven y no en el que se leen; lo primero que se veía,
-   «?מה עשית היום», lo mostraba a la derecha. ✅
-3. **Errores** (T3, T5, T6, medio): el aviso de un formulario no se anunciaba ni
-   llevaba el foco; cuando algo fallaba se mostraba el mensaje de la base en
-   inglés; en el celular los avisos tapaban la barra de abajo. ✅
-4. **El recorrido de bienvenida no contaba el buscador** (T4, medio): la lupa del
-   celular entró el 28/10 sin su paso. ✅
+1. **Un título largo en «Próximos eventos» desarma el Inicio** (Y1, importante). Con
+   un solo evento de 79 letras en los próximos 30 días, la columna del costado pasa
+   de 276 a 565 px y el Feed queda en 583 (en 1024 px, en 407). Se corrige solo cuando
+   el evento pasa. Nadie lo vio porque el título largo de los datos de prueba cae a
+   40 días. Una línea de CSS.
+2. **Dos personas editando el mismo evento: gana la última y se pierde lo de la otra,
+   sin aviso** (Y2, importante). Probado: A solo corrige el título; la fecha, el lugar
+   y el archivo que había subido B desaparecen, y el hilo dice solo «título».
+3. **La página pasó los 600 KB que nos habíamos puesto de límite** (Y3, importante):
+   748 KB comprimidos (eran 585 hace tres semanas; lo sumó Gastos). Sin comentarios ni
+   espacios bajaría a unos 530 KB.
+4. **Con el volumen del equipo, algunas pantallas inventan señales** (Y5, Y6, Y7):
+   «Tendencias» muestra que algo «subió» o «se apagó» **en 12 de 12 equipos cuyas
+   actividades están puestas al azar**; «Sugerencias para 2027» manda a planificar
+   enero a agosto (antes de que el equipo usara el sistema); y Administración dice
+   «Nunca entró» de alguien que entró, cuando el registro de actividad crece.
+5. **Fuera de la oficina**: «Atrás» del celular saca de la app (Y8), un texto a medio
+   escribir se pierde al recargar (Y9), el buscador no encuentra lo que se habló en
+   un hilo ni lo que dice el resumen de un Cierre (Y10), no hay cómo compartir el
+   enlace de un evento (Y11), y sin conexión no se ve nada (Y12).
 
 ---
 
@@ -72,155 +75,106 @@ Nada.
 
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
-| T1 | ~~La copia del domingo (`respaldo.yml`: `copiar` con `needs: probar`) no arrancaba si la prueba de la copia fallaba. El 18/10 (corrida 39125062263) la prueba falló en 1 segundo, «Copiar» quedó omitido, no hubo copia ese domingo. El 11/10 y el 25/10 sí.~~ ✅ 28/10 (D14-A): `copiar` corre con `!cancelled()` aunque la prueba haya fallado; un paso escribe en el resumen por qué la corrida quedó en rojo (por la prueba) y la copia sale igual; `workflows_test` lo exige (falla contra el workflow de antes) | Una copia incompleta sirve más que ninguna; una semana sin copia sin enterarse | **usuario** (D14) |
+| Y1 | Un título largo en «Próximos eventos» estira la columna del costado del Inicio (`.feed-side`, `flex:0 0 276px`, sin `min-width:0`, con `.fs-item` en `nowrap`) y aprieta el Feed. Verificado con los datos de la app de mentira más un evento de 79 letras a 5 días: columna 276 → 565 px, Feed 872 → 583 (1440 px) y 696 → 407 (1024 px). Con los datos variados de la herramienta, el Feed queda en 0 a 200 px: eran los cuatro «cortados» que marcó `datos` (la foto de una tarjeta y los filtros). | Pasa con cualquier evento de los próximos 30 días cuyo título supere ~40 letras («Seminario regional de seguridad comunitaria para instituciones del Cono Sur y Brasil» tiene 84). Cada persona de escritorio lo ve, todos los días, hasta que el evento pasa. | Claude |
+| Y2 | Dos personas editando el mismo evento se pisan. El formulario de «Editar» guarda **todos** los campos con lo que tenían al abrirse (`parcheDeEdicion`, `d.editingPost` es una foto de ese momento). Probado: A abre «Editar», B cambia la fecha, anota el lugar y sube un archivo, A corrige el título y guarda → en la base queda la fecha vieja, sin lugar y sin el archivo de B (el archivo queda suelto en el bucket). El mensaje del hilo dice solo «título». Lo mismo con los hitos y el resumen de un proyecto (`milestones` y `resumen` se reescriben enteros). | Hoy casi nunca pasa (poca gente, poco al mismo tiempo): es exactamente lo que aparece cuando el equipo crece, y cuando pasa **no deja ningún rastro**. | **usuario** (D20) |
+| Y3 | `index.html` pesa **748 KB comprimidos** (761 KB con gzip -9; 2.481 KB sin comprimir). D1 (6/10) dijo «volver a mirarlo al llegar a 600»; el 28/10 eran 585. La primera carga con 4G lento baja en 3,8 s y con 3G en 15 s; en un celular 6 veces más lento, el primer posteo aparece a los 1,5 s (la compu, 0,24 s). Medido: sin comentarios ni espacios (sin renombrar nada) el JS baja de 664 a 474 KB y el CSS de 89 a 50 KB: **unos 530 KB en total**. | Cada visita nueva y cada publicación lo bajan entero; quien viaja con datos lentos es quien más lo siente, y cada tanda lo agranda. | **usuario** (D21) |
 
 ### Medio
 
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
-| T2 | ~~En hebreo, 105 de 1.672 textos con el signo al principio («?מה עשית היום», «.לא ניתן…», «…הוספת עורך/ת») o con `{dato} :texto` (31, los errores) y paréntesis invertidos.~~ ✅ 28/10: eran **112** (al arreglar aparecieron 21 más escritos al revés: «(עיר) ?מה ההיקף», «{d}-לא מתקיים ב», «שימוש ב-» al final, la «ו-» de las listas de días). Todos al orden de lectura y mirados dibujados de derecha a izquierda; los trozos que siguen a otro texto («, por…», «: una está…») se dejaron a propósito. `hebreo_signos_test` (falla contra lo de antes en cinco reglas) | Es lo primero que ve quien usa la app en hebreo | Claude |
-| T3 | ~~El aviso de un formulario («Escribí un título.») no era `role="alert"`, el campo no llevaba `aria-invalid` ni el foco, y estaba abajo de todo, chico~~ ✅ 28/10: todo `.form-error` es `role="alert"`; en la ventana del evento el aviso de un dato que falta (título, lugar, fecha, hora) va pegado debajo de su campo, que se pinta en rojo y se marca (`aria-invalid`, `aria-describedby`), y el cursor cae ahí, a la vista. `errores_formulario_test` | Con lector de pantalla no se oía; en el celular se perdía | Claude |
-| T4 | ~~El recorrido (`tourSteps()`) no mencionaba el buscador~~ ✅ 28/10: paso «Buscar en todo» (la barra en la compu, la lupa en el celular), en los cuatro idiomas; `tour_test` lo espera y mide que el agujero caiga sobre el buscador, también con letra ancha | CLAUDE.md: lo nuevo que ve el equipo entra al recorrido en la misma tanda. Un olvido de la tanda 104 | Claude |
-| T5 | ~~Los errores mostraban el mensaje de la base sin traducir («Failed to fetch», «new row violates row-level security policy…»); la carga fallida dejaba el reloj de arena sin salida; sin conexión no avisaba~~ ✅ 28/10: `detalleDeError()` dice «no hay conexión a internet», «tu cuenta no tiene permiso para hacerlo» o «venció tu sesión» en los cuatro idiomas (~50 avisos); cualquier otro error sigue mostrando lo que dijo la base; la carga fallida ofrece Reintentar y Cerrar sesión; al perderse internet, «Sin conexión…» (y «Volvió la conexión»). `errores_amables_test` | Alguien que no es técnico no sabe qué hacer | Claude |
-| T6 | ~~En el celular `.calendar-notice` (fijo, `bottom:24px`) caía sobre la barra de abajo y tapaba el «+»; los de error no se van solos~~ ✅ 28/10: flota por encima (84 px del borde). `aviso_celular_test`, con letra ancha | Se perdían los botones mientras duraba | Claude |
+| Y4 | **Las horas de un evento no dicen en qué zona están.** Todo evento con hora se crea en Calendar con la zona del calendario compartido (hoy Argentina, GMT-3, `zonaDelCalendario()`), sea cual sea el lugar; el formulario y las tarjetas muestran «09:00–17:00» sin más. Una visita en Ciudad de México cargada con la hora de allá queda 3 horas corrida para los invitados de Calendar; para alguien en Israel, «15:00» de una reunión virtual es ambiguo. Verificado en el código; **no probado con una invitación real de Calendar**. | Es un equipo repartido en varios países y husos; el 6/10 (I5) se arregló que la hora no cambie sola, no que se sepa de qué zona es. | **usuario** (D22) |
+| Y5 | **«Tendencias» muestra cambios que son puro azar** con el volumen del equipo. Se pusieron 12, 24, 40 y 80 actividades al azar (sin ninguna tendencia por construcción) en 12 equipos de cada tamaño: **la tarjeta aparece en 11 de 12 y en 12 de 12** y siempre trae algo como «Chile 4 → 0 *se apagó*» o «Visita 6 → 3 ▼ −3». Los mínimos de hoy (8 actividades en 180 días; 3 en un tramo) están pensados para otro volumen. | Alguien puede decidir «retomar Chile» por una diferencia de tres actividades. | **usuario** (D23) |
+| Y6 | **Reportes cuenta como «sin actividad» los meses de antes de que el equipo usara el sistema.** Con un equipo que empezó en octubre: «Sugerencias para 2027 — No hubo actividad en enero, febrero, marzo, abril, mayo, junio, julio, agosto y septiembre: conviene planificar algo para esos meses», nueve barras en cero en «Mes a mes» y «Solo el 0% de las actividades tiene participantes». | Recomienda planificar meses que ya pasaron, y hace parecer que el equipo estuvo parado. | Claude |
+| Y7 | **Administración › Personas dice «Nunca entró» (y suma a «Inactivos») de alguien que entró hace 12 días** cuando el registro de actividad tiene más de 1.000 acciones nuevas: la app carga solo las últimas 1.000 (`subscribeRecent(1000)`) y de ahí saca el último ingreso de cada uno. Probado con 1.500 acciones más nuevas. No hay una columna de «última vez» en la base. | Con 25 a 30 personas activas, 1.000 acciones son menos de un mes: la pantalla empieza a mentir justo cuando más hace falta. | Claude |
+| Y8 | **El botón «Atrás» del celular saca de la app.** La app no usa el historial del navegador (solo `replaceState` para limpiar la dirección): de la ficha de un país, «Atrás» deja la página; también cierra de golpe una ventana abierta. Probado. | Es el gesto más natural en un teléfono. | Claude |
+| Y9 | **Un texto a medio escribir se pierde al recargar** (evento, rutina y respuesta: 3 de 3). No hay borrador guardado. En el celular el navegador recarga solo al volver de otra aplicación. | Se pierde un texto largo escrito en un viaje. | Claude |
+| Y10 | **El buscador no mira lo que se habló ni lo que dice el Cierre.** `matchesTextFilter` mira título, comentarios, autor, participantes, lugar y alcance. No mira las respuestas del hilo, el resumen que sale de un Cierre (objetivos, pasos, resumen ejecutivo), los hitos de un proyecto ni los nombres de archivo. Probado: «portón» (en una respuesta), «motivado» (en un resumen) y «Presupuesto aprobado» (un hito) dan «Sin resultados». | La cadena documento → resumen → ficha es lo más valioso de la memoria (informe de diseño y uso, 6/10): hoy se llega por el título, no por lo que dice. | Claude |
+| Y11 | **No hay «Copiar enlace» de un evento**, aunque el enlace (`?post=`) ya existe: lo usan los correos y la columna «Enlace» de la planilla. | Es un equipo que vive en WhatsApp: mandar «mirá este evento» es lo primero que se pide. | Claude |
+| Y12 | **Sin conexión no se ve nada y no se puede instalar en el celular** (no hay `serviceWorker` ni manifiesto; ya figuraba en ESTADO como «solo si algún día se habilita»). Lo nuevo es el motivo: en una visita (aeropuerto, interior) es cuando se necesita el próximo evento, el plan y el teléfono de la Agenda. | Verificado en el código. Cuánto pasa en la práctica lo sabe el usuario. | **usuario** (D24) |
+| Y13 | **El recorrido de bienvenida** (`tourSteps()`) tiene 11 pasos (el de Gastos tiene 56 palabras y el de Reportes 62) y **dos prometen «Tendencias»**, que con menos de 8 actividades en 180 días no aparece en ninguna parte. Verificado en una cuenta nueva de un equipo chico, compu y celular. | Es lo primero que ve cada cuenta nueva; promete lo que no está. | Claude |
 
 ### Bajo
 
 | # | Qué | Quién |
 |---|---|---|
-| T7 | ~~Controles sin nombre en el árbol de accesibilidad de Chrome~~ ✅ 28/10: eran **14** (los 3 topes de «Adjuntos», las zonas, el nombre y el ícono de un tipo, el nombre de un hito, 5 selectores y 2 interruptores de «Mis preferencias»). `prefRow()` nombra el control con el título de su fila; los demás, `aria-label` o `aria-labelledby`. `arbol_accesibilidad_test` mide 45 pantallas en compu y celular. **Los títulos que saltan de h1 a h3 no se tocaron**: el CSS depende de las etiquetas (59 reglas) | Claude |
-| T8 | ~~Al cancelar el cartel de «¿Borrar…?» el foco quedaba en el cuerpo de la página~~ ✅ 28/10: vuelve al «⋯» de ese posteo. `foco_confirmar_test` | Claude |
-| T9 | Crear un evento tocando una casilla del calendario no se alcanza con el teclado (`cal-new` en `div`); el botón «+» hace lo mismo | Se deja anotado |
-| T10 | Observado al arreglar, **sin verificar en un teléfono**: la ventana del evento cambia de alto al soltar el foco del título (la fila del lugar pasa de 81 a 98 px); en una pantalla corta el botón «Publicar» se corre bajo el dedo entre apretar y soltar y el toque no llega (reproducido con Playwright a 390×640, también con el código de antes). Probar en el teléfono junto con D8 | Claude, cuando haya un teléfono |
+| Y14 | `agenda_ventanas_test` («celular: «Rab a cargo» se lee entero en su campo») **da rojo siempre en este sandbox**, también con la página de hace un día; en GitHub pasa («Publicar el sitio» salió verde para `9769ab8`). Una prueba que siempre falla acá enseña a ignorar el rojo, y la regla D12 pide «todas, siempre». Hacerla robusta a la letra del sandbox (RECURRENTES, «Lo que entra justo acá…») | Claude |
+| Y15 | ~~Falsas alarmas de las herramientas: 12 «teléfonos» (los números de los dibujos SVG del logo) y cuatro textos~~ ✅ 20/11: `seguridad` ya no mira dibujos ni identificadores de ceros; las demás, en `conocidos.json` con su porqué | Claude |
+| Y16 | `fabi@team-latam.com` («Fabi Finanzas») en tres pruebas de Gastos: una persona inventada con el dominio de verdad. La regla pide `@x.com`. Cambiarlo | Claude |
+| Y17 | `firmar()` pide **todas** las direcciones de adjuntos en una sola llamada (`createSignedUrls`, sin partir): con miles de adjuntos, la primera carga en un aparato nuevo es un pedido muy grande. **No verificado contra la base real** (la de mentira no lo modela); mirarlo si el medidor de «Copia de seguridad» pasa de unos pocos cientos de MB | Claude, cuando haga falta |
+| Y18 | Lo de siempre y ya anotado: `diasEntre` y `csvDeTabla` sin usar; 12 anchos de pantalla en el CSS; funciones largas (`crearSupabaseStore`, `textoDelPdf`, `renderFichaLugar`). Nada nuevo | Se deja anotado |
 
 ### Para el usuario
 
-| # | Qué | Resultado |
+| # | Qué | Opciones (la recomendada primero) |
 |---|---|---|
-| D14 | **¿Que la copia del domingo se haga igual si su prueba falla?** (T1) A: que copie igual y que la prueba en rojo deje la corrida en rojo para avisar. B: dejarlo como está | ✅ 28/10: **A** (la recomendada) |
-| D15 | **¿En qué orden seguir?** Los arreglos T2 a T8 primero, o el logo propio | ✅ 28/10: **arreglos primero**; el logo queda para después, con opciones y capturas |
+| D20 | **¿Qué pasa si dos personas editan el mismo evento?** (Y2) | **A**: cada una guarda solo lo que cambió, y si la otra tocó lo mismo, se avisa. **B**: se avisa «alguien lo cambió mientras editabas» y se vuelve a abrir. **C**: dejar como está |
+| D21 | **¿Hacemos más liviana la página?** (Y3) | **A**: al publicar, se le sacan los comentarios y los espacios (no se cambia nada de cómo se escribe ni se prueba: lo que se prueba es lo publicado). **B**: además, Gastos en un archivo aparte que se baja al entrar a Gastos. **C**: dejar como está |
+| D22 | **¿De qué zona son las horas de un evento?** (Y4) | **A**: de Buenos Aires para todo (como hoy), pero escrito junto a la hora y en las tarjetas. **B**: la del país del evento (más cambios, Calendar lo acepta por evento). **C**: dejar como está |
+| D23 | **¿Qué hacemos con «Tendencias» cuando hay pocas actividades?** (Y5) | **A**: se muestra solo cuando el cambio es más grande que el azar, y si no alcanza dice «todavía hay pocos datos». **B**: se deja, con una nota «con pocas actividades un cambio de 2 o 3 puede ser azar». **C**: sacarla del Inicio y dejarla solo en Reportes |
+| D24 | **¿Instalable en el celular y con algo sin conexión?** (Y12) | **A**: instalable (ícono, pantalla completa, más rápida), sin sin-conexión. **B**: lo de A, y poder ver la Agenda y lo próximo sin conexión. **C**: nada por ahora |
 
 ---
-
-## Lo que ya estaba anotado (no son hallazgos nuevos)
-
-`diasEntre` y `csvDeTabla` sin usar (S11); 12 anchos de pantalla distintos en el
-CSS; funciones largas (`crearSupabaseStore`, `renderFichaLugar`); el peso:
-**585 KB comprimidos** de los 600 en los que D1 dijo volver a mirarlo.
-Decidido y no se vuelve a proponer: cifrar las copias (S13), la traducción
-automática con MyMemory.
-
-## Operación (para tenerlo a la vista)
-
-- **El peso del archivo**: 585 KB comprimidos (576 el 24/10; 581 antes de esta
-  tanda: la tanda 105 sumó 4 KB). Faltan 15 KB para los 600. Cargar la página en un celular 6 veces más
-  lento: el primer posteo a los 2,3 s; 4 veces más lento, 1,5 s; la compu, 0,3 s
-  (`herramientas/auditoria/herramientas/carga.mjs`). Con 4G lento, la página baja
-  en 3 s; con 3G, en 12 s la primera vez.
-- **Vence**: `RESPALDOS_TOKEN` 5/10/2027; `SUPABASE_ACCESS_TOKEN` 30/9/2027.
-- **Workflows**: los programados de la semana, en verde. Las copias:
-  11/10 ✓, 18/10 ✗ omitida (T1), 25/10 ✓.
-- **Ramas**: `main` y la de esta sesión.
-
-## Lo que sigue abierto de las anteriores
-
-**R12** (el ensayo completo de restauración, cuando haya un proyecto de
-prueba), **D8** (probar en el teléfono la Agenda, «+ Sumar» y una foto desde la
-cámara; ahora también T10), el pedido a GitHub de borrar las copias sueltas del
-24/10 (ticket 4899727, falta su respuesta). Del repaso de diseño: **el logo
-propio**, con opciones y capturas antes de cambiar nada.
 
 ## Lo que está bien y conviene no tocar
 
-- **Los permisos de la base**: probados por rol, función por función y en las
-  tablas sensibles; las 990 pruebas de la base, en verde.
-- **Usar la app**: una rutina, 3 pasos; un evento con lugar, 6; el observador
-  ve que solo mira; un integrante no ve el menú de borrar en un posteo ajeno.
-- **Borrar**: confirma con el nombre y la cantidad de respuestas, «Cancelar»
-  viene marcado, «Borrar» es rojo; una escritura rechazada deja el texto en el
-  cuadro y nada a medias; la sesión vencida vuelve a la entrada.
-- **Las ventanas**: «Nuevo evento» atrapa el foco, se cierra con Escape y
-  devuelve el foco al botón que la abrió.
-- **Cuatro idiomas y celular**: 578 vistas en 13 combinaciones sin textos
-  cortados ni desbordes.
-- **Datos de personas**: ninguno nuevo en el repositorio (la herramienta marcó
-  un correo de prueba con pinta de real, que se cambió el mismo día por uno
-  inventado con `@x.com`).
+- **La app a cualquier escala**: vacía (cada pantalla dice qué falta y qué hacer), con 3.000
+  actividades y 45 personas (sin errores, sin textos rotos, sin página corrida; el Inicio
+  se dibuja en 20–30 ms), el listado de Personas con buscador y filtros.
+- **Las 1.000 filas de PostgREST**: la lectura de cada tabla pide de a páginas con la
+  cuenta total (`traerTodas`); no hay datos que se corten sin aviso.
+- **El buscador**: encuentra «cordoba» como «Córdoba» y «sao paulo» como «San Pablo».
+- **Los cuatro idiomas y el celular**: 669 vistas en 13 combinaciones sin un recorte.
+- **Los permisos de la base**: 1.298 pruebas en verde; Gastos repasado por rol (X3, X4).
+- **Cuando algo falla**: avisos entendibles, «Probar de nuevo», nada se pierde a medias.
+- **El detector de diseño de impeccable**: cuatro avisos, todos revisados: la imagen vacía
+  es el visor de fotos (se llena al abrir), Montserrat es la tipografía de la marca, la
+  sombra de color es una sombra de elevación del color de la marca y las rayas son la
+  trama de «planificado» en las diapositivas. Ninguno es un defecto.
+
+## Operación (para tenerlo a la vista)
+
+- **El peso**: 748 KB comprimidos (Y3). Cargar en un celular 4 veces más lento, el primer
+  posteo a los 0,94 s; 6 veces, 1,48 s; la compu, 0,24 s.
+- **Vence**: `RESPALDOS_TOKEN` 5/10/2027; `SUPABASE_ACCESS_TOKEN` 30/9/2027.
+- **Workflows**: «Publicar el sitio» salió verde para `9769ab8`; el anterior (`e454d7b`)
+  quedó rojo por una etiqueta de Gastos y se corrigió en el siguiente. Calendar, copias,
+  resúmenes y «¿Está arriba?», en verde.
+- **Ramas**: `main` y la de esta sesión.
+- **Un solo admin**: la lista de Personas muestra un solo admin. Las aprobaciones de
+  cuentas, las rendiciones propias (D17) y compartir Calendar dependen de una persona.
+  Conviene que haya un segundo admin; lo decide el usuario (no hace falta código).
+
+## Lo que no pude verificar desde acá
+
+- **Un teléfono de verdad** (D8, T10): el teclado, la cámara, «Atrás» y los borradores se
+  probaron en un Chromium con el tamaño del celular, no en un iPhone ni en un Android.
+- **Una invitación real de Calendar con la hora de otro país** (Y4): está en el código.
+- **La base real** (nunca se toca desde acá): cuánto ocupa el bucket, cuántos eventos tiene
+  el registro de actividad hoy, si hay actividad en los meses de antes de octubre.
+- **Los límites del plan gratis de Supabase para el tiempo real**: cada persona abre 18
+  canales (medido en la app de mentira). No sé cuántas conexiones a la vez permite el plan
+  hoy; conviene mirarlo en el panel cuando el equipo pase de unas pocas decenas.
+- **Las traducciones**: 3.274 textos en cuatro idiomas escritos sin revisión de personas que
+  los lean de corrido. Una revisión por alguien del equipo que lea hebreo y portugués
+  (con la línea «יומן פעולות» que ya estaba pendiente) vale más que cualquier prueba.
+
+## Lo que sigue abierto de las anteriores
+
+**R12** (el ensayo completo de restauración), **D8** (probar en un teléfono: Agenda, «+ Sumar»,
+foto desde la cámara y T10), el pedido a GitHub de borrar las copias sueltas del 24/10
+(ticket 4899727), **T9** (crear un evento con el teclado desde una casilla del calendario),
+y del repaso de diseño el logo en el video y en las diapositivas.
 
 ## Cómo quedó
 
-Todo lo de Claude está en `main` (tanda 105 en `docs/REDISENO.md`): 4.087
-comprobaciones de la app en 125 archivos, en verde antes de empujar. Se sumaron
-seis pruebas (`hebreo_signos`, `errores_formulario`, `errores_amables`,
-`aviso_celular`, `foco_confirmar`, `arbol_accesibilidad`; y el paso del buscador
-en `tour_test`), una herramienta (`carga`), nueve patrones en
-`herramientas/auditoria/RECURRENTES.md` y el método de los errores en METODO.md.
-Lo que queda: T9 (anotado), T10 (probar en un teléfono) y el logo propio.
+Esta tanda **audita, no arregla**: lo que se hizo en el repositorio son las herramientas.
+Se suma `herramientas/auditoria/herramientas/masa.mjs` (la masa crítica: tres escalas, poco
+volumen, varias personas, el celular, un título largo de verdad; ya devuelve lo que se
+verificó a mano —Y1, Y2 y Y5 a Y10— y se corre en `correr.sh`), se corrigen dos falsas alarmas de
+`seguridad` y se anotan cuatro en `conocidos.json`, y se suman cinco patrones a
+`herramientas/auditoria/RECURRENTES.md` y una fila a METODO.md. Cada arreglo de la lista
+entra con su prueba, en rojo contra el código de antes, cuando el usuario diga por dónde.
 
----
-
-## Agregado: Gastos, probado como tester (19/11/2026) — código X
-
-Pedido del usuario: usar la parte de Gastos de punta a punta (integrante y admin,
-compu y celular, cuando algo falla, hebreo, oscuro, teclado) y un informe de mejoras.
-Es de lo nuevo, acotada a Gastos (que no existía el 28/10). El detalle (cómo se
-verificó cada uno y lo que anda bien): `docs/informes/2026-11-19-gastos.md`; la página para el usuario, con
-capturas: https://claude.ai/artifact/Wg8KRR6B5ZHDsR8F8y4NXc (privada). Las
-decisiones siguen desde **D16**. En Gastos, lo que se arregle va primero a la rama y
-sube a `main` con el OK del usuario (CLAUDE.md).
-
-**Cómo quedó (19/11):** todo arreglado y en `main` el mismo día (lo pidió el usuario: «avanzá y cuando lo tengas, cargalo directamente»), con su prueba cada uno; X17 no era del lector. Las pruebas: `gastos_test.mjs` (388), `lector_test`, `lector_texto_test` y las de la base (`71-gastos.sql`).
-
-**En una frase:** el recorrido completo anda (subir, leer, completar, mandar,
-observar, aprobar, reabrir, PDF, cuenta), con buenos avisos cuando la base falla.
-Lo que más pesa es que se puede confirmar un monto que el lector marcó como dudoso
-sin mirarlo (X1), y tres decisiones de cómo se trabaja (X2, X3, X4).
-
-### Importante
-
-| # | Qué | Por qué | Quién |
-|---|---|---|---|
-| X1 | ~~«Confirmar» en la ventana deja pasar lo que el lector marcó como dudoso (un «$ 96.00» quedó USD 96 confirmado)~~ ✅ 19/11 (D19): «Confirmar» pregunta por lo dudoso que no se tocó («El lector no está seguro de la moneda: ¿es USD?», «Sí, confirmar» o «Cambiar») | Un gasto en pesos rendido como dólares: plata de más o de menos | **usuario** (D19) |
-| X2 | ~~Una sola pantalla mezcla lo que hay que hacer con el historial; el usuario propone separar «Por rendir» y «Rendiciones»~~ ✅ 19/11 (D16): «Por rendir» (subir, sin vincular, para completar y mandar) y «Rendiciones» (todas, agrupadas) | Cada persona entra a hacer algo; hoy lo pendiente se pierde entre lo viejo y los filtros | **usuario** (D16) |
-
-### Medio
-
-| # | Qué | Por qué | Quién |
-|---|---|---|---|
-| X3 | ~~Un admin puede aprobar sus propias rendiciones (desde «Para aprobar»; desde «Rendiciones», no)~~ ✅ 19/11 (D17): la base (`gastos_rendicion_aprobar`) y la app: la propia la aprueba otro admin; si no hay otro, el admin fijo, con aviso | Control: que otra persona mire lo de quien aprueba; y hoy depende de por dónde entre | **usuario** (D17) |
-| X4 | ~~Observar un gasto devuelve la rendición en el momento~~ ✅ 19/11 (D18): observar ya no la devuelve; `gastos_rendicion_devolver` y «Devolver con N observaciones»; el aviso por correo sale al devolver; la persona lo ve recién entonces | Quien revisa no puede juntar todo y devolverla una vez | **usuario** (D18) |
-| X5 | ~~Cuenta corriente: «falta confirmar -200.00» para una plata recibida de 200; «0.00 en cero»~~ ✅ 19/11: «Recibido, falta confirmar 200.00» (y devuelto o ajuste, cada uno aparte); «saldado» en vez de «en cero» | Confunde: parece una deuda o un error | Claude |
-| X6 | ~~Reabierta sin nada nuevo: «Nuevos o corregidos (0)» vacío y la barra sola~~ ✅ 19/11: «Todavía no hay nada nuevo.» y sin la barra sola | Se ve roto | Claude |
-| X7 | ~~Confirmar en la ventana («1 de 3») cierra en vez de pasar al siguiente~~ ✅ 19/11: confirmado, sigue con el próximo por confirmar de la lista; si no queda, cierra | Con diez comprobantes, un clic de más cada vez | Claude |
-| X8 | ~~El pie de la lista quedó pegado (punto 12 del usuario): un margen que otra regla pisa~~ ✅ 19/11: el margen va con las dos clases (`.gx-lpie.gx-selpie`), que pesan más | Se ve como una sola cosa | Claude |
-| X9 | ~~«Revisar en lista» usa las casillas para otra cosa y tiene papelera por fila~~ ✅ 19/11: en «Revisar en lista», «Borrar este gasto» va adentro de la fila abierta; cerrada, la fila se ve como en la rendición | La misma lista con dos lógicas | Claude (con X2) |
-| X10 | ~~Celular, «Revisar en lista»: la foto de una fila abierta tapa la pantalla~~ ✅ 19/11: la foto mide 150 px y se agranda al tocarla | Hay que bajar mucho para completar | Claude |
-| X11 | ~~Filtros, resumen y barra para una sola rendición~~ ✅ 19/11: los filtros aparecen con más de cinco rendiciones (o si hay uno puesto); el resumen, con más de una | Sobrecarga para quien empieza | Claude (con X2) |
-
-### Bajo
-
-| # | Qué | Quién |
-|---|---|---|
-| X12 | ~~Hebreo: la nota automática de la moneda se ve desordenada~~ ✅ 19/11: la moneda y la cifra, en un aislamiento de izquierda a derecha | Claude |
-| X13 | ~~Si no se pueden leer los gastos, no hay «Probar de nuevo»~~ ✅ 19/11: «Probar de nuevo» en el cartel | Claude |
-| X14 | ~~«Borrar» muy a mano en la ventana del admin al revisar gastos de otros~~ ✅ 19/11: revisando lo de otra persona, sin «Borrar» en la ventana (el admin fijo lo borra desde la lista) | Claude |
-| X15 | ~~Confirmar la plata de alguien no da aviso~~ ✅ 19/11: «Confirmado: ya cuenta en su cuenta corriente.» | Claude |
-| X16 | ~~«1 ya estaba cargado» no dice cuál~~ ✅ 19/11: «“foto.jpg” ya estaba cargado.» (o hasta tres nombres) | Claude |
-| X17 | ~~El lector no tomó el comercio de un ticket de taxi (visto una vez)~~ Revisado 19/11: con el texto limpio el lector toma «Taxi Del Centro»; fue la lectura de esa imagen, no la regla. Sin cambios | Claude, con más tickets |
-| X18 | ~~`GASTO_MONEDAS` sin uso~~ ✅ 19/11: borrada | Claude |
-
-### Decisiones del usuario
-
-| # | Pregunta | Opciones (recomendada primero) |
-|---|---|---|
-| D16 | ¿Separar «Por rendir» (lo que hay que hacer) de «Rendiciones» (para ver y seguir)? | ✅ 19/11: **A**, dos secciones del menú, como en la maqueta (la idea del usuario) |
-| D17 | ¿Un admin aprueba lo suyo? | ✅ 19/11: **A**, lo propio lo aprueba otro admin; si no hay otro, el admin fijo, con un aviso |
-| D18 | Al observar: ¿se devuelve en el momento o al terminar de revisar? | ✅ 19/11: **A**, se anotan y se devuelve con «Devolver con N observaciones» |
-| D19 | Confirmar con un dato dudoso del lector | ✅ 19/11: **A**, pregunta antes («El lector no está seguro de la moneda: ¿es USD?») |
-
-### Herramientas
-
-- `codigo.mjs` reconoce las ramas de `GASTOS_ACCIONES` (marcaba 34 botones de Gastos
-  sin quién los atienda: falsa alarma). `conocidos.json`: cuatro falsas alarmas
-  revisadas.
-
+La página para el usuario, con capturas y las decisiones D20–D24 con su recomendación:
+https://claude.ai/artifact/7aJtRBkkMyoyrdkub6xjtj (privada).

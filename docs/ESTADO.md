@@ -15,10 +15,10 @@ En `docs/` (el índice, `docs/README.md`):
 - `QUE-GUARDAR.md`: qué tener a mano para reconstruir.
 - `DOMINIO.md`: el plan, no ejecutado, de mudar el sitio a un dominio
   propio si `*.github.io` vuelve a bloquearse en Argentina.
-- `AUDITORIA.md`: la última auditoría (24/10/2026, completa con énfasis en
-  seguridad y en el costo de cada cambio, códigos S y D10–D13); el detalle
-  en `informes/`, y las anteriores (la completa del 6/10, la de lo nuevo
-  del 7/10, la de la Agenda del 9/10 y la completa del 10/10) en
+- `AUDITORIA.md`: la última auditoría (20/11/2026, completa, con la mirada de
+  la masa crítica; códigos Y y D20 en adelante); el detalle en `informes/`, y
+  las anteriores (la del 28/10, la del 24/10 con énfasis en seguridad, la completa del
+  10/10, la del 6/10, la de lo nuevo del 7/10 y la de la Agenda del 9/10) en
   `informes/historial/`.
 - `RESTAURAR.md`: cómo volver atrás con una copia (workflow «Restaurar una
   copia», `supabase/respaldo/restaurar.mjs`).

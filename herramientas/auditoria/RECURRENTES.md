@@ -603,3 +603,49 @@ y ver que no aparezcan sus botones.
 ajuste a algo que ya tiene clase propia va junto a esa regla, o con un selector más
 fuerte; y se mira en una captura (o se mide) que el cambio se vea.
 
+
+## Agregado en la auditoría completa (20/11/2026): lo que esconde la poca masa
+
+Todo esto lo mide `herramientas/auditoria/herramientas/masa.mjs`. Lo que une a los
+cinco es lo mismo: quien arma el sistema lo usa **solo y con pocos datos**, y lo que
+depende de *cuántos son* o de *que haya otros* no se ve.
+
+**Algo que sale con un dato de largo normal y no con el de las pruebas.** Un título de
+79 letras en «Próximos eventos» estiró la columna del costado de 276 a 565 px y apretó
+el Feed (Y1). Las pruebas tenían un título largo, pero a 40 días: fuera de la ventana de
+30. *Por qué:* un hijo flexible tiene de mínimo su contenido (`min-width:auto`), y una
+línea en `nowrap` no se achica. *Se detecta:* `masa` (un evento largo a 5 días, en 1024
+y 1440) y `datos` (los «cortados» de 1280 con la misma causa). *Regla:* todo hijo de un
+`display:flex` que muestra texto de alguien lleva `min-width:0`; y las pruebas con datos
+largos los ponen **donde se ven** (dentro de la ventana de lo próximo, lo vencido, lo de
+este mes), no a cualquier fecha.
+
+**Un formulario que guarda todo con lo que tenía al abrirse.** Dos personas editando el
+mismo evento: la segunda pisa la fecha, el lugar y el archivo de la primera, sin rastro
+(Y2). *Por qué:* `parcheDeEdicion` escribe todos los campos y su «original» es una foto
+del momento de abrir. Lo mismo con las listas que se reescriben enteras (`milestones`,
+`resumen`). *Se detecta:* `masa` (la base de mentira no entrega el tiempo real, así que
+mide el formulario abierto). *Regla:* guardar solo lo que esa persona cambió; y avisar si
+otra persona tocó lo mismo desde que se abrió.
+
+**Una cifra o una frase que se dice con datos que no alcanzan.** «Tendencias» mostró
+«se apagó» y «▲ +4» en 12 de 12 equipos con actividades puestas al azar (Y5); «Sugerencias»
+mandó a «planificar enero a agosto» a un equipo que empezó en octubre (Y6). *Por qué:* los
+mínimos y las ventanas se pensaron con los datos de prueba, no con 2 a 6 actividades por
+mes ni con «desde cuándo se usa». *Se detecta:* `masa` (24 actividades al azar). *Regla:*
+todo lo que **interpreta** (sube, baja, se apagó, sin actividad, inactivo) se prueba con
+datos puestos al azar y con un equipo que empezó hace poco: si «descubre» algo donde no hay
+nada, el mínimo está mal.
+
+**Algo derivado de una ventana de lo reciente.** «Nunca entró» sale de las últimas 1.000
+acciones del registro: con 1.500 más nuevas, alguien que entró hace 12 días figura como que
+nunca entró (Y7). *Por qué:* un `limit` que era comodidad se volvió la fuente de un dato.
+*Se detecta:* `masa`. *Regla:* si un dato se saca de una lista recortada, se pregunta aparte
+(una función de la base) o se dice «desde…» en la pantalla; nunca se afirma «nunca».
+
+**Lo que solo pasa en un teléfono, fuera de la oficina.** «Atrás» sale de la app (Y8), un texto
+a medio escribir no sobrevive a una recarga (Y9), el buscador no llega a lo que dice un hilo,
+un Cierre o un hito (Y10), no hay enlace para mandar un evento (Y11), sin conexión no hay
+nada (Y12). *Por qué:* quien la arma la usa en la compu, con wifi y sin cortar. *Se detecta:*
+`masa` (Atrás, borrador, buscador). *Regla:* cada pedido de «cargar algo» se prueba **con una
+recarga en el medio**, y cada pantalla de «ver algo» con el botón Atrás.

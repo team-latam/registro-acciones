@@ -49,4 +49,6 @@ else
   AUDITORIA_SEMILLA=$(( $(date +%s) % 100000 )) AUDITORIA_VOLUMEN=800 SALIDA="$SALIDA/semilla2" node "$CARPETA/herramientas/datos.mjs"
   [ -f "$SALIDA/semilla2/datos.json" ] && cp "$SALIDA/semilla2/datos.json" "$SALIDA/datos-semilla2.json"
 fi
+# Lo que solo se nota con poca o con mucha gente (equipo vacío, chico y grande; dos personas a la vez; el celular).
+node "$CARPETA/herramientas/masa.mjs"
 node "$CARPETA/herramientas/informe.mjs"

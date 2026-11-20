@@ -107,6 +107,11 @@ const recortar = tel => tel.replace(/^(\D*\d+\D+\(?\d+\)?)[\s\S]*$/, "$1 …");
 const INVENTADO = /(^|\D)9?5{3,4}/;
 const archivos = execSync("git ls-files", { cwd: RAIZ, encoding: "utf8" }).split("\n").filter(f => f && !/\.(png|jpg|gz|zip|docx?|xlsx?|pdf)$/.test(f));
 const CORREO_OK = /ciudad@gmail\.com|@adentro\.com|^atacante@|@(x\.com|example\.(com|org)|ejemplo\.|users\.noreply\.github\.com|noreply\.|anthropic\.com|group\.calendar\.google\.com|group\.v\.calendar\.google\.com|dominio\.com|pedro\.com|github\.com|y\.com|proyecto\.iam\.gserviceaccount\.com|resend\.dev)|^benny@team-latam\.com$|^-?info@team-latam\.com$|^(nueva|otra|ana|diego|lucia|moshe|juan|obs|nombre|name|nome|largo|veneno|pide|nadie)@/i;
+// Números que no son de nadie: las coordenadas de un dibujo (el trazo de un
+// SVG, «M11 13C20 13 26 16…») se parecen a un teléfono. Un .svg no tiene
+// datos de personas, y una línea con <path, viewBox o svg+xml es un dibujo
+// (20/11/2026: el logo de Toldot sumó 12 falsas alarmas).
+const esDibujo = (f, txt, pos) => /\.svg$/.test(f) || /<path|<svg|svg\+xml|viewBox|stroke-width|\bd=["']M|`M\d/.test(txt.slice(txt.lastIndexOf("\n", pos) + 1, txt.indexOf("\n", pos) < 0 ? undefined : txt.indexOf("\n", pos)));
 const vistosCorreo = new Map();
 for(const f of archivos){
   let txt; try{ txt = fs.readFileSync(RAIZ + f, "utf8"); }catch(e){ continue; }
@@ -122,7 +127,7 @@ for(const f of archivos){
   // que el patrón de antes no veía, y por eso nombres y teléfonos del Mapeo
   // quedaron en las pruebas de la Agenda del 12 al 24/10/2026 (S4).
   for(const t of txt.matchAll(/(?<![\w.:\/#-])\+?\d{1,4}(?:[ -]\(?\d{1,5}\)?){2,5}(?![\w.:\/-])/g))
-    if(t[0].replace(/\D/g, "").length >= 10 && t[0].replace(/\D/g, "").length <= 13 && !/\d{4}-\d{2}-\d{2}/.test(t[0]) && !INVENTADO.test(t[0]) && !/viewBox="$/.test(txt.slice(Math.max(0, t.index - 9), t.index)) && !/^0 0 /.test(t[0])) { out.push(hallazgo("datos personales", "importante", "Parece un teléfono", f, recortar(t[0]))); break; }
+    if(!esDibujo(f, txt, t.index) && !/^0{6,}/.test(t[0]) && t[0].replace(/\D/g, "").length >= 10 && t[0].replace(/\D/g, "").length <= 13 && !/\d{4}-\d{2}-\d{2}/.test(t[0]) && !INVENTADO.test(t[0]) && !/viewBox="$/.test(txt.slice(Math.max(0, t.index - 9), t.index)) && !/^0 0 /.test(t[0])) { out.push(hallazgo("datos personales", "importante", "Parece un teléfono", f, recortar(t[0]))); break; }
   for(const t of txt.matchAll(/(?<![\d.])\+?\d{2,3}[\s-]?\(?\d{2,4}\)?[\s-]?\d{3,4}[\s-]\d{3,4}(?![\d.])/g))
     if(!/\d{4}-\d{2}-\d{2}/.test(t[0]) && !INVENTADO.test(t[0]) && !/viewBox="$/.test(txt.slice(Math.max(0, t.index - 9), t.index))) { out.push(hallazgo("datos personales", "importante", "Parece un teléfono", f, recortar(t[0]))); break; }
   // El formato de Estados Unidos y Canadá, «(NNN) NNN-NNNN», con el código de

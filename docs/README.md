@@ -9,7 +9,7 @@ junto con el código.
 | [`REDISENO.md`](./REDISENO.md) | Las tandas de cambios hechas, una por una, y las decisiones que fue tomando el usuario. |
 | [`REVISION.md`](./REVISION.md) | La revisión técnica y lo que queda pendiente. |
 | [`PROPUESTAS.md`](./PROPUESTAS.md) | Las 16 propuestas de mejoras (13/10/2026), lo que el usuario eligió y el orden en que se hacen. |
-| [`AUDITORIA.md`](./AUDITORIA.md) | La última auditoría (28/10/2026, completa: crítica del uso, teclado y lector de pantalla, errores, idiomas, rendimiento, permisos y copias), con la lista por prioridad. |
+| [`AUDITORIA.md`](./AUDITORIA.md) | La última auditoría (20/11/2026, completa, con la mirada de la masa crítica: lo que esconde el poco volumen y la falta de otras personas), con la lista por prioridad. |
 | [`informes/`](./informes/) | El detalle de las auditorías (por área y por fecha) y, en `historial/`, las anteriores. |
 | [`DISENO-LOGO.md`](./DISENO-LOGO.md) | La ficha de diseño que se le pasó a otra IA para crear el logo (5/11/2026): colores, letra, formas, dónde va el logo y qué tiene que cumplir. El logo elegido es el de Toldot (`herramientas/publicar/marca/`). |
 | [`QUE-GUARDAR.md`](./QUE-GUARDAR.md) | Qué tener a mano (cuentas, llaves, copias) para reconstruir todo si hiciera falta. |

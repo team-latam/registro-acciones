@@ -95,6 +95,7 @@ informe; «a mano» = criterio de quien audita.
 | **Idiomas** | Cuatro idiomas en cada texto; hebreo en hebreo; {marcadores} iguales; texto suelto sin t(); RTL: lo espejado y lo que asoma por la izquierda | `textos`, `pantallas` (en, pt, he) |
 | **Ventanas** | role="dialog", aria-modal, nombre; el foco entra, Tab no se escapa, Escape cierra, el foco vuelve | `pantallas` |
 | **Datos variados** | Títulos largos y cortos, palabras sin espacios, emojis, hebreo dentro de un texto en español, campos vacíos, formas raras de la base, mucho volumen | `datos` (semilla en el informe) |
+| **Masa crítica** | Lo que solo se nota con poca o con mucha gente: un equipo vacío, uno chico, uno de 45 personas y 3.000 actividades; cifras o frases que «descubren» algo con datos al azar; dos personas editando lo mismo; el registro de actividad lleno; el botón «Atrás», un texto a medio escribir y el buscador en el celular; títulos largos de verdad donde se ven | `masa`; a mano: ¿qué función depende de cuántos somos? |
 | **Rendimiento** | Tamaño del archivo; cuánto tarda en dibujar con mucho cargado; dibujados de más | `codigo`, `datos`, `carga` (el procesador de un celular lento, 4 y 6 veces); a mano: red lenta |
 | **Almacenamiento** | Cuánto ocupa el bucket contra el plan gratis; huérfanos; miniaturas; la papelera | a mano: Administración › Copia de seguridad, `supabase/limpieza/` |
 | **Copias y restauración** | Que la copia del domingo corra; que se pueda restaurar (`docs/RESTAURAR.md`); cuándo vence el token | a mano: Actions |
@@ -137,6 +138,7 @@ Un mismo hallazgo sube de nivel si se repite (ver `RECURRENTES.md`).
 - [ ] Las políticas de la base (`supabase/02-politicas.sql`) con un rol por vez: afuera, observador, integrante, admin.
 - [ ] Capturas de cada vista en escritorio y celular, claro y oscuro, y en hebreo: ¿algo se ve raro, desalineado o sobrecargado?
 - [ ] El recorrido de bienvenida (`tourSteps()`): abrirlo como una cuenta nueva en compu y celular y leer cada paso contra la pantalla real — ¿algo cambió de función desde la última vez? (La prueba avisa de pantallas nuevas sin paso; no puede saber que Reportes, por ejemplo, ahora hace otra cosa.)
+- [ ] Masa crítica: ¿qué pantalla o función **interpreta** datos (sube, baja, inactivo, sin actividad) o necesita que haya otra persona? Probarla con un equipo vacío, con uno chico (3 personas, ~7 actividades) y con datos puestos al azar; leer lo que dice «masa» del informe.
 - [ ] Sobrecarga: ¿qué pantalla tiene más de lo que se usa? ¿Qué botón sobra?
 - [ ] La crítica del uso: cargar un evento, una rutina, buscar algo viejo, armar un reporte, mirar el Calendario.
 - [ ] Almacenamiento: el medidor del bucket y la última limpieza.
