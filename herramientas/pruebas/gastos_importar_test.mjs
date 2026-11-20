@@ -33,7 +33,14 @@ const SEP = [[], T,
   ["Pasaje de Iván", "14-9-2026", 80, "USD", "Pasaje", "Visita", "Empleados", "Tarjeta", "ORG", "Si", ""],
   ["Sin fecha", "", 10, "USD", "Comida", "Rutina", "", "", "", "Si", ""]];
 const RESUMEN = [["Total", 1]];
-const XLSX_FALSO = `window.XLSX = { read: () => ({ SheetNames: ["SEP26", "Resumen"], Sheets: { SEP26: ${JSON.stringify(SEP)}, Resumen: ${JSON.stringify(RESUMEN)} } }), utils: { sheet_to_json: ws => ws } };`;
+// El libro de movimientos de plata (inventado): lo gastado a comparar, lo recibido y un salario que NO debe entrar.
+const LIBRO = [["Work Expenses and Salary"], ["Date", "Type", "Description", "Currency", "Amount", "Note"],
+  ["2026-09-30", "Spent", "Septiembre", "USD", 70.5, ""],
+  ["2026-09-08", "Salary", "Sueldo inventado", "USD", 4321, "no entra"],
+  ["2026-10-15", "Received for expenses", "Fondos de prueba", "USD", 20, ""]];
+// Dos archivos de mentira: el que empieza con «m» es el libro; el otro, la planilla de rendiciones.
+const XLSX_FALSO = `window.XLSX = { read: buf => new Uint8Array(buf)[0] === 109 ? { SheetNames: ["Summary", "Transactions"], Sheets: { Summary: [["Resumen"]], Transactions: ${JSON.stringify(LIBRO)} } }
+  : { SheetNames: ["SEP26", "Resumen"], Sheets: { SEP26: ${JSON.stringify(SEP)}, Resumen: ${JSON.stringify(RESUMEN)} } }, utils: { sheet_to_json: ws => ws } };`;
 
 const datos = () => {
   const b = BASE();
@@ -46,7 +53,7 @@ const datos = () => {
 };
 const b = await abrirNavegador();
 const vp = { width: 1280, height: 1000 };
-const elegir = async p => { const [fc] = await Promise.all([p.waitForEvent("filechooser"), p.click('[data-action="gastos-imp-archivo"]')]); await fc.setFiles({ name: "gastos.xlsx", mimeType: "application/vnd.ms-excel", buffer: Buffer.from("x") }); await p.waitForTimeout(300); };
+const elegir = async (p, libro) => { const [fc] = await Promise.all([p.waitForEvent("filechooser"), p.click('[data-action="gastos-imp-archivo"]')]); await fc.setFiles({ name: libro ? "libro.xlsx" : "gastos.xlsx", mimeType: "application/vnd.ms-excel", buffer: Buffer.from(libro ? "m" : "x") }); await p.waitForTimeout(300); };
 
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos(), iniciar: XLSX_FALSO });
@@ -66,7 +73,9 @@ const elegir = async p => { const [fc] = await Promise.all([p.waitForEvent("file
   eq("dos rendiciones: la rutina de septiembre y el viaje, con enlace propuesto a la Agenda", await textos(p, ".gx-imp-rend .gx-imp-cab b"), ["Rutina de septiembre de 2026", "Visita a Montevideo"]);
   eq("…con sus totales por moneda", await textos(p, ".gx-imp-rend .gx-imp-cab span"), ["1 gastos · USD 25.00", "4 gastos · USD 465.50"]);
   eq("…y el enlace elegido es la actividad de esa fecha", await p.$eval('select[data-gimp="rend"][data-c="postId"]', s => s.value), "p9");
-  eq("las dos son históricas (antes de octubre): marcadas", await p.$$eval('input[data-c="historica"]', l => l.map(i => i.checked)), [true, true]);
+  eq("septiembre cuenta en la cuenta corriente (corre desde el 1/8): no están marcadas como históricas", await p.$$eval('input[data-c="historica"]', l => l.map(i => i.checked)), [false, false]);
+  for(let i = 0; i < 2; i++){ await p.locator('input[data-c="historica"]').nth(i).check(); await p.waitForTimeout(150); }
+  eq("el admin las marca como históricas", await p.$$eval('input[data-c="historica"]', l => l.map(i => i.checked)), [true, true]);
   eq("la suma de lo que se carga, por moneda, para comparar con la planilla", (await textos(p, ".gx-imp-suma"))[0].startsWith("Suma de lo que se va a cargar: USD 490.50"), true);
   eq("el botón dice cuántos gastos se importan", await textos(p, '[data-action="gastos-imp-importar"]'), ["Importar 5 gastos"]);
   await p.click('[data-action="gastos-imp-importar"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
@@ -85,6 +94,33 @@ const elegir = async p => { const [fc] = await Promise.all([p.waitForEvent("file
   await p.click('[data-action="gastos-imp-deshacer"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
   eq("deshacer borra la tanda entera: ni rendiciones ni gastos", await hasta(p, () => window.__sb.tablas.gastos.length === 0 && window.__sb.tablas.gastos_rendiciones.length === 0), true);
   eq("…y la tanda desaparece de la lista", await p.$$(".gx-imp-tanda").then(l => l.length), 0);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
+// El libro de movimientos de plata: la cuenta corriente sale de lo gastado (desde agosto) y de lo recibido
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos(), iniciar: XLSX_FALSO });
+  await irGastos(p); await irSeccion(p, "importar"); await elegir(p);
+  await p.selectOption('select[data-gimp="tipo"][data-k="papeleria"]', "material"); await p.waitForTimeout(150);
+  await elegir(p, true);
+  eq("el libro se suma a lo ya leído: siguen las rendiciones", await textos(p, ".gx-imp-rend .gx-imp-cab b"), ["Rutina de septiembre de 2026", "Visita a Montevideo"]);
+  eq("lo recibido se lista; lo gastado no (solo sirve para comparar)", await textos(p, ".gx-imp-mov"), ["Recibido · 15 de oct de 2026 · Fondos de pruebaUSD 20.00"]);
+  eq("el salario no se importa y se avisa, sin mostrar nada de él", await textos(p, ".gx-imp .gx-suave").then(l => l.filter(x => x.includes("salario"))), ["🔒 1 filas de salario: no se leen ni se importan."]);
+  eq("…ni el monto ni la descripción del salario aparecen en la pantalla", await p.evaluate(() => /4321|Sueldo/.test(document.querySelector(".gx-imp").innerText)), false);
+  eq("contra el libro: lo gastado de bolsillo (70.50) menos lo recibido (20) da lo mismo que el libro: coincide", await textos(p, ".gx-imp-conc .gx-imp-cab"), ["USD✅ coincide con el libro"]);
+  eq("…con el saldo a favor", (await textos(p, ".gx-imp-conc .gx-imp-cuenta b")), ["USD 50.50", "USD 50.50"]);
+  eq("el botón suma los movimientos", await textos(p, '[data-action="gastos-imp-importar"]'), ["Importar 5 gastos y 1 movimientos"]);
+  await p.click('[data-action="gastos-imp-importar"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
+  eq("en la base: un movimiento recibido, confirmado, de quien importó", await hasta(p, () => window.__sb.tablas.gastos_movimientos.length === 1), true);
+  eq("…con lo que corresponde, y sin nada del salario", await p.evaluate(() => [JSON.stringify(window.__sb.tablas.gastos_movimientos.map(m => [m.tipo, m.estado, m.persona, m.moneda, m.monto, m.descripcion])), JSON.stringify(window.__sb.rpc).includes("4321")]),
+    [JSON.stringify([["recibido", "confirmado", "benny@team-latam.com", "USD", 20, "Fondos de prueba"]]), false]);
+  await irSeccion(p, "cuenta");
+  eq("la cuenta corriente del admin da lo mismo que el libro: a su favor USD 50.50", await p.$$eval(".gx-cuenta-mon .gx-saldo", l => l.map(e => e.textContent.trim())), ["50.50"]);
+  await irSeccion(p, "importar");
+  eq("la tanda lista cuántas rendiciones, gastos y movimientos trae", await textos(p, ".gx-imp-tanda span"), ["2 rendiciones, 5 gastos · 1 movimientos de plata"]);
+  await p.click('[data-action="gastos-imp-deshacer"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
+  eq("deshacer saca también el movimiento", await hasta(p, () => window.__sb.tablas.gastos_movimientos.length === 0 && window.__sb.tablas.gastos.length === 0), true);
   eq("sin errores de página", errores, []);
   await p.close();
 }

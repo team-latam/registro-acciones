@@ -304,10 +304,11 @@ export function createClient(url, clave){
           const mm = (estado.tablas.members || []).find(x => x.email === yo);
           if(!(yo === "benny@team-latam.com" || (mm && mm.role === "admin"))) return mal("42501", nombre === "gastos_importar" ? "Importa un admin" : "Deshace un admin");
           if(nombre === "gastos_importar_deshacer"){
-            const rs = T("gastos_rendiciones").filter(r => r.lote_id === args.p_lote), n = T("gastos").filter(g => g.lote_id === args.p_lote).length;
+            const rs = T("gastos_rendiciones").filter(r => r.lote_id === args.p_lote), n = T("gastos").filter(g => g.lote_id === args.p_lote).length, nm = T("gastos_movimientos").filter(m => m.lote_id === args.p_lote).length;
             estado.tablas.gastos = T("gastos").filter(g => g.lote_id !== args.p_lote);
             estado.tablas.gastos_rendiciones = T("gastos_rendiciones").filter(r => r.lote_id !== args.p_lote);
-            return { data: { rendiciones: rs.length, gastos: n }, error: null };
+            estado.tablas.gastos_movimientos = T("gastos_movimientos").filter(m => m.lote_id !== args.p_lote);
+            return { data: { rendiciones: rs.length, gastos: n, movimientos: nm }, error: null };
           }
           if(T("gastos_rendiciones").some(r => r.lote_id === args.p_lote)) return mal("23514", "Esa tanda ya se importó");
           let ng = 0;
@@ -321,7 +322,9 @@ export function createClient(url, clave){
               factura: g.factura !== false, observaciones: g.observaciones || "", estado: "aprobado", aprobado_el: ahora, lote_id: args.p_lote, archivo: null, archivo_nombre: null,
               archivo_tipo: null, archivo_hash: null, lectura: null, creado_el: ahora, tocado_el: ahora }); });
           });
-          return { data: { rendiciones: args.p_rendiciones.length, gastos: ng }, error: null };
+          (args.p_movimientos || []).forEach((m, k) => T("gastos_movimientos").push({ id: "impm_" + args.p_lote.slice(0, 4) + "_" + k, persona: yo, tipo: m.tipo, fecha: m.fecha, moneda: String(m.moneda).toUpperCase(), monto: m.monto,
+            descripcion: m.descripcion || "", estado: "confirmado", cargado_por: yo, confirmado_por: yo, confirmado_el: ahora, creado_el: ahora, lote_id: args.p_lote, archivo: null, archivo_nombre: null, archivo_tipo: null }));
+          return { data: { rendiciones: args.p_rendiciones.length, gastos: ng, movimientos: (args.p_movimientos || []).length }, error: null };
         }
         if(nombre === "gastos_movimiento_confirmar"){
           if(!esAdmin) return mal("42501", "Confirma un admin");

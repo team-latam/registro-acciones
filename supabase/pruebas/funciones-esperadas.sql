@@ -88,7 +88,7 @@ insert into esperadas values
   -- Gastos (27-gastos.sql): cortan adentro si no es tuyo o no sos admin.
   ('gastos_comentar(uuid, text)',           false, true),  -- solo en un gasto propio (o un admin); con el correo de quien llama
   ('gastos_cuenta(text)',                   false, true),  -- la cuenta corriente propia; la de otra persona, solo un admin
-  ('gastos_importar(uuid, jsonb)',           false, true),  -- solo un admin; el importador de gastos históricos
+  ('gastos_importar(uuid, jsonb, jsonb)',    false, true),  -- solo un admin; el importador de gastos históricos
   ('gastos_importar_deshacer(uuid)',         false, true),  -- solo un admin; deshace una tanda importada
   ('gastos_movimiento_confirmar(uuid)',     false, true),  -- admin
   ('gastos_observar(uuid, text)',           false, true),  -- admin

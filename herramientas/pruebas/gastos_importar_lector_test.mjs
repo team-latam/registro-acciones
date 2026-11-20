@@ -18,8 +18,8 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if
 const RAIZ = __aRuta(new URL("../..", import.meta.url));
 const src = fs.readFileSync(process.env.INDEX || RAIZ + "index.html", "utf8");
 const g = hacerGrab(src);
-const trozos = ["impNorm", "IMP_CORTE", "impNumero", "impIso", "impFecha", "IMP_MESES", "impMesDeHoja", "impMonedaOriginal", "IMP_SIN_CENTAVOS", "IMP_COLUMNAS", "impLeerHoja", "impDias", "impFirma", "impArmar", "impParaLaBase"];
-const A = new Function(`${trozos.map(n => g(n)).join("\n")}\nreturn { impNumero, impFecha, impMesDeHoja, impMonedaOriginal, impLeerHoja, impArmar, impParaLaBase, impNorm };`)();
+const trozos = ["impNorm", "IMP_CORTE", "impNumero", "impIso", "impFecha", "IMP_MESES", "impMesDeHoja", "impMonedaOriginal", "IMP_SIN_CENTAVOS", "IMP_COLUMNAS", "impLeerHoja", "impLeerMovimientos", "impDias", "impFirma", "impArmar", "impParaLaBase"];
+const A = new Function(`${trozos.map(n => g(n)).join("\n")}\nreturn { impNumero, impFecha, impMesDeHoja, impMonedaOriginal, impLeerHoja, impLeerMovimientos, impArmar, impParaLaBase, impNorm };`)();
 
 // Montos
 const n = v => { const x = A.impNumero(v); return x ? [x.n, x.amb] : null; };
@@ -90,6 +90,33 @@ const mo = o => A.impLeerHoja(hoja([["x", "3-9-2026", 20, "USD", "Comida", "Visi
 eq("«Gasto por CLP 13.599.-» no es dudoso (el peso chileno no tiene centavos)", mo("Gasto por CLP 13.599.-"), []);
 eq("«Gasto por BZD 1.500.-» sí (puede ser 1500 o 1,5)", mo("Gasto por BZD 1.500.-"), ["monto_ambiguo"]);
 
+// El libro de movimientos de plata
+const LIB = [["Work Expenses"], ["Date", "Type", "Description", "Currency", "Amount", "Note"],
+  [new Date(2026, 7, 17), "Spent", "Viaje de prueba", "USD", 3113.4, ""],
+  [new Date(2026, 8, 8), "Salary", "Sueldo inventado", "USD", 4500, "no se lee"],
+  [new Date(2026, 9, 15), "Received for expenses", "Fondos", "USD", 10825, "Recibido en una casa"],
+  [new Date(2026, 9, 16), "Returned", "Devolución", "usd", "$100.00", ""],
+  ["sin fecha", "Received for expenses", "Roto", "USD", 5, ""],
+  [new Date(2026, 9, 20), "Received for expenses", "Sin moneda", "", 5, ""],
+  [new Date(2026, 10, 1), "Transfer", "Otra cosa", "USD", 1, ""]];
+const L = A.impLeerMovimientos(LIB);
+eq("el libro: lo recibido, lo devuelto y lo gastado, y el salario solo se cuenta", [L.recibidos.length, L.devueltos.length, L.gastados.length, L.salarios, L.otros.length], [3, 1, 1, 1, 1]);
+eq("…el salario no deja rastro: ni monto ni descripción en lo leído", JSON.stringify(L).includes("4500") || JSON.stringify(L).includes("Sueldo"), false);
+eq("…lo recibido: fecha, moneda, monto y descripción", [L.recibidos[0].fecha, L.recibidos[0].moneda, L.recibidos[0].monto, L.recibidos[0].descripcion, L.recibidos[0].dudas], ["2026-10-15", "USD", 10825, "Fondos", []]);
+eq("…lo devuelto, con la moneda en mayúsculas y el monto con símbolo", [L.devueltos[0].moneda, L.devueltos[0].monto], ["USD", 100]);
+eq("…lo dudoso: sin fecha, sin moneda", [L.recibidos[1].dudas, L.recibidos[2].dudas], [["fecha"], ["moneda"]]);
+eq("una hoja que no es el libro no se lee como libro", A.impLeerMovimientos(SEP), null);
+
+// «Gasto en MX $ 61,20.-», sin monto en dólares (solo la moneda original) y los cambios de moneda
+const fl = (obs, monto = 20, concepto = "x", tipo = "Comida") => A.impLeerHoja(hoja([[concepto, "3-9-2026", monto, "USD", tipo, "Visita", "", "", "", "Si", obs]]), "SEP26").filas[0];
+eq("«Gasto en MX $ 61,20.-» es MXN 61.20", [fl("Gasto en MX $ 61,20.-").moneda, fl("Gasto en MX $ 61,20.-").monto, fl("Gasto en MX $ 61,20.-").rendidoMonto], ["MXN", 61.2, 20]);
+const solo = fl("Gasto por MEX 5,549.28.- (50% de otra cosa)", "");
+eq("sin monto en dólares pero con la moneda original: queda en esa moneda, sin duda", [solo.moneda, solo.monto, solo.rendidoMoneda, solo.rendidoMonto, solo.dudas], ["MXN", 5549.28, "MXN", 5549.28, []]);
+eq("«Cambio Dólares a Florín» (sin tipo) no es un gasto: queda aparte", fl("", 100, "Cambio Dólares a Florín", "").dudas.includes("cambio"), true);
+eq("la rutina es la del mes de la SOLAPA, no de la fecha de la fila", A.impArmar(A.impLeerHoja(hoja([["Alojamiento", "13-9-2026", 50, "USD", "Alojamiento", "Rutina", "", "", "", "Si", ""]]), "OCT26").filas, { mapaTipo: { alojamiento: "alojamiento" }, mapaPago: {}, posts: [], existentes: [] }).rends.map(r => r.rutinaMes), ["2026-10-01"]);
+eq("desde agosto de 2026 corre la cuenta corriente: un viaje de agosto no es histórico, uno de julio sí", [A.impArmar(A.impLeerHoja(hoja([["x", "5-8-2026", 5, "USD", "Comida", "Visita", "", "", "", "Si", ""]]), "AGO26").filas, { mapaTipo: { comida: "comida" }, mapaPago: {}, posts: [], existentes: [] }).rends[0].historica,
+  A.impArmar(A.impLeerHoja(hoja([["x", "5-7-2026", 5, "USD", "Comida", "Visita", "", "", "", "Si", ""]]), "JUL26").filas, { mapaTipo: { comida: "comida" }, mapaPago: {}, posts: [], existentes: [] }).rends[0].historica], [false, true]);
+
 // Armado
 const mapaTipo = { transporte: "transporte", alojamiento: "alojamiento", comida: "comida", pasaje: "pasaje" }; // «Software nuevo» sin elegir
 const posts = [{ id: "p_mvd", title: "Visita a Montevideo", activityType: "visita", startDate: "2026-09-09", endDate: "2026-09-13" },
@@ -102,7 +129,7 @@ eq("tres rendiciones: la rutina y dos viajes con fechas que se pisan (un bloque 
 const viaje = R.rends.find(r => r.clave === "viaje|SEP26|0|visita");
 eq("«Cuenta = Empleados» no deja una fila afuera (la columna no cambia de quién es el gasto)", viaje.gastos.map(x => x.concepto), ["Taxi aeropuerto", "Hotel", "Cena", "Pasaje de Iván"]);
 eq("el viaje: fechas, enlace propuesto con la Agenda (no con la rutina) y totales por moneda", [viaje.desde, viaje.hasta, viaje.postId, viaje.totales], ["2026-09-10", "2026-09-14", "p_mvd", { USD: 465.5 }]);
-eq("septiembre es histórico (antes del 1/10/2026)", R.rends.map(r => r.historica), [true, true, true]);
+eq("septiembre ya cuenta en la cuenta corriente (corre desde el 1/8/2026)", R.rends.map(r => r.historica), [false, false, false]);
 eq("quién pagó: la sigla es la tarjeta de la organización, lo vacío es de bolsillo", viaje.gastos.map(x => x.pago), ["organizacion", "organizacion", "persona", "organizacion"]);
 const rut = R.rends.find(r => r.rutinaMes);
 eq("la rutina del mes lleva su mes y su total en pesos", [rut.rutinaMes, rut.totales], ["2026-09-01", { ARS: 1500 }]);
@@ -114,7 +141,7 @@ eq("lo que ya estaba cargado no se repite", R2.repetidas.map(x => x.concepto), [
 const R3 = A.impArmar([...H.filas, H.filas[1]], { mapaTipo, mapaPago: {}, posts: [], existentes: [] });
 eq("un gasto repetido en la misma planilla tampoco", R3.repetidas.map(x => x.concepto), ["Hotel"]);
 
-// Octubre en adelante no es histórico; y los viajes lejanos no se mezclan
+// Del 1/8/2026 en adelante no es histórico; y los viajes lejanos no se mezclan
 const OCT = hoja([["Taxi", "3-10-2026", 10, "USD", "Transporte", "Visita", "", "", "", "Si", ""], [null, null, null, null, null, null, null, null, null, null, null], ["Taxi 2", "20-10-2026", 12, "USD", "Transporte", "Visita", "", "", "", "Si", ""]]);
 const R4 = A.impArmar(A.impLeerHoja(OCT, "OCT26").filas, { mapaTipo, mapaPago: {}, posts: [], existentes: [] });
 eq("dos viajes por estar separados por una fila en blanco, no históricos, sin enlace", R4.rends.map(r => [r.desde, r.historica, r.postId]), [["2026-10-03", false, ""], ["2026-10-20", false, ""]]);
@@ -124,7 +151,7 @@ eq("sin la fila en blanco es un solo viaje, aunque haya semanas entre las fechas
 // Lo que viaja a la base
 const P = A.impParaLaBase(R.rends.map(r => r === viaje ? { ...r, lugar: "Ciudad X", pais: "Chile" } : r));
 const Pv = P.findIndex(x => x.post_id === "p_mvd");
-eq("a la base: lo enlazado no lleva lugar ni país (los da la actividad)", [P[Pv].post_id, P[Pv].lugar, P[Pv].pais, P[Pv].historica, P[0].rutina_mes], ["p_mvd", null, null, true, "2026-09-01"]);
+eq("a la base: lo enlazado no lleva lugar ni país (los da la actividad)", [P[Pv].post_id, P[Pv].lugar, P[Pv].pais, P[Pv].historica, P[0].rutina_mes], ["p_mvd", null, null, false, "2026-09-01"]);
 eq("…y cada gasto lleva solo lo que la base pide", Object.keys(P[Pv].gastos[0]).sort(), ["concepto", "factura", "fecha", "forma_pago", "moneda", "monto", "observaciones", "pago", "rendido_moneda", "rendido_monto", "tipo"]);
 const P2 = A.impParaLaBase(R.rends.map(r => ({ ...r, postId: "", lugar: "Ciudad X", pais: "Chile", excluida: r === rut })));
 eq("sin enlace lleva lugar y país; una excluida no viaja", [P2.length, P2[0].lugar, P2[0].pais], [2, "Ciudad X", "Chile"]);

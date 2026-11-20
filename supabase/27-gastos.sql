@@ -261,6 +261,7 @@ create index if not exists movimientos_persona on public.gastos_movimientos (per
 -- Un comprobante, opcional, de lo recibido, devuelto o ajustado (lo pidió el
 -- usuario el 17/11: que quede registro). En `gastos/mov-<id>/<archivo>`, al
 -- lado de los de los gastos; el disparador cuida la carpeta.
+alter table public.gastos_movimientos add column if not exists lote_id uuid;  -- la tanda de importación (20/11/2026)
 alter table public.gastos_movimientos add column if not exists archivo text;
 alter table public.gastos_movimientos add column if not exists archivo_nombre text;
 alter table public.gastos_movimientos add column if not exists archivo_tipo text;
@@ -979,17 +980,21 @@ end $$;
 -- gastos (ya aprobados, a nombre de quien importa); `historica` (por defecto
 -- sí) la deja afuera de la cuenta corriente. `p_lote` la identifica para
 -- deshacerla entera con gastos_importar_deshacer.
-create or replace function public.gastos_importar(p_lote uuid, p_rendiciones jsonb)
+drop function if exists public.gastos_importar(uuid, jsonb);
+create or replace function public.gastos_importar(p_lote uuid, p_rendiciones jsonb, p_movimientos jsonb default '[]'::jsonb)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare yo text := public.mi_correo(); r jsonb; g jsonb; v_id uuid; n_r integer := 0; n_g integer := 0;
+declare yo text := public.mi_correo(); r jsonb; g jsonb; m jsonb; v_id uuid; n_r integer := 0; n_g integer := 0; n_m integer := 0;
 begin
   if not (public.es_admin_fijo() or public.es_admin_rol()) then
     raise exception 'Importa un admin' using errcode = 'insufficient_privilege';
   end if;
-  if p_lote is null or jsonb_typeof(p_rendiciones) <> 'array' or jsonb_array_length(p_rendiciones) not between 1 and 300 then
-    raise exception 'Una tanda tiene entre 1 y 300 rendiciones' using errcode = 'invalid_parameter_value';
+  if p_lote is null or jsonb_typeof(p_rendiciones) <> 'array' or jsonb_typeof(p_movimientos) <> 'array'
+     or jsonb_array_length(p_rendiciones) > 300 or jsonb_array_length(p_movimientos) > 500
+     or jsonb_array_length(p_rendiciones) + jsonb_array_length(p_movimientos) = 0 then
+    raise exception 'Una tanda tiene hasta 300 rendiciones y 500 movimientos, y algo adentro' using errcode = 'invalid_parameter_value';
   end if;
-  if exists (select 1 from public.gastos_rendiciones x where x.lote_id = p_lote) then
+  if exists (select 1 from public.gastos_rendiciones x where x.lote_id = p_lote)
+     or exists (select 1 from public.gastos_movimientos x where x.lote_id = p_lote) then
     raise exception 'Esa tanda ya se importó' using errcode = 'check_violation';
   end if;
   for r in select * from jsonb_array_elements(p_rendiciones) loop
@@ -1015,12 +1020,19 @@ begin
       n_g := n_g + 1;
     end loop;
   end loop;
-  return jsonb_build_object('rendiciones', n_r, 'gastos', n_g);
+  -- La plata que se movió entre la persona y la organización (cuenta corriente): lo recibido o devuelto, ya confirmado.
+  for m in select * from jsonb_array_elements(p_movimientos) loop
+    insert into public.gastos_movimientos (persona, tipo, fecha, moneda, monto, descripcion, estado, cargado_por, confirmado_por, confirmado_el, lote_id)
+      values (yo, m->>'tipo', (m->>'fecha')::date, upper(m->>'moneda'), (m->>'monto')::numeric, left(coalesce(m->>'descripcion', ''), 300),
+        'confirmado', yo, yo, now(), p_lote);
+    n_m := n_m + 1;
+  end loop;
+  return jsonb_build_object('rendiciones', n_r, 'gastos', n_g, 'movimientos', n_m);
 end $$;
 
 create or replace function public.gastos_importar_deshacer(p_lote uuid)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare n_g integer; n_r integer;
+declare n_g integer; n_r integer; n_m integer;
 begin
   if not (public.es_admin_fijo() or public.es_admin_rol()) then
     raise exception 'Deshace un admin' using errcode = 'insufficient_privilege';
@@ -1032,12 +1044,14 @@ begin
   get diagnostics n_g = row_count;
   delete from public.gastos_rendiciones where lote_id = p_lote;
   get diagnostics n_r = row_count;
-  return jsonb_build_object('rendiciones', n_r, 'gastos', n_g);
+  delete from public.gastos_movimientos where lote_id = p_lote;
+  get diagnostics n_m = row_count;
+  return jsonb_build_object('rendiciones', n_r, 'gastos', n_g, 'movimientos', n_m);
 end $$;
 
-revoke execute on function public.gastos_importar(uuid, jsonb) from public, anon;
+revoke execute on function public.gastos_importar(uuid, jsonb, jsonb) from public, anon;
 revoke execute on function public.gastos_importar_deshacer(uuid) from public, anon;
-grant execute on function public.gastos_importar(uuid, jsonb) to authenticated;
+grant execute on function public.gastos_importar(uuid, jsonb, jsonb) to authenticated;
 grant execute on function public.gastos_importar_deshacer(uuid) to authenticated;
 
 -- En Supabase toda función nueva de `public` se puede llamar desde el

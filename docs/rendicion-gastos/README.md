@@ -480,7 +480,7 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
 - **Dudas:** si hay duda, se le pregunta; nada se carga sin su OK.
 - **Repetidos:** se comparan las dos copias y se pregunta solo si no coinciden.
 - **Gastos que pagó otra persona:** se cargan a nombre del usuario (Benny); los empleados, cuando tengan cuenta.
-- **Octubre–noviembre de 2026:** nada ya cargado en la app; se importan y el usuario marca cuáles ya se devolvieron. Antes del 1/10/2026 la cuenta corriente arranca en cero (no hay deuda de años anteriores).
+- **Octubre–noviembre de 2026:** nada ya cargado en la app; se importan y el usuario marca cuáles ya se devolvieron. Antes del 1/10/2026 la cuenta corriente arranca en cero (no hay deuda de años anteriores). **Corregido el 20/11:** el libro de movimientos del usuario arranca en agosto, así que la cuenta corriente corre desde el 1/8/2026 (no el 1/10).
 - **Tipos nuevos:** se pregunta por cada uno en la vista previa.
 - **«Cuenta» no dice de quién es el gasto** (corregido el 20/11 al ver la planilla real): «Empleados» es la cuenta de donde salía la plata para luego rendir; en enero–julio dice «Empleados» en *todas* las filas, también en las del usuario. **Se cargan todos los gastos, todos a nombre del usuario** («lo que nos interesa es cargar los gastos que se tuvieron, para un gran entendimiento»). Por eso el importador ya no deja afuera nada por esa columna.
 - **Cómo se agrupa:** cada viaje es un **bloque de filas separado por una fila en blanco** (en un mes de dos viajes las fechas se pisan, y los pasajes se compran antes de viajar); un viaje puede cruzar de mes; la rutina es una por mes, junte los bloques que junte. Para proponer la actividad de la Agenda se elige la de fechas más parecidas (una actividad larga, como un curso, no).
@@ -493,7 +493,7 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
 - **Base** (`27-gastos.sql`): las rendiciones tienen `historica`, `lote_id`, `lugar`, `pais`, `desde` y `hasta`; los gastos, `lote_id`.
   `gastos_importar(lote, rendiciones)` carga todo junto (o nada), aprobado y a nombre de quien importa, **solo un admin** (Finanzas no);
   `gastos_importar_deshacer(lote)` borra la tanda entera. `gastos_cuenta` y la cuenta de la pantalla **ignoran lo histórico**, así
-  que no se inventa deuda. Oct–nov de 2026 no es histórico (cuenta corriente corre desde el 1/10).
+  que no se inventa deuda. **Desde el 1/8/2026 no es histórico** (corrige el 1/10 de antes: el libro de movimientos del usuario, «Work Expenses and Salary», arranca el 17/8 con el viaje a Curazao, y su saldo «a mi favor» incluye agosto y septiembre).
 - **Pantalla** (Gastos → «Importar», solo admin): se elige el Excel (SheetJS, en el navegador del admin: los datos no pasan por el
   repo), se ve lo que se entendió, los tipos y «quién pagó» para elegir, las rendiciones que se crearían (rutina por mes; viajes por
   cercanía de fechas, con el enlace a la Agenda ya propuesto, o lugar y país a mano), la suma por moneda para comparar con la planilla,
@@ -501,6 +501,12 @@ misma persona**, que sigue el mismo esquema de una solapa por mes pero **con el 
 - **Lector** (funciones `imp…` de `index.html`): columnas por nombre, fechas y montos en los formatos de cada año, moneda original de
   Observaciones, fila de título en cualquier lugar de las primeras diez. Probado en `herramientas/pruebas/gastos_importar_lector_test.mjs`
   (puro) y `gastos_importar_test.mjs` (pantalla), con datos inventados.
+- **El libro de movimientos** («Work Expenses and Salary», Date/Type/Description/Currency/Amount): lo *recibido* y lo *devuelto* entran a la
+  cuenta corriente como movimientos ya confirmados, en la misma tanda (se deshacen juntos); lo *gastado* del libro solo sirve para **comparar**
+  («Contra el libro»: gastado, recibido y saldo del libro contra lo que se carga, moneda por moneda); el **salario no se lee ni se importa**
+  (solo se cuenta cuántas filas hay). Con la planilla de 2026 de verdad, las rendiciones de agosto a octubre dieron al centavo los totales del
+  libro (el «Cambio Dólares a Florín» de Curazao no es un gasto: queda aparte, y eran justo los USD 100 de diferencia).
+- **Rutina:** va en el mes de la SOLAPA, no de la fecha de la fila (una factura de septiembre pagada en octubre es de la rutina de octubre).
 - **Falta:** probarlo con septiembre de 2026 de verdad (el usuario baja el Excel y lo elige), planillas de viaje (otro formato), 2022–2025.
 
 ## Lo que anotó el usuario al probarlo (desde el 18/11)

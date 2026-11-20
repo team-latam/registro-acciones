@@ -835,6 +835,9 @@
   .gx-imp-duda{ margin:0 0 12px; padding-inline-start:20px; font-size:13px; display:flex; flex-direction:column; gap:4px; }
   .gx-imp-suma{ margin:6px 0 14px; }
   .gx-imp-tanda{ justify-content:space-between; }
+  .gx-imp .gx-tarjeta.gx-imp-conc{ display:block; }
+  .gx-imp-cuenta{ display:flex; flex-direction:column; gap:4px; font-size:13px; margin-bottom:6px; overflow-wrap:anywhere; }
+  .gx-imp-mov{ justify-content:space-between; font-size:13px; }
   /* «Mis estadísticas» (19/11) */
   .gxe-ctl{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px; }
   .gxe-et{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
@@ -10404,16 +10407,16 @@ function crearSupabaseStore(sb, opciones = {}){
         await Promise.all([refrescar("gastos_rendiciones", id), recargarTabla("gastos")]);
       },
       // Importar lo histórico (gastos_importar, 27-gastos.sql): entra todo junto o nada, y se deshace por tanda.
-      async importar(lote, rendiciones){
-        const { data, error } = await sb.rpc("gastos_importar", { p_lote: lote, p_rendiciones: rendiciones });
+      async importar(lote, rendiciones, movimientos = []){
+        const { data, error } = await sb.rpc("gastos_importar", { p_lote: lote, p_rendiciones: rendiciones, p_movimientos: movimientos });
         if(error) throw error;
-        await Promise.all([recargarTabla("gastos"), recargarTabla("gastos_rendiciones")]);
+        await Promise.all([recargarTabla("gastos"), recargarTabla("gastos_rendiciones"), recargarTabla("gastos_movimientos")]);
         return data;
       },
       async deshacerImportacion(lote){
         const { data, error } = await sb.rpc("gastos_importar_deshacer", { p_lote: lote });
         if(error) throw error;
-        await Promise.all([recargarTabla("gastos"), recargarTabla("gastos_rendiciones")]);
+        await Promise.all([recargarTabla("gastos"), recargarTabla("gastos_rendiciones"), recargarTabla("gastos_movimientos")]);
         return data;
       },
       // Devolver una rendición en revisión con lo observado (D18, 19/11).
@@ -25240,7 +25243,7 @@ function iconoDeRendicion(r){
 // leídas del Excel (arreglos de arreglos) y devuelve lo que entendió, con las dudas marcadas; nada se carga sin que el
 // admin lo vea en la vista previa. Las columnas se reconocen por su NOMBRE (cambian de año en año).
 function impNorm(s){ return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
-const IMP_CORTE = "2026-10-01"; // desde acá la cuenta corriente corre (antes de octubre de 2026 no se debe nada)
+const IMP_CORTE = "2026-08-01"; // desde acá la cuenta corriente corre: es donde arranca el libro de movimientos de plata del usuario (antes, todo saldado)
 // Un monto escrito como «$25,155.00», «$1.500,00», «38.22.-» o ya número. {n, amb}: `amb` si un solo separador seguido de
 // tres cifras («1.500») podría ser miles o decimales (se toma como miles, que es lo habitual en estas planillas).
 function impNumero(v){
@@ -25291,9 +25294,10 @@ function impMesDeHoja(nombre){
 // En Observaciones, los gastos en otra moneda dicen «Gasto por BZD 38.22.-» (con separadores distintos según la fila y
 // códigos mal escritos, como MEX por MXN).
 function impMonedaOriginal(obs){
-  const m = String(obs == null ? "" : obs).match(/gasto\s+por\s+([A-Za-z]{3})\s*\$?\s*(-?[\d][\d.,]*)/i);
+  const m = String(obs == null ? "" : obs).match(/gasto\s+(?:por|en)\s+([A-Za-z]{2,3})\s*\$?\s*(-?[\d][\d.,]*)/i);
   if(!m) return null;
-  const cod = { MEX: "MXN", ARG: "ARS", CHI: "CLP", URU: "UYU" }[m[1].toUpperCase()] || m[1].toUpperCase();
+  const cod = { MX: "MXN", MEX: "MXN", ARG: "ARS", CHI: "CLP", URU: "UYU" }[m[1].toUpperCase()] || m[1].toUpperCase();
+  if(!/^[A-Z]{3}$/.test(cod)) return null;
   const num = impNumero(m[2]);
   return { moneda: cod, monto: num ? num.n : null, amb: !!(num && num.amb) };
 }
@@ -25339,19 +25343,59 @@ function impLeerHoja(filas, nombre){
     if(!/^[A-Z]{3}$/.test(moneda)){ dudas.push("moneda"); moneda = ""; }
     const obs = txt(f, "obs");
     let monto = num ? num.n : null, rendidoMoneda = moneda, rendidoMonto = monto;
+    // «Cambio Dólares a Florín» (sin tipo) no es un gasto: es cambiar plata, y va aparte (se anota como cambio de moneda).
+    const esCambio = /^cambio\b/.test(cn) && !impNorm(txt(f, "tipo"));
+    if(esCambio) dudas.push("cambio");
     // Una fila en dólares cuya Observaciones cuenta que fue en otra moneda: el gasto es en esa moneda y lo rendido, en dólares.
     const orig = moneda === "USD" ? impMonedaOriginal(obs) : null;
-    if(orig && orig.moneda !== "USD"){
+    if(orig && orig.moneda !== "USD" && !num){
+      // Sin el monto en dólares pero con la moneda original (p. ej. un gasto en pesos mexicanos): queda en esa moneda.
+      if(orig.monto == null) dudas.push("moneda_original");
+      else { const k = dudas.indexOf("monto"); if(k >= 0) dudas.splice(k, 1); moneda = rendidoMoneda = orig.moneda; monto = rendidoMonto = orig.monto; if(orig.amb && !IMP_SIN_CENTAVOS.includes(orig.moneda)) dudas.push("monto_ambiguo"); }
+    }else if(orig && orig.moneda !== "USD"){
       if(orig.monto == null) dudas.push("moneda_original");
       // Monedas sin centavos (CLP, COP, PYG…): «13.599» es trece mil, no hay duda. En las demás, «1.500» puede ser 1500 o 1,5.
       else { moneda = orig.moneda; monto = orig.monto; if(orig.amb && !IMP_SIN_CENTAVOS.includes(orig.moneda)) dudas.push("monto_ambiguo"); }
     }
     const fp = impNorm(txt(f, "formaPago"));
-    salida.push({ hoja: String(nombre), fila: i + 1, bloque, fecha, concepto: concepto.slice(0, 140), actividad: txt(f, "actividad"), tipoOrig: txt(f, "tipo"),
+    salida.push({ hoja: String(nombre), mesHoja: `${mes.anio}-${String(mes.mes).padStart(2, "0")}-01`, fila: i + 1, bloque, fecha, concepto: concepto.slice(0, 140), actividad: txt(f, "actividad"), tipoOrig: txt(f, "tipo"),
       cuenta: txt(f, "cuenta"), moneda, monto, rendidoMoneda, rendidoMonto, formaPago: /tarjeta/.test(fp) ? "tarjeta" : /efectivo/.test(fp) ? "efectivo" : /transfer/.test(fp) ? "transferencia" : null,
       quien: txt(f, "quien"), factura: !/^(no|n|0|false)$/i.test(txt(f, "factura")), obs: obs.slice(0, 500), dudas });
   }
   return { hoja: String(nombre), anio: mes.anio, mes: mes.mes, filas: salida };
+}
+// El libro de movimientos de plata («Work Expenses and Salary»: Date, Type, Description, Currency, Amount). Lo recibido y lo
+// devuelto van a la cuenta corriente; lo gastado se usa solo para comparar con las rendiciones; el SALARIO no se lee ni se
+// guarda (lo pidió el usuario): solo se cuenta cuántas filas hay para avisar que se dejaron afuera.
+function impLeerMovimientos(filas){
+  if(!Array.isArray(filas)) return null;
+  let h = -1;
+  for(let i = 0; i < Math.min(filas.length, 10); i++){
+    const ns = (filas[i] || []).map(impNorm);
+    if((ns.includes("date") || ns.includes("fecha")) && (ns.includes("type") || ns.includes("tipo")) && (ns.includes("amount") || ns.includes("monto")) && !ns.includes("concepto")){ h = i; break; }
+  }
+  if(h < 0) return null;
+  const ns = filas[h].map(impNorm), col = {};
+  Object.entries({ fecha: ["date", "fecha"], tipo: ["type", "tipo"], desc: ["description", "descripcion", "concepto"], moneda: ["currency", "moneda"], monto: ["amount", "monto"] })
+    .forEach(([k, alias]) => { const i = ns.findIndex(x => alias.includes(x)); if(i >= 0) col[k] = i; });
+  const out = { recibidos: [], devueltos: [], gastados: [], salarios: 0, otros: [] };
+  for(let i = h + 1; i < filas.length; i++){
+    const f = filas[i] || [], tipo = impNorm(f[col.tipo]);
+    if(!tipo) continue;
+    if(/salary|salario|sueldo/.test(tipo)){ out.salarios++; continue; }   // sin mirar nada más: no se guarda
+    const num = impNumero(f[col.monto]), fecha = impFecha(f[col.fecha]);
+    let moneda = String(f[col.moneda] == null ? "" : f[col.moneda]).trim().toUpperCase();
+    const dudas = [];
+    if(!fecha) dudas.push("fecha");
+    if(!num || !(num.n > 0)) dudas.push("monto");
+    if(!/^[A-Z]{3}$/.test(moneda)) dudas.push("moneda");
+    const x = { fila: i + 1, fecha, moneda, monto: num ? num.n : null, descripcion: String(f[col.desc] == null ? "" : f[col.desc]).trim().slice(0, 300), dudas };
+    if(/received|recibido/.test(tipo)) out.recibidos.push(x);
+    else if(/returned|devuelto/.test(tipo)) out.devueltos.push(x);
+    else if(/spent|gastado/.test(tipo)) out.gastados.push(x);
+    else out.otros.push({ ...x, tipo });
+  }
+  return out;
 }
 function impDias(a, b){ return Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400e3); }
 function impFirma(g){ return [g.fecha, impNorm(g.concepto), g.monto, g.moneda].join("|"); }
@@ -25367,7 +25411,7 @@ function impArmar(filas, o){
     if(!tipo) dudas.push("tipo");
     if(dudas.length){ dudosas.push({ ...f, dudas }); return; }
     const g = { fecha: f.fecha, concepto: f.concepto, tipo, moneda: f.moneda, monto: f.monto, rendido_moneda: f.rendidoMoneda, rendido_monto: f.rendidoMonto,
-      pago: mapaPago[impNorm(f.quien)] || "persona", forma_pago: f.formaPago, factura: f.factura, observaciones: f.obs, actividad: impNorm(f.actividad), hoja: f.hoja, bloque: f.bloque, fila: f.fila };
+      pago: mapaPago[impNorm(f.quien)] || "persona", forma_pago: f.formaPago, factura: f.factura, observaciones: f.obs, actividad: impNorm(f.actividad), hoja: f.hoja, mesHoja: f.mesHoja, bloque: f.bloque, fila: f.fila };
     const firma = impFirma(g);
     if(vistas.has(firma)){ repetidas.push({ ...f }); return; }
     vistas.add(firma); buenas.push(g);
@@ -25377,8 +25421,8 @@ function impArmar(filas, o){
   // Un viaje = un bloque de la planilla (y una actividad); la rutina, una por mes, junte los bloques que junte.
   [...buenas].sort((a, b) => a.hoja.localeCompare(b.hoja) || a.fila - b.fila).forEach(g => {
     if(g.actividad === "rutina" || !g.actividad){
-      const mes = g.fecha.slice(0, 7) + "-01";
-      abrir("rutina|" + mes, { rutinaMes: mes, actividad: "rutina" }).gastos.push(g);
+      // La rutina es la del mes de la SOLAPA (una factura de septiembre pagada en octubre va en la rutina de octubre).
+      abrir("rutina|" + g.mesHoja, { rutinaMes: g.mesHoja, actividad: "rutina" }).gastos.push(g);
     }else{
       const c = abrir(`viaje|${g.hoja}|${g.bloque}|${g.actividad}`, { actividad: g.actividad, desde: g.fecha, hasta: g.fecha });
       c.gastos.push(g); if(g.fecha < c.desde) c.desde = g.fecha; if(g.fecha > c.hasta) c.hasta = g.fecha;
@@ -25421,6 +25465,7 @@ function impParaLaBase(rends){
 // y entran a la base; nunca se guardan en el repo.
 const IMP_DUDAS = {
   fecha: ["No se entiende la fecha","Can't read the date","Não se entende a data","לא מובן התאריך"],
+  cambio: ["Es un cambio de moneda, no un gasto (no se carga)","It's a currency exchange, not an expense (not loaded)","É uma troca de moeda, não uma despesa (não é carregada)","זו המרת מטבע, לא הוצאה (לא נטענת)"],
   fecha_fuera_de_la_hoja: ["La fecha no es del mes de la solapa","The date isn't in the tab's month","A data não é do mês da aba","התאריך אינו מחודש הלשונית"],
   concepto: ["Falta el concepto","Missing description","Falta o conceito","חסר תיאור"],
   monto: ["No se entiende el monto","Can't read the amount","Não se entende o valor","לא מובן הסכום"],
@@ -25441,7 +25486,16 @@ function impTituloDe(r){
 // poder probarlo sin SheetJS.
 function impCargarHojas(hojas, archivo){
   const leidas = [], ignoradas = [];
-  hojas.forEach(([nombre, filas]) => { const h = impLeerHoja(filas, nombre); if(h) leidas.push(h); else ignoradas.push(String(nombre)); });
+  let mov = null;
+  hojas.forEach(([nombre, filas]) => {
+    const h = impLeerHoja(filas, nombre);
+    if(h){ leidas.push(h); return; }
+    const m = impLeerMovimientos(filas);
+    if(m) mov = m; else ignoradas.push(String(nombre));
+  });
+  const prev = gastosImp;
+  // Un archivo que solo trae el libro de movimientos se suma a lo que ya estaba cargado de las rendiciones (y al revés).
+  if(!leidas.length && prev){ prev.mov = mov || prev.mov; prev.archivoMov = mov ? String(archivo || "") : prev.archivoMov; prev.ignoradas = [...new Set([...prev.ignoradas, ...ignoradas])]; prev.hecho = null; impRearmar(); return; }
   const todas = leidas.flatMap(h => h.filas);
   const mapaTipo = {}, mapaPago = {};
   const tipos = gastoTipos();
@@ -25451,7 +25505,8 @@ function impCargarHojas(hojas, archivo){
     const q = impNorm(f.quien);
     if(!(q in mapaPago)) mapaPago[q] = /^[A-Z]{2,5}$/.test(f.quien.trim()) ? "organizacion" : "persona";
   });
-  gastosImp = { archivo: String(archivo || ""), leidas, ignoradas, filas: leidas.flatMap(h => h.filas), mapaTipo, mapaPago, edits: {}, arm: null, importando: false, hecho: null };
+  gastosImp = { archivo: leidas.length ? String(archivo || "") : "", archivoMov: mov ? String(archivo || "") : (prev ? prev.archivoMov : ""), leidas, ignoradas, filas: todas, mapaTipo, mapaPago, edits: {}, arm: null,
+    mov: mov || (prev ? prev.mov : null), importando: false, hecho: null };
   impRearmar();
 }
 function impRearmar(){
@@ -25460,6 +25515,28 @@ function impRearmar(){
   const arm = impArmar(I.filas, { mapaTipo: I.mapaTipo, mapaPago: I.mapaPago, posts: state.posts, existentes });
   arm.rends.forEach(r => { Object.assign(r, I.edits[r.clave] || {}); r.titulo = impTituloDe(r); });
   I.arm = arm;
+  I.movs = { nuevos: [], repetidos: [], dudosos: [] }; I.conc = {};
+  if(I.mov){
+    const ya = new Set(gastosDatos ? gastosDatos.movimientos.map(m => [m.tipo, m.fecha, m.moneda, m.monto].join("|")) : []);
+    [...I.mov.recibidos.map(x => ({ ...x, tipo: "recibido" })), ...I.mov.devueltos.map(x => ({ ...x, tipo: "devuelto" }))].forEach(x => {
+      if(x.dudas.length) I.movs.dudosos.push(x);
+      else if(ya.has([x.tipo, x.fecha, x.moneda, x.monto].join("|"))) I.movs.repetidos.push(x);
+      else I.movs.nuevos.push(x);
+    });
+    // Contra el libro: lo gastado, lo recibido y lo devuelto que dice el libro, y el saldo que da la cuenta corriente con lo que se va a cargar
+    // (lo de años anteriores, marcado como histórico, no cuenta). Si no coinciden, se ve acá antes de guardar.
+    const c = I.conc, f = m => (c[m] = c[m] || { libroGastado: 0, libroRecibido: 0, libroDevuelto: 0, appGastado: 0, appRecibido: 0, appDevuelto: 0 });
+    const suma = (o, k, n) => { o[k] = Math.round((o[k] + n) * 100) / 100; };
+    I.mov.gastados.filter(x => !x.dudas.length).forEach(x => suma(f(x.moneda), "libroGastado", x.monto));
+    I.mov.recibidos.filter(x => !x.dudas.length).forEach(x => suma(f(x.moneda), "libroRecibido", x.monto));
+    I.mov.devueltos.filter(x => !x.dudas.length).forEach(x => suma(f(x.moneda), "libroDevuelto", x.monto));
+    arm.rends.filter(r => !r.excluida && !r.historica).forEach(r => r.gastos.filter(g => g.pago === "persona").forEach(g => {
+      const m = g.rendido_monto != null ? g.rendido_moneda : g.moneda, n = g.rendido_monto != null ? g.rendido_monto : g.monto;
+      suma(f(m), "appGastado", n);
+    }));
+    [...I.movs.nuevos, ...I.movs.repetidos].forEach(x => suma(f(x.moneda), x.tipo === "recibido" ? "appRecibido" : "appDevuelto", x.monto));
+    Object.values(c).forEach(x => { x.libroSaldo = Math.round((x.libroGastado - x.libroRecibido + x.libroDevuelto) * 100) / 100; x.appSaldo = Math.round((x.appGastado - x.appRecibido + x.appDevuelto) * 100) / 100; });
+  }
 }
 async function impElegirArchivo(){
   const inp = document.createElement("input");
@@ -25486,8 +25563,12 @@ function impTandas(){
   if(!gastosDatos) return [];
   const por = new Map();
   gastosDatos.rendiciones.filter(r => r.loteId).forEach(r => {
-    const x = por.get(r.loteId) || { id: r.loteId, rendiciones: 0, gastos: 0, el: r.creadaEl };
+    const x = por.get(r.loteId) || { id: r.loteId, rendiciones: 0, gastos: 0, movimientos: 0, el: r.creadaEl };
     x.rendiciones++; x.gastos += gastosDe(r.id).length; por.set(r.loteId, x);
+  });
+  gastosDatos.movimientos.filter(m => m.loteId).forEach(m => {
+    const x = por.get(m.loteId) || { id: m.loteId, rendiciones: 0, gastos: 0, movimientos: 0, el: m.creadoEl };
+    x.movimientos++; por.set(m.loteId, x);
   });
   return [...por.values()];
 }
@@ -25497,11 +25578,11 @@ function renderGastosImportar(){
   const boton = `<button type="button" class="btn-primary" data-action="gastos-imp-archivo">📂 ${I ? t("Elegir otra planilla","Choose another spreadsheet","Escolher outra planilha","בחירת גיליון אחר") : t("Elegir la planilla (Excel)","Choose the spreadsheet (Excel)","Escolher a planilha (Excel)","בחירת הגיליון (Excel)")}</button>`;
   const tandas = impTandas();
   const htmlTandas = tandas.length ? `<h3 class="admin-h3">${t("Tandas ya importadas","Batches already imported","Lotes já importados","קבוצות שכבר יובאו")}</h3>
-    <div class="gx-lista">${tandas.map(x => `<div class="gx-tarjeta gx-imp-tanda"><span>${esc(t("{r} rendiciones, {g} gastos","{r} reports, {g} expenses","{r} prestações, {g} despesas","{r} דוחות, {g} הוצאות",{ r: x.rendiciones, g: x.gastos }))}</span>
+    <div class="gx-lista">${tandas.map(x => `<div class="gx-tarjeta gx-imp-tanda"><span>${esc(t("{r} rendiciones, {g} gastos","{r} reports, {g} expenses","{r} prestações, {g} despesas","{r} דוחות, {g} הוצאות",{ r: x.rendiciones, g: x.gastos }))}${x.movimientos ? esc(" · " + t("{m} movimientos de plata","{m} money movements","{m} movimentos de dinheiro","{m} תנועות כסף",{ m: x.movimientos })) : ""}</span>
       <button type="button" class="btn-secondary" data-action="gastos-imp-deshacer" data-lote="${esc(x.id)}"${gastosOcupado ? " disabled" : ""}>↩️ ${t("Deshacer esta tanda","Undo this batch","Desfazer este lote","ביטול הקבוצה")}</button></div>`).join("")}</div>` : "";
-  if(!I) return `<div class="gx-imp"><p>${t("Se carga una planilla «Rendición de gastos» (el Excel, una solapa por mes). Antes de guardar nada ves lo que se entendió, y lo dudoso queda aparte.","You load a “Rendición de gastos” spreadsheet (the Excel, one tab per month). Before anything is saved you see what was understood, and doubtful rows are kept apart.","Você carrega uma planilha «Rendición de gastos» (o Excel, uma aba por mês). Antes de salvar algo você vê o que foi entendido, e o duvidoso fica à parte.","טוענים גיליון «Rendición de gastos» (האקסל, לשונית לכל חודש). לפני שמירה רואים מה הובן, והמפוקפק נשאר בנפרד.")}</p>
+  if(!I) return `<div class="gx-imp"><p>${t("Se carga la planilla «Rendición de gastos» (el Excel, una solapa por mes) y, si querés, el libro de movimientos de plata (lo recibido y devuelto, para la cuenta corriente). Antes de guardar nada ves lo que se entendió, y lo dudoso queda aparte.","You load the “Rendición de gastos” spreadsheet (the Excel, one tab per month) and, if you want, the money-movements ledger (received and returned, for the running balance). Before anything is saved you see what was understood, and doubtful rows are kept apart.","Você carrega a planilha «Rendición de gastos» (o Excel, uma aba por mês) e, se quiser, o livro de movimentos de dinheiro (recebido e devolvido, para a conta corrente). Antes de salvar algo você vê o que foi entendido, e o duvidoso fica à parte.","טוענים את הגיליון «Rendición de gastos» (האקסל, לשונית לכל חודש) ואם רוצים גם את ספר תנועות הכסף (מה שהתקבל והוחזר, לחשבון השוטף). לפני שמירה רואים מה הובן, והמפוקפק נשאר בנפרד.")}</p>
     <p>${boton}</p>${htmlTandas}</div>`;
-  const A = I.arm, aCargar = A.rends.filter(r => !r.excluida).reduce((n, r) => n + r.gastos.length, 0);
+  const A = I.arm, aCargar = A.rends.filter(r => !r.excluida).reduce((n, r) => n + r.gastos.length, 0), nMov = I.movs ? I.movs.nuevos.length : 0;
   const porMoneda = {};
   A.rends.filter(r => !r.excluida).forEach(r => Object.entries(r.totales).forEach(([m, n]) => { porMoneda[m] = Math.round(((porMoneda[m] || 0) + n) * 100) / 100; }));
   const tile = (k, v, cl = "") => `<div class="gxe-tile${cl}"><div class="gxe-k">${k}</div><div class="gxe-v">${v}</div></div>`;
@@ -25528,7 +25609,20 @@ function renderGastosImportar(){
         <label class="gx-imp-chk"><input type="checkbox" data-gimp="rend" data-k="${esc(r.clave)}" data-c="excluida"${r.excluida ? " checked" : ""}> ${t("No importar esta","Don't import this one","Não importar esta","לא לייבא")}</label>
       </div></div>`;
   const filaDuda = f => `<li><b>${esc(f.hoja)} · ${t("fila","row","linha","שורה")} ${f.fila}</b> ${esc(f.concepto || "—")} — ${esc(f.dudas.map(impDuda).join("; "))}</li>`;
-  const hecho = I.hecho ? `<div class="admin-ok" role="status">✅ ${esc(t("Listo: se cargaron {r} rendiciones con {g} gastos. Podés deshacer la tanda más abajo.","Done: {r} reports with {g} expenses were loaded. You can undo the batch below.","Pronto: foram carregadas {r} prestações com {g} despesas. Você pode desfazer o lote abaixo.","בוצע: נטענו {r} דוחות עם {g} הוצאות. אפשר לבטל את הקבוצה למטה.",{ r: I.hecho.rendiciones, g: I.hecho.gastos }))}</div>` : "";
+  const fmtM = (m, n) => esc(fmtMonto(m, n));
+  const htmlMov = I.mov ? `<h3 class="admin-h3">${t("Movimientos de plata (el libro)","Money movements (the ledger)","Movimentos de dinheiro (o livro)","תנועות כסף (הספר)")}</h3>
+    ${I.archivoMov ? `<p class="gx-suave">${esc(I.archivoMov)}</p>` : ""}
+    ${I.movs.nuevos.length || I.movs.repetidos.length || I.movs.dudosos.length ? `<div class="gx-lista">${[...I.movs.nuevos.map(x => [x, ""]), ...I.movs.repetidos.map(x => [x, "rep"]), ...I.movs.dudosos.map(x => [x, "duda"])].map(([x, k]) =>
+      `<div class="gx-tarjeta gx-imp-mov${k ? " gx-imp-fuera" : ""}"><span><b>${esc(tipoDeMovimiento(x.tipo))}</b> · ${esc(x.fecha ? fmtDate(x.fecha) : "—")}${x.descripcion ? " · " + esc(x.descripcion) : ""}${k === "rep" ? " · " + esc(t("ya estaba cargado","already loaded","já estava carregado","כבר נטען")) : k === "duda" ? " · " + esc(x.dudas.map(impDuda).join("; ")) : ""}</span><b>${x.monto != null ? fmtM(x.moneda, x.monto) : ""}</b></div>`).join("")}</div>` : `<p class="gx-suave">${t("El libro no trae plata recibida ni devuelta.","The ledger has no money received or returned.","O livro não traz dinheiro recebido nem devolvido.","הספר לא כולל כסף שהתקבל או הוחזר.")}</p>`}
+    ${I.mov.salarios ? `<p class="gx-suave">🔒 ${esc(t("{n} filas de salario: no se leen ni se importan.","{n} salary rows: they are not read or imported.","{n} linhas de salário: não são lidas nem importadas.","{n} שורות שכר: לא נקראות ולא מיובאות.",{ n: I.mov.salarios }))}</p>` : ""}
+    ${Object.keys(I.conc).length ? `<h3 class="admin-h3">${t("Contra el libro","Against the ledger","Contra o livro","מול הספר")}</h3>
+      <div class="gx-lista">${Object.entries(I.conc).sort(([a], [b]) => a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b)).map(([m, c]) => {
+        const ok = Math.abs(c.appSaldo - c.libroSaldo) < 0.005;
+        return `<div class="gx-tarjeta gx-imp-conc"><div class="gx-imp-cab"><b>${esc(m)}</b><span>${ok ? "✅ " + esc(t("coincide con el libro","matches the ledger","coincide com o livro","תואם לספר")) : "⚠️ " + esc(t("NO coincide","does NOT match","NÃO coincide","לא תואם"))}</span></div>
+          <div class="gx-imp-cuenta"><span>${t("Libro","Ledger","Livro","ספר")}: ${t("gastado","spent","gasto","הוצאות")} ${fmtM(m, c.libroGastado)} · ${t("recibido","received","recebido","התקבל")} ${fmtM(m, c.libroRecibido)}${c.libroDevuelto ? " · " + t("devuelto","returned","devolvido","הוחזר") + " " + fmtM(m, c.libroDevuelto) : ""} → <b>${fmtM(m, c.libroSaldo)}</b></span>
+          <span>${t("Lo que se carga","What will be loaded","O que será carregado","מה שייטען")}: ${t("gastado","spent","gasto","הוצאות")} ${fmtM(m, c.appGastado)} · ${t("recibido","received","recebido","התקבל")} ${fmtM(m, c.appRecibido)}${c.appDevuelto ? " · " + t("devuelto","returned","devolvido","הוחזר") + " " + fmtM(m, c.appDevuelto) : ""} → <b>${fmtM(m, c.appSaldo)}</b></span></div>
+          <small class="gx-suave">${c.appSaldo > 0 ? t("A tu favor: la organización te debe.","In your favor: the organization owes you.","A seu favor: a organização te deve.","לטובתך: הארגון חייב לך.") : c.appSaldo < 0 ? t("En tu contra: le debés a la organización.","Against you: you owe the organization.","Contra você: você deve à organização.","נגדך: את/ה חייב/ת לארגון.") : t("Saldado.","Settled.","Quitado.","מאוזן.")}</small></div>`; }).join("")}</div>` : ""}` : "";
+  const hecho = I.hecho ? `<div class="admin-ok" role="status">✅ ${esc(t("Listo: se cargaron {r} rendiciones con {g} gastos y {m} movimientos de plata. Podés deshacer la tanda más abajo.","Done: {r} reports with {g} expenses and {m} money movements were loaded. You can undo the batch below.","Pronto: foram carregadas {r} prestações com {g} despesas e {m} movimentos de dinheiro. Você pode desfazer o lote abaixo.","בוצע: נטענו {r} דוחות עם {g} הוצאות ו-{m} תנועות כסף. אפשר לבטל את הקבוצה למטה.",{ r: I.hecho.rendiciones, g: I.hecho.gastos, m: I.hecho.movimientos || 0 }))}</div>` : "";
   return `<div class="gx-imp">
     <p>${boton} <small>${esc(I.archivo)}</small></p>
     ${hecho}
@@ -25537,11 +25631,12 @@ function renderGastosImportar(){
     ${I.ignoradas.length ? `<p class="gx-suave">${esc(t("Solapas que no son de un mes y no se leyeron: {l}","Tabs that aren't a month and weren't read: {l}","Abas que não são de um mês e não foram lidas: {l}","לשוניות שאינן חודש ולא נקראו: {l}",{ l: I.ignoradas.join(", ") }))}</p>` : ""}
     <p class="gx-imp-suma"><b>${t("Suma de lo que se va a cargar","Sum of what will be loaded","Soma do que será carregado","סכום מה שייטען")}:</b> ${Object.entries(porMoneda).map(([m, n]) => esc(fmtMonto(m, n))).join(" · ") || "—"} <small>${t("(compará con los totales de la planilla)","(compare with the spreadsheet's totals)","(compare com os totais da planilha)","(השוו לסכומי הגיליון)")}</small></p>
     ${mapaTipo}${mapaPago}
+    ${htmlMov}
     <h3 class="admin-h3">${t("Rendiciones que se van a crear","Reports that will be created","Prestações que serão criadas","דוחות שייווצרו")}</h3>
     <div class="gx-lista">${A.rends.map(tarjeta).join("") || `<p class="gx-suave">${t("Nada para cargar todavía.","Nothing to load yet.","Nada para carregar ainda.","אין מה לטעון עדיין.")}</p>`}</div>
     ${A.dudosas.length ? `<h3 class="admin-h3">${t("Para revisar (no se cargan)","To review (not loaded)","Para revisar (não são carregadas)","לבדיקה (לא נטענות)")}</h3><ul class="gx-imp-duda">${A.dudosas.map(filaDuda).join("")}</ul>` : ""}
     ${A.repetidas.length ? `<p class="gx-suave">${esc(t("{n} filas ya estaban cargadas o repetidas en la planilla y se dejaron afuera.","{n} rows were already loaded or repeated in the spreadsheet and were left out.","{n} linhas já estavam carregadas ou repetidas na planilha e ficaram de fora.","{n} שורות כבר נטענו או חוזרות בגיליון והושארו בחוץ.",{ n: A.repetidas.length }))}</p>` : ""}
-    <p><button type="button" class="btn-primary" data-action="gastos-imp-importar"${aCargar && !gastosOcupado ? "" : " disabled"}>${esc(t("Importar {n} gastos","Import {n} expenses","Importar {n} despesas","ייבוא {n} הוצאות",{ n: aCargar }))}</button>
+    <p><button type="button" class="btn-primary" data-action="gastos-imp-importar"${(aCargar || nMov) && !gastosOcupado ? "" : " disabled"}>${esc(nMov ? t("Importar {n} gastos y {m} movimientos","Import {n} expenses and {m} movements","Importar {n} despesas e {m} movimentos","ייבוא {n} הוצאות ו-{m} תנועות",{ n: aCargar, m: nMov }) : t("Importar {n} gastos","Import {n} expenses","Importar {n} despesas","ייבוא {n} הוצאות",{ n: aCargar }))}</button>
       <button type="button" class="btn-secondary" data-action="gastos-imp-limpiar">${t("Descartar","Discard","Descartar","ביטול")}</button></p>
     ${htmlTandas}</div>`;
 }
@@ -25549,10 +25644,11 @@ async function impImportar(){
   const I = gastosImp;
   if(!I || !I.arm || gastosOcupado) return;
   const payload = impParaLaBase(I.arm.rends), n = payload.reduce((a, r) => a + r.gastos.length, 0);
-  if(!n) return;
-  if(!await appConfirm(t("¿Importar {n} gastos en {r} rendiciones? Quedan aprobados y a tu nombre, y después podés deshacer la tanda entera.","Import {n} expenses in {r} reports? They are approved and in your name, and afterwards you can undo the whole batch.","Importar {n} despesas em {r} prestações? Ficam aprovadas e no seu nome, e depois você pode desfazer o lote inteiro.","לייבא {n} הוצאות ב-{r} דוחות? הן מאושרות ועל שמך, ואחר כך אפשר לבטל את כל הקבוצה.",{ n, r: payload.length }), { okLabel: t("Importar","Import","Importar","ייבוא") })) return;
+  const movs = (I.movs ? I.movs.nuevos : []).map(x => ({ tipo: x.tipo, fecha: x.fecha, moneda: x.moneda, monto: x.monto, descripcion: x.descripcion }));
+  if(!n && !movs.length) return;
+  if(!await appConfirm(t("¿Importar {n} gastos en {r} rendiciones y {m} movimientos de plata? Los gastos quedan aprobados y a tu nombre, y después podés deshacer la tanda entera.","Import {n} expenses in {r} reports and {m} money movements? The expenses are approved and in your name, and afterwards you can undo the whole batch.","Importar {n} despesas em {r} prestações e {m} movimentos de dinheiro? As despesas ficam aprovadas e no seu nome, e depois você pode desfazer o lote inteiro.","לייבא {n} הוצאות ב-{r} דוחות ו-{m} תנועות כסף? ההוצאות מאושרות ועל שמך, ואחר כך אפשר לבטל את כל הקבוצה.",{ n, r: payload.length, m: movs.length }), { okLabel: t("Importar","Import","Importar","ייבוא") })) return;
   gastosOcupado = true; render();
-  try{ I.hecho = await store.gastos.importar(crypto.randomUUID(), payload); I.filas = []; I.arm = { rends: [], dudosas: [], repetidas: [] }; I.mapaTipo = {}; I.mapaPago = {}; I.leidas = []; }
+  try{ I.hecho = await store.gastos.importar(crypto.randomUUID(), payload, movs); I.filas = []; I.arm = { rends: [], dudosas: [], repetidas: [] }; I.mapaTipo = {}; I.mapaPago = {}; I.leidas = []; I.mov = null; I.movs = null; I.conc = {}; }
   catch(err){ console.error("No se pudo importar:", err); appAlert(t("No se pudo importar (no se cargó nada): {m}","Couldn't import (nothing was loaded): {m}","Não foi possível importar (nada foi carregado): {m}","הייבוא נכשל (לא נטען דבר): {m}",{ m: detalleDeError(err) })); }
   gastosOcupado = false; render();
 }
