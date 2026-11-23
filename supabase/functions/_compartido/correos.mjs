@@ -42,6 +42,7 @@ const TX = {
     accPre:"Te aprobaron el acceso: ya podés entrar.", accEtiqueta:"Acceso aprobado", accTitulo:"Hola{n}, ya podés entrar",
     accParrafo:"Un administrador aprobó tu pedido. Entrá con la misma cuenta de Google con la que lo pediste: la primera vez te mostramos un recorrido corto.",
     accBoton:"Entrar a Toldot", accPie:"Te llega porque pediste entrar a Toldot.",
+    brAsunto:"Te damos la bienvenida a Brújula", brTexto:"Hola{n}: ya tienes acceso a las carpetas de Brújula.", brPre:"Ya tienes acceso a las carpetas de Brújula.", brEtiqueta:"Brújula", brTitulo:"Hola{n}, te damos la bienvenida", brParrafo:"Ya tienes acceso a las carpetas de Brújula, con material para tu día a día. Si falta algo, escríbenos.", brBoton:"Abrir Brújula", brPie:"Te llega porque te dieron acceso a Brújula.",
     mencion:["mención","menciones"], respuesta:["respuesta","respuestas"], nueva:["actividad nueva","actividades nuevas"], proximo:["evento próximo","eventos próximos"],
     reTituloSem:"Lo que pasó del {a} al {b}", reTituloDia:"Lo que pasó desde ayer", reSem:"Tu resumen de la semana", reDia:"Tu resumen del día",
     reMenc:"Te mencionaron", reResp:"Respuestas a tus posteos", reNuevo:"Nuevo en el Registro", reProx:"Empiezan pronto",
@@ -68,6 +69,7 @@ const TX = {
     accPre:"Your access was approved: you can sign in now.", accEtiqueta:"Access approved", accTitulo:"Hi{n}, you can sign in now",
     accParrafo:"An administrator approved your request. Sign in with the same Google account you used to ask: the first time you'll see a short tour.",
     accBoton:"Sign in to Toldot", accPie:"You're getting this because you asked to join Toldot.",
+    brAsunto:"Welcome to Brújula", brTexto:"Hi{n}: you now have access to the Brújula folders.", brPre:"You now have access to the Brújula folders.", brEtiqueta:"Brújula", brTitulo:"Hi{n}, welcome", brParrafo:"You now have access to the Brújula folders, with material for your daily work. If something is missing, let us know.", brBoton:"Open Brújula", brPie:"You're getting this because you were given access to Brújula.",
     mencion:["mention","mentions"], respuesta:["reply","replies"], nueva:["new activity","new activities"], proximo:["upcoming event","upcoming events"],
     reTituloSem:"What happened from {a} to {b}", reTituloDia:"What happened since yesterday", reSem:"Your weekly summary", reDia:"Your daily summary",
     reMenc:"You were mentioned", reResp:"Replies to your posts", reNuevo:"New in the Log", reProx:"Starting soon",
@@ -94,6 +96,7 @@ const TX = {
     accPre:"Seu acesso foi aprovado: você já pode entrar.", accEtiqueta:"Acesso aprovado", accTitulo:"Olá{n}, você já pode entrar",
     accParrafo:"Um administrador aprovou seu pedido. Entre com a mesma conta do Google com a qual você pediu: na primeira vez mostramos um tour curto.",
     accBoton:"Entrar no Toldot", accPie:"Chega porque você pediu para entrar no Toldot.",
+    brAsunto:"Boas-vindas à Brújula", brTexto:"Olá{n}: você já tem acesso às pastas da Brújula.", brPre:"Você já tem acesso às pastas da Brújula.", brEtiqueta:"Brújula", brTitulo:"Olá{n}, boas-vindas", brParrafo:"Você já tem acesso às pastas da Brújula, com material para o seu dia a dia. Se faltar algo, avise-nos.", brBoton:"Abrir a Brújula", brPie:"Chega porque deram a você acesso à Brújula.",
     mencion:["menção","menções"], respuesta:["resposta","respostas"], nueva:["atividade nova","atividades novas"], proximo:["evento próximo","eventos próximos"],
     reTituloSem:"O que aconteceu de {a} a {b}", reTituloDia:"O que aconteceu desde ontem", reSem:"Seu resumo da semana", reDia:"Seu resumo do dia",
     reMenc:"Mencionaram você", reResp:"Respostas às suas postagens", reNuevo:"Novo no Registro", reProx:"Começam em breve",
@@ -120,6 +123,7 @@ const TX = {
     accPre:"הגישה אושרה: אפשר להיכנס עכשיו.", accEtiqueta:"הגישה אושרה", accTitulo:"שלום{n}, אפשר להיכנס",
     accParrafo:"מנהל/ת אישר/ה את הבקשה שלך. היכנסו עם אותו חשבון Google שבו ביקשת: בפעם הראשונה יוצג סיור קצר.",
     accBoton:"כניסה לתולדות", accPie:"זה מגיע אליך כי ביקשת להצטרף לתולדות.",
+    brAsunto:"ברוכים הבאים ל-Brújula", brTexto:"שלום{n}: כעת יש לך גישה לתיקיות של Brújula.", brPre:"כעת יש לך גישה לתיקיות של Brújula.", brEtiqueta:"Brújula", brTitulo:"שלום{n}, ברוכים הבאים", brParrafo:"כעת יש לך גישה לתיקיות של Brújula, עם חומרים לעבודה היומיומית שלך. אם משהו חסר, כתבו לנו.", brBoton:"לפתיחת Brújula", brPie:"ניתנה לך גישה ל-Brújula.",
     mencion:["אזכור","אזכורים"], respuesta:["תגובה","תגובות"], nueva:["פעילות חדשה","פעילויות חדשות"], proximo:["אירוע קרוב","אירועים קרובים"],
     reTituloSem:"מה קרה בין {a} ל־{b}", reTituloDia:"מה קרה מאתמול", reSem:"הסיכום השבועי שלך", reDia:"הסיכום היומי שלך",
     reMenc:"הזכירו אותך", reResp:"תגובות לפוסטים שלך", reNuevo:"חדש ביומן", reProx:"מתחילים בקרוב",
@@ -461,6 +465,26 @@ export function correoAcceso({ nombre, lang }){
       cuerpo: `<p style="font-size:15px;line-height:1.6;margin:0;">${T.accParrafo}</p>
       ${boton(T.accBoton, APP, L)}`,
       pie: T.accPie,
+    }),
+  };
+}
+
+// El mail de bienvenida de Brújula (23/11/2026): a quien le dieron acceso a las carpetas. Va en el idioma de la
+// invitación (español, inglés, portugués o hebreo, este de derecha a izquierda). El botón lleva directo a la
+// carpeta (un link de Drive) y, si no hay, a Toldot. Corto, como «Ya podés entrar».
+export function correoBrujula({ nombre, lang, enlace }){
+  const L = idioma(lang), T = TX[L];
+  const primero = nombre ? String(nombre).split(" ")[0] : "";
+  const url = /^https:\/\/drive\.google\.com\//.test(String(enlace || "")) ? String(enlace) : APP;
+  return {
+    subject: T.brAsunto,
+    text: `${conVars(T.brTexto, { n: primero ? " " + primero : "" })}\n${url}\n`,
+    html: marco({ lang: L,
+      pre: T.brPre,
+      etiqueta: T.brEtiqueta, titulo: conVars(T.brTitulo, { n: primero ? suyo(esc(primero)).replace(/^/, " ") : "" }),
+      cuerpo: `<p style="font-size:15px;line-height:1.6;margin:0;">${T.brParrafo}</p>
+      ${boton(T.brBoton, url, L)}`,
+      pie: T.brPie,
     }),
   };
 }

@@ -5,7 +5,8 @@
    gente inventada (@example.org) y una llave RSA armada en el momento.
    ====================================================================== */
 import { generateKeyPairSync } from "node:crypto";
-import { idDeLink, comprobarLink, combinar, leerTodo, atender, ALCANCE_LECTURA } from "../_compartido/brujula.mjs";
+import { idDeLink, comprobarLink, combinar, leerTodo, atender, ALCANCE_LECTURA, ALCANCE_ESCRITURA } from "../_compartido/brujula.mjs";
+import { correoBrujula } from "../_compartido/correos.mjs";
 import { olvidarPermisos } from "../_compartido/google.mjs";
 
 let pass = 0, fail = 0;
@@ -70,6 +71,12 @@ const FILAS_1 = [
   ["Persona 1 (otra vez)", "u1@example.org", "Rosario", "Portugués", "Enviado"],
 ];
 const FILAS_2 = [["Solo Care Uno", "solo.care@example.org", "Chile", "Español", "Enviado"]];
+// Los permisos que se pueden pedir de a uno (para quitar): uno de lector, uno de editor, uno heredado.
+const PERM = {
+  [ID_CAR1 + "/pv1"]: { id: "pv1", type: "user", role: "reader", emailAddress: "valeria@example.org" },
+  [ID_CAR1 + "/pe1"]: { id: "pe1", type: "user", role: "writer", emailAddress: "equipo@example.org" },
+  [ID_CAR1 + "/ph1"]: { id: "ph1", type: "user", role: "reader", emailAddress: "otra@example.org" },
+};
 
 // Un archivo/carpeta de Drive para `comprobar`.
 const DRIVE = {
@@ -81,10 +88,12 @@ const DRIVE = {
   atajoOk:   { id: A, name: "Hadraja (atajo)", mimeType: "application/vnd.google-apps.shortcut", shortcutDetails: { targetId: "DestinoRealAbCdEfG", targetMimeType: "application/vnd.google-apps.folder" } },
   atajoDoc:  { id: A, name: "Un doc (atajo)", mimeType: "application/vnd.google-apps.shortcut", shortcutDetails: { targetId: "DestinoDocAbCdEfGh", targetMimeType: "application/vnd.google-apps.document" } },
   atajoOculto: { id: A, name: "Atajo a lo que no veo", mimeType: "application/vnd.google-apps.shortcut", shortcutDetails: { targetId: "DestinoOcultoAbCdEf", targetMimeType: "application/vnd.google-apps.folder" } },
+  hoja:        { id: A, name: "Users", mimeType: "application/vnd.google-apps.spreadsheet", capabilities: { canEdit: true } },
+  hojaLectura: { id: A, name: "Users", mimeType: "application/vnd.google-apps.spreadsheet", capabilities: { canEdit: false } },
 };
 const DESTINOS = { DestinoRealAbCdEfG: { id: "DestinoRealAbCdEfG", name: "Hadraja · Enseñanza", mimeType: "application/vnd.google-apps.folder", capabilities: { canShare: true } } };
 
-function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false } = {}){
+function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false, rechazar = [], resend = "ok" } = {}){
   const reg = { google: [], drive: [], base: [], tokens: 0 };
   const traer = async (url, op = {}) => {
     const u = String(url);
@@ -105,6 +114,10 @@ function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false } = 
       if(u.includes("/brujula_planillas")) return new Response(JSON.stringify(PLANILLAS));
       throw new Error("tabla inesperada: " + u);
     }
+    if(u === "https://api.resend.com/emails"){
+      reg.correos = (reg.correos || []).concat([JSON.parse(op.body)]); reg.resendAuth = op.headers.Authorization;
+      return new Response("{}", { status: resend === "falla" ? 500 : 200 });
+    }
     // Todo lo que sigue es de Google: tiene que llevar el permiso.
     reg.google.push(u);
     if(op.headers?.Authorization !== "Bearer permiso-" + reg.tokens) return new Response("{}", { status: 401 });
@@ -112,11 +125,27 @@ function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false } = 
     if((m = /\/drive\/v3\/files\/([^/?]+)\/permissions\?(.*)$/.exec(u))){
       const id = decodeURIComponent(m[1]), q = new URLSearchParams(m[2]);
       reg.drive.push(id);
+      if(op.method === "POST"){
+        const cuerpo = JSON.parse(op.body);
+        reg.creados = (reg.creados || []).concat([{ carpeta: id, q: Object.fromEntries(q), cuerpo }]);
+        if(rechazar.includes(cuerpo.emailAddress)) return new Response(JSON.stringify({ error: { message: "El administrador de ejemplo.org inhabilitó la recepción de elementos ajenos a su organización." } }), { status: 400 });
+        return new Response(JSON.stringify({ id: "nuevo" + reg.creados.length, role: "reader" }));
+      }
       const paginas = PERMISOS[id];
       if(!paginas) return new Response(JSON.stringify({ error: { message: "File not found" } }), { status: 404 });
       const n = q.get("pageToken") ? 2 : 1;
       const p = paginas.find(x => x.pagina === n);
       return new Response(JSON.stringify({ permissions: p.permisos, ...(p.siguiente ? { nextPageToken: p.siguiente } : {}) }));
+    }
+    if((m = /\/drive\/v3\/files\/([^/?]+)\/permissions\/([^/?]+)\?/.exec(u))){
+      const clave = `${decodeURIComponent(m[1])}/${decodeURIComponent(m[2])}`;
+      reg.drive.push(decodeURIComponent(m[1]));
+      if(op.method === "DELETE"){
+        reg.borrados = (reg.borrados || []).concat([clave]);
+        if(m[2] === "ph1") return new Response(JSON.stringify({ error: { message: "The permission is inherited and cannot be deleted." } }), { status: 403 });
+        return new Response(null, { status: 204 });
+      }
+      return PERM[clave] ? new Response(JSON.stringify(PERM[clave])) : new Response("{}", { status: 404 });
     }
     if((m = /\/drive\/v3\/files\/([^/?]+)\?/.exec(u))){
       const id = decodeURIComponent(m[1]);
@@ -126,12 +155,31 @@ function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false } = 
       if(drive && drive !== "oculto" && id === A) return new Response(JSON.stringify(DRIVE[drive]));
       return new Response(JSON.stringify({ error: { message: "File not found" } }), { status: 404 });
     }
-    if((m = /\/spreadsheets\/([^/]+)\/values\//.exec(u))){
+    if((m = /\/spreadsheets\/([^/]+)\/values(?:\/|:)/.exec(u))){
       const id = decodeURIComponent(m[1]);
       reg.hojas = (reg.hojas || []).concat(id);
-      if(id === ID_PLA1) return new Response(JSON.stringify({ values: FILAS_1 }));
-      if(id === ID_PLA2) return new Response(JSON.stringify({ values: FILAS_2 }));
-      return new Response("{}", { status: 404 });
+      reg.hojaFilas ||= { [ID_PLA1]: structuredClone(FILAS_1), [ID_PLA2]: structuredClone(FILAS_2) };
+      reg.titulos ||= {};
+      const filas = reg.hojaFilas[id];
+      if(!filas) return new Response("{}", { status: 404 });
+      const rango = decodeURIComponent((/\/values\/([^?]+)/.exec(u) || [])[1] || "");
+      const metodo = op.method || "GET";
+      if(metodo !== "GET") reg.entradas = (reg.entradas || []).concat([u.includes("values:batchUpdate") ? JSON.parse(op.body).valueInputOption : new URL(u).searchParams.get("valueInputOption")]);
+      if(metodo === "POST" && rango.endsWith(":append")){ filas.push(JSON.parse(op.body).values[0]); return new Response("{}"); }
+      if(metodo === "POST" && u.includes("values:batchUpdate")){
+        for(const d of JSON.parse(op.body).data){ const n = Number(/^E(\d+):H\d+$/.exec(d.range)[1]); const fila = (filas[n - 2] ||= []); d.values[0].forEach((v, k) => { fila[4 + k] = v; }); }
+        return new Response("{}");
+      }
+      if(metodo === "PUT"){
+        const v = JSON.parse(op.body).values[0];
+        if(rango === "G1:H1") reg.titulos[id] = v;
+        else { const n = Number(/^H(\d+)$/.exec(rango)[1]); (filas[n - 2] ||= [])[7] = v[0]; }
+        return new Response("{}");
+      }
+      if(rango === "G1:H1") return new Response(JSON.stringify(reg.titulos[id] ? { values: [reg.titulos[id]] } : {}));
+      const fila = /^A(\d+):H\1$/.exec(rango);
+      if(fila) return new Response(JSON.stringify({ values: [filas[Number(fila[1]) - 2] || []] }));
+      return new Response(JSON.stringify({ values: filas }));
     }
     throw new Error("pedido inesperado: " + u);
   };
@@ -270,6 +318,116 @@ const correr = async (req, m, env = entorno()) => { olvidarPermisos(); return le
   r = await correr(pedir({ accion: "comprobar", link: `https://drive.google.com/drive/folders/${A}` }), m);
   eq("función: si Google falla al comprobar, 502 (y no dice «ok»)", [r.estado, r.cuerpo], [502, { error: "google" }]);
 }
+
+/* ---------- Dar acceso, quitar y sacar a todos ---------- */
+const hacer = (cuerpo, m, env = entorno({ RESEND_API_KEY: "re_prueba" })) => correr(pedir(cuerpo), m, env);
+const ELENA = { correo: "Elena@Example.org ", nombre: "Elena <b>Ríos", idioma: "Hebreo", comunidad: "Chile" };
+{
+  let m = mundo();
+  let r = await hacer({ accion: "dar", persona: ELENA, carpetas: [ID_CAR1, ID_CAR2], mail: true, planilla: ID_PLA1 }, m);
+  eq("dar: un permiso de lector por carpeta, sin el aviso de Drive, al correo en minúscula",
+     m.reg.creados.map(c => [c.carpeta, c.cuerpo, c.q.sendNotificationEmail]),
+     [[ID_CAR1, { type: "user", role: "reader", emailAddress: "elena@example.org" }, "false"], [ID_CAR2, { type: "user", role: "reader", emailAddress: "elena@example.org" }, "false"]]);
+  eq("dar: pide el permiso de escribir (no el de leer)", m.reg.scope, ALCANCE_ESCRITURA);
+  eq("dar: contesta qué salió con cada cosa", [r.estado, r.cuerpo], [200, { carpetas: [{ id: ID_CAR1, ok: true }, { id: ID_CAR2, ok: true }], mail: "enviado", planilla: "agregada" }]);
+  const c = m.reg.correos[0];
+  eq("dar: un solo mail, al correo de la persona, desde Toldot y con la llave de Resend",
+     [m.reg.correos.length, c.to, c.from.startsWith("Toldot <"), m.reg.resendAuth], [1, ["elena@example.org"], true, "Bearer re_prueba"]);
+  eq("dar: el mail va en hebreo, de derecha a izquierda, con el link a la primera carpeta y el nombre sin HTML",
+     [c.subject, /dir="rtl"/.test(c.html), c.html.includes(ID_CAR1), c.html.includes("<b>Ríos")], ["ברוכים הבאים ל-Brújula", true, true, false]);
+  eq("dar: la planilla recibe una fila nueva ya marcada «Enviado» (así el Script no la repite), de Toldot y con una nota",
+     m.reg.hojaFilas[ID_PLA1].at(-1), ["Elena <b>Ríos", "elena@example.org", "Chile", "Hebreo", "Enviado", "", "Toldot", "Compartido desde Toldot (2026-11-23)"]);
+  eq("dar: pone los títulos de las dos columnas nuevas", m.reg.titulos[ID_PLA1], ["Desde", "Nota de Toldot"]);
+  eq("dar: todo lo que escribe en la planilla va como texto (RAW): un «=algo» no se vuelve fórmula", [m.reg.entradas.length > 0, m.reg.entradas.every(x => x === "RAW")], [true, true]);
+
+  m = mundo();
+  r = await hacer({ accion: "dar", persona: ELENA, carpetas: [ID_CAR1], mail: false, planilla: ID_PLA2 }, m);
+  eq("dar: sin mail no sale ninguno", [r.cuerpo.mail, m.reg.correos], ["no", undefined]);
+  eq("dar: anota en la planilla que se le dijo", [r.cuerpo.planilla, m.reg.hojaFilas[ID_PLA2].length], ["agregada", 2]);
+
+  m = mundo();
+  r = await hacer({ accion: "dar", persona: { correo: "hannah@example.org", nombre: "Hannah Cole", idioma: "Inglés" }, carpetas: [ID_CAR1], mail: false, planilla: ID_PLA1, fila: 3 }, m);
+  eq("dar: a alguien que estaba pendiente en la planilla le marca esa fila «Enviado» y limpia el error",
+     [r.cuerpo.planilla, m.reg.hojaFilas[ID_PLA1][1].slice(4), m.reg.hojaFilas[ID_PLA1].length], ["actualizada", ["Enviado", "", "Toldot", "Compartido desde Toldot (2026-11-23)"], 6]);
+  eq("dar: lo mismo al actualizar una fila: como texto (RAW)", [m.reg.entradas.length > 0, m.reg.entradas.every(x => x === "RAW")], [true, true]);
+  m = mundo();
+  r = await hacer({ accion: "dar", persona: { correo: "hannah@example.org", nombre: "Hannah Cole" }, carpetas: [ID_CAR1], mail: false, planilla: ID_PLA1, fila: 2 }, m);
+  eq("dar: si esa fila ya es de otra persona (alguien la cambió), no la toca", [r.cuerpo.planilla, m.reg.hojaFilas[ID_PLA1][0][6]], ["fila-cambio", undefined]);
+
+  m = mundo();
+  r = await hacer({ accion: "dar", persona: { correo: "no-es-un-correo" }, carpetas: [ID_CAR1] }, m);
+  eq("dar: un correo que no lo es, 400 y no se crea nada", [r.estado, r.cuerpo, m.reg.creados], [400, { error: "correo" }, undefined]);
+  r = await hacer({ accion: "dar", persona: ELENA, carpetas: [ID_CAR1, "OtraCarpetaAbCdEfGh"] }, m);
+  eq("dar: una carpeta que no está en el catálogo, 400 y no se crea nada (ni en las otras)", [r.estado, r.cuerpo, m.reg.creados], [400, { error: "carpetas" }, undefined]);
+  r = await hacer({ accion: "dar", persona: ELENA, carpetas: [] }, m);
+  eq("dar: sin carpetas, 400", [r.estado, r.cuerpo], [400, { error: "carpetas" }]);
+
+  m = mundo({ rechazar: ["rechazada@example.org"] });
+  r = await hacer({ accion: "dar", persona: { correo: "rechazada@example.org", nombre: "X" }, carpetas: [ID_CAR1], mail: true, planilla: ID_PLA1 }, m);
+  eq("dar: si Google no deja compartir con ese correo, se dice en una palabra y no se manda mail ni se anota",
+     [r.cuerpo, m.reg.correos, m.reg.hojaFilas], [{ carpetas: [{ id: ID_CAR1, ok: false, error: "rechazado" }], mail: "no", planilla: "no" }, undefined, undefined]);
+  eq("dar: lo que dijo Google no viaja a la pantalla (puede traer correos)", JSON.stringify(r.cuerpo).includes("ejemplo.org"), false);
+
+  m = mundo();
+  r = await hacer({ accion: "dar", persona: ELENA, carpetas: [ID_CAR1], mail: true }, m, entorno({ RESEND_API_KEY: "" }));
+  eq("dar: sin la llave de Resend comparte igual y lo dice", [r.cuerpo.carpetas[0].ok, r.cuerpo.mail], [true, "sin-configurar"]);
+  m = mundo({ resend: "falla" });
+  r = await hacer({ accion: "dar", persona: ELENA, carpetas: [ID_CAR1], mail: true }, m);
+  eq("dar: si el mail no sale, comparte igual y lo dice", [r.cuerpo.carpetas[0].ok, r.cuerpo.mail], [true, "error"]);
+  m = mundo({ admin: false });
+  r = await hacer({ accion: "dar", persona: ELENA, carpetas: [ID_CAR1] }, m);
+  eq("dar: quien no es admin, 403 y no se crea nada", [r.estado, m.reg.creados], [403, undefined]);
+
+  // Quitar
+  m = mundo();
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "pv1" }, filas: [{ planilla: ID_PLA1, fila: 2 }] }, m);
+  eq("quitar: comprueba con Drive que el permiso es de esa persona y de lector, y lo borra", [r.cuerpo.carpetas, m.reg.borrados], [[{ id: ID_CAR1, ok: true }], [ID_CAR1 + "/pv1"]]);
+  eq("quitar: deja una nota en su fila de la planilla", [r.cuerpo.planilla, m.reg.hojaFilas[ID_PLA1][0][7]], ["escrita", "Quitado de Brújula Cloud (2026-11-23)"]);
+  eq("quitar: pide el permiso de escribir", m.reg.scope, ALCANCE_ESCRITURA);
+  eq("quitar: la nota también va como texto (RAW)", [m.reg.entradas.length > 0, m.reg.entradas.every(x => x === "RAW")], [true, true]);
+  m = mundo();
+  r = await hacer({ accion: "quitar", correo: "equipo@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "pe1" } }, m);
+  eq("quitar: a un editor no se lo saca", [r.cuerpo.carpetas, m.reg.borrados], [[{ id: ID_CAR1, ok: false, error: "editor" }], undefined]);
+  m = mundo();
+  r = await hacer({ accion: "quitar", correo: "otra.persona@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "pv1" } }, m);
+  eq("quitar: si el permiso que mandó el navegador es de otra persona, no se borra", [r.cuerpo.carpetas, m.reg.borrados], [[{ id: ID_CAR1, ok: false, error: "no-coincide" }], undefined]);
+  m = mundo();
+  r = await hacer({ accion: "quitar", correo: "otra@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "ph1" } }, m);
+  eq("quitar: un acceso heredado de una carpeta madre se avisa (no se puede quitar desde la hija)", r.cuerpo.carpetas, [{ id: ID_CAR1, ok: false, error: "heredado" }]);
+  eq("quitar: y no se anota nada en la planilla si no se quitó nada", r.cuerpo.planilla, "no");
+  m = mundo();
+  r = await hacer({ accion: "quitar", correo: "ya.no@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "yaborrado" } }, m);
+  eq("quitar: si ya no lo tenía, queda como hecho", r.cuerpo.carpetas, [{ id: ID_CAR1, ok: true, ya: true }]);
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1] }, m);
+  eq("quitar: sin el dato del permiso no se arriesga", r.cuerpo.carpetas, [{ id: ID_CAR1, ok: false, error: "sin-dato" }]);
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: ["OtraCarpetaAbCdEfGh"], permisos: {} }, m);
+  eq("quitar: una carpeta fuera del catálogo, 400", [r.estado, r.cuerpo], [400, { error: "carpetas" }]);
+
+  // Sacar a todos
+  m = mundo();
+  r = await hacer({ accion: "sacar-todos", carpeta: ID_CAR1, confirmar: "otro nombre" }, m);
+  eq("sacar a todos: sin el nombre exacto de la carpeta no hace nada", [r.estado, r.cuerpo, m.reg.borrados], [400, { error: "confirmar" }, undefined]);
+  r = await hacer({ accion: "sacar-todos", carpeta: ID_CAR1, confirmar: "  Brújula Cloud " }, m);
+  eq("sacar a todos: quita a los lectores y cuenta a los editores sin tocarlos", r.cuerpo, { quitados: 101, heredados: 0, errores: 0, editores: 2 });
+  eq("sacar a todos: no borró al editor, a la dueña, al grupo ni al «cualquiera con el link»", m.reg.borrados.some(k => /\/(q2|q3|q4|q5)$/.test(k)), false);
+  r = await hacer({ accion: "sacar-todos", carpeta: "OtraCarpetaAbCdEfGh", confirmar: "x" }, mundo());
+  eq("sacar a todos: una carpeta fuera del catálogo, 400", [r.estado, r.cuerpo], [400, { error: "carpetas" }]);
+
+  // Comprobar una planilla
+  const planilla = async (clave, link = `https://docs.google.com/spreadsheets/d/${A}/edit`) => (await hacer({ accion: "comprobar-planilla", link }, mundo({ drive: clave }))).cuerpo;
+  eq("planilla: una que Toldot puede leer y escribir", await planilla("hoja"), { caso: "ok", id: A, nombre: "Users" });
+  eq("planilla: una que Toldot solo puede mirar, no", await planilla("hojaLectura"), { caso: "sinpermiso" });
+  eq("planilla: un documento no es una planilla", await planilla("doc"), { caso: "noplanilla" });
+  eq("planilla: algo que no es un link", await planilla("hoja", "mi planilla"), { caso: "link" });
+}
+eq("planilla: comprobar usa el permiso de solo lectura", await (async () => { const mm = mundo({ drive: "hoja" }); await hacer({ accion: "comprobar-planilla", link: `https://docs.google.com/spreadsheets/d/${A}/edit` }, mm); return mm.reg.scope; })(), ALCANCE_LECTURA);
+
+/* ---------- El mail de bienvenida ---------- */
+for(const [l, asunto] of [["es", "Te damos la bienvenida a Brújula"], ["en", "Welcome to Brújula"], ["pt", "Boas-vindas à Brújula"], ["he", "ברוכים הבאים ל-Brújula"]]){
+  const c = correoBrujula({ nombre: "Elena <b>Ríos", lang: l, enlace: "https://drive.google.com/drive/folders/" + A });
+  eq(`mail (${l}): asunto en su idioma, el nombre sin HTML y el botón a la carpeta`, [c.subject, c.html.includes("<b>Ríos"), c.html.includes("drive.google.com/drive/folders/" + A), /dir="rtl"/.test(c.html)], [asunto, false, true, l === "he"]);
+}
+eq("mail: un enlace que no es de Drive no se usa (cae en Toldot)", /evil\.example/.test(correoBrujula({ nombre: "E", lang: "es", enlace: "https://evil.example/x" }).html), false);
 
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
