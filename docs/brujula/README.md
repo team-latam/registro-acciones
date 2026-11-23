@@ -78,7 +78,7 @@ gente inventada (`@example.org`).
     - **Agregar** pegando el link. Toldot comprueba con Drive que sea una carpeta de «Mi unidad» y que pueda gestionarla;
       si el link es un **acceso directo** (la entrada de Brújula está hecha de accesos directos) propone la carpeta
       de verdad; si no está compartida con la cuenta de Toldot, explica cómo hacerlo; si es un documento, lo dice.
-    - **Editar**: nombre propio en Toldot (el de Drive no se toca), descripción, idioma, orden, **paquetes** a los que
+    - **Editar**: nombre propio en Toldot (el de Drive no se toca), orden, **paquetes** a los que
       pertenece y **en qué planilla** se anota a quien la reciba (la regla de la planilla: si todas las carpetas
       elegidas están marcadas para la de CARE, va a la de CARE; si no, a la grande).
     - **Desactivar**: no se ofrece al invitar ni se da a nadie nuevo; quien ya la tiene la conserva y se le puede quitar.
@@ -91,6 +91,26 @@ gente inventada (`@example.org`).
     del catálogo **no la da el Script**, solo Toldot (invitar y «Dar acceso ahora»); para que el Script también la dé
     hay que actualizarlo. Por eso, con carpetas distintas a las de hoy, conviene dar acceso desde Toldot.
     En la base, el catálogo son tablas editables (carpetas y paquetes), no código: el ID de Drive sale del link.
+
+## Cómo tiene que verse (UX)
+
+Pedido del usuario el 23/11/2026: que siga lo que ya se trabajó de UX en Toldot, y que sea **simple, nada engorroso, sin
+texto innecesario** que explique cómo funciona algo o diga lo que ya se entiende. La maqueta se recortó con estas reglas:
+
+- **Sin párrafos debajo de los títulos ni «¿Cómo funciona?»** en las pantallas de Brújula: el título y los controles se
+  explican solos. Tampoco hay cartelitos que repitan lo que la pantalla ya muestra.
+- **Texto solo cuando evita un error o aclara algo que no se ve**, en **una línea** y **en el momento**: al confirmar
+  algo que no se deshace, ante un error, o en un caso especial (un acceso heredado, una carpeta que el Script no da).
+- **El estado se ve, no se cuenta:** tildes, rayas y etiquetas cortas. Una etiqueta aparece **solo cuando algo pide
+  atención** (por ejemplo «Falta permiso»), no «todo bien» en cada fila.
+- **Una palabra para cada cosa:** *carpeta*, *paquete*, *planilla*, *acceso*, *personas* (como D25 en el resto de Toldot).
+- **Botones con un verbo corto** («Invitar», «Agregar», «Guardar»); lo peligroso se confirma escribiendo el nombre.
+- **En el celular, lo que se toca mide 44 px** y lo secundario 32 (Z2 de la auditoría).
+- **Cuatro idiomas con textos cortos:** el portugués y el hebreo suelen ser más largos y rompen las filas.
+- El mail de bienvenida también es corto (como «Ya podés entrar», D26).
+
+Otras secciones de Administración sí llevan un párrafo y «¿Cómo funciona?»; no se tocaron. Se pueden revisar aparte si el
+usuario lo pide.
 
 ## Etapas
 
