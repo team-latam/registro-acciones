@@ -315,7 +315,10 @@ alter table public.audit_log
     -- canceló o borró qué): lo escribe la base, ver registrar_posteo.
     'post_created', 'post_edited', 'post_cancelled', 'post_deleted',
     -- Unificar dos cuentas: lo anota la base (15-unificar-cuentas.sql).
-    'accounts_merged')),
+    'accounts_merged',
+    -- Brújula (30-brujula.sql, 23/11/2026): quién le dio o le sacó el acceso a unas carpetas a una persona. Lo escribe
+    -- un admin desde la pantalla, con el correo de la persona en target y las carpetas en detail.
+    'brujula_dio', 'brujula_quito')),
   add constraint audit_textos check (
     length(actor_email) between 1 and 200
     and length(actor_name) between 1 and 120

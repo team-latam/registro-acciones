@@ -107,6 +107,11 @@ la app lee el calendario, que ya no es público) y `SUPABASE_ACCESS_TOKEN`
 que el workflow le carga como `LLAVE_DE_SERVICIO`. Si se pierden, se
 crean de nuevo: los pasos están en `supabase/functions/LEEME.md`.
 
+Desde el 23/11/2026, otro secreto de GitHub: `GOOGLE_CUENTA_BRUJULA` (la llave de la cuenta de servicio de Brújula, distinta de la del
+Calendar: con ella la función `brujula` lee y administra los accesos de las carpetas de Drive y las planillas). Si se pierde, se crea
+una llave nueva en la misma cuenta y se vuelve a cargar (`supabase/functions/LEEME.md`). La cuenta tiene que ser Editor de cada
+carpeta y de las dos planillas «Users»: eso vive en Drive, no en el repo.
+
 Los de `index.html` no son secretos (viajan al navegador de cualquiera que entre a la página):
 lo que de verdad protege los datos son los permisos de
 `supabase/02-politicas.sql`.

@@ -1,0 +1,334 @@
+/* ======================================================================
+   Brújula en Toldot (Administración › Brújula, docs/brujula/README.md)
+
+   La pantalla del admin: quién tiene acceso a las carpetas de Drive (se lee por la
+   función `brujula`, que acá es de mentira), invitar, dar y quitar acceso, y editar el
+   catálogo de carpetas pegando links. Con la app de verdad y el Supabase de mentira de
+   app_dom_test.mjs; todo con gente inventada (@example.org).
+   ====================================================================== */
+import { abrirNavegador, entrar, admin, irAdmin, ADMIN, PERS, BASE } from "./app_de_mentira.mjs";
+
+let pass = 0, fail = 0;
+const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
+  if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
+
+const C1 = "CarpetaUnoAbCdEf", C2 = "CarpetaDosGhIjKl", C3 = "CarpetaTresMnOpQr", PL1 = "PlanillaUnoAbCdEf", PL2 = "PlanillaDosGhIjKl";
+const base = () => ({
+  ...BASE(),
+  brujula_carpetas: [
+    { id: C1, nombre: "Brújula Cloud", nombre_drive: "Brújula Cloud", orden: 1, activa: true, planillas: [PL1], creada: "2026-11-01T00:00:00Z", creada_por: ADMIN },
+    { id: C2, nombre: "CARE", nombre_drive: "CARE", orden: 2, activa: true, planillas: [PL1, PL2], creada: "2026-11-01T00:00:00Z", creada_por: ADMIN },
+    { id: C3, nombre: "Archivo 2025", nombre_drive: "Archivo 2025", orden: 3, activa: false, planillas: [], creada: "2026-11-01T00:00:00Z", creada_por: ADMIN },
+  ],
+  brujula_planillas: [{ id: PL1, nombre: "Users grande", orden: 1 }, { id: PL2, nombre: "Users CARE", orden: 2 }],
+  brujula_paquetes: [{ id: "paq-todo", nombre: "Todo Brújula", orden: 1 }],
+  brujula_paquete_carpetas: [{ id: "pc1", paquete: "paq-todo", carpeta: C1 }, { id: "pc2", paquete: "paq-todo", carpeta: C2 }],
+});
+const persona = (correo, nombre, o = {}) => ({ correo, nombre, idioma: "Español", comunidad: "", carpetas: {}, permisos: {}, editor: false, planillas: [], pendiente: false, error: "", ...o });
+const LEIDO = () => ({
+  leido: new Date().toISOString(),
+  carpetas: [
+    { id: C1, nombre: "Brújula Cloud", orden: 1, activa: true, planillas: [PL1], estado: "ok", personas: 4 },
+    { id: C2, nombre: "CARE", orden: 2, activa: true, planillas: [PL1, PL2], estado: "ok", personas: 1 },
+    { id: C3, nombre: "Archivo 2025", orden: 3, activa: false, planillas: [], estado: "sinpermiso", personas: 0 },
+  ],
+  planillas: [{ id: PL1, nombre: "Users grande", orden: 1, estado: "ok", filas: 3, pendientes: 2 }, { id: PL2, nombre: "Users CARE", orden: 2, estado: "ok", filas: 0, pendientes: 0 }],
+  personas: [
+    persona("valeria@example.org", "Valeria Montes", { comunidad: "Buenos Aires", carpetas: { [C1]: "reader", [C2]: "reader" }, permisos: { [C1]: "pv1", [C2]: "pv2" }, planillas: [{ planilla: PL1, fila: 2, enviado: true }] }),
+    persona("camila@example.org", "Camila Ortega", { carpetas: { [C1]: "reader" }, permisos: { [C1]: "pc1" } }),
+    persona("hannah@example.org", "Hannah Cole", { idioma: "Inglés", pendiente: true, planillas: [{ planilla: PL1, fila: 3, enviado: false }] }),
+    persona("joaquin@example.org", "Joaquín Salas", { pendiente: true, error: "Error: no se pudo compartir", planillas: [{ planilla: PL1, fila: 4, enviado: false }] }),
+    persona("evil@example.org", "<img src=x onerror=window.__xss=1>", { carpetas: { [C1]: "reader" }, permisos: { [C1]: "pe1" } }),
+    persona("equipo@example.org", "Equipo", { carpetas: { [C1]: "writer" }, permisos: { [C1]: "pq1" }, editor: true }),
+  ],
+});
+
+const b = await abrirNavegador();
+// Entra como admin y deja la función `brujula` de mentira: anota cada pedido y contesta según el guion.
+async function abrir({ lang, viewport, guion = {}, datos = LEIDO, estado = 200 } = {}){
+  const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { base: base(), lang, viewport });
+  const pedidos = [];
+  await p.route(/\/functions\/v1\/brujula/, ruta => {
+    const cuerpo = JSON.parse(ruta.request().postData() || "{}");
+    pedidos.push(cuerpo);
+    const r = (guion[cuerpo.accion] || (() => cuerpo.accion === "leer" ? { estado, cuerpo: estado === 200 ? datos() : { error: "sin-configurar" } } : { estado: 200, cuerpo: {} }))(cuerpo);
+    return ruta.fulfill({ status: r.estado ?? 200, contentType: "application/json", body: JSON.stringify(r.cuerpo ?? r) });
+  });
+  await irAdmin(p);
+  await admin(p, "preferencias", "brujula");
+  await p.waitForTimeout(900);
+  return { p, errores, pedidos };
+}
+const textos = (p, sel) => p.$$eval(sel, l => l.map(e => e.innerText.replace(/\s+/g, " ").trim()));
+const filas = p => p.$$eval(".bj-fila:not(.bj-cab)", l => l.map(f => f.querySelector(".bj-nombre").innerText.trim()));
+const clic = async (p, sel, ms = 350) => { await p.click(sel); await p.waitForTimeout(ms); };
+const confirmar = async p => { await p.click("#confirmOk"); await p.waitForTimeout(500); };
+const tabla = (p, t) => p.evaluate(t => window.__sb.tablas[t], t);
+
+/* ---------- La pantalla: lista, cuadrícula, filtros ---------- */
+{
+  const { p, errores, pedidos } = await abrir();
+  eq("el menú de Administración tiene «Brújula» en Equipo, con la cantidad de pendientes", await textos(p, '.admin-menu [data-key="brujula"]'), ["Brújula 2"]);
+  eq("la pantalla pide leer a la función", pedidos.map(x => x.accion), ["leer"]);
+  eq("las solapas dicen cuántas personas y cuántas carpetas (solo las activas)", await textos(p, ".bj-tab"), ["Personas · 6", "Carpetas · 2"]);
+  eq("la cuadrícula tiene una columna por carpeta activa", await textos(p, ".bj-cab .bj-c-cab"), ["Brújula Cloud", "CARE"]);
+  eq("las personas en orden de lectura", await filas(p), ["Valeria Montes", "Camila Ortega", "Hannah Cole", "Joaquín Salas", "<img src=x onerror=window.__xss=1>", "Equipo"]);
+  eq("quién tiene qué (✓ lector, – nada, E editor)", await p.$$eval(".bj-fila:not(.bj-cab)", l => l.map(f => [...f.querySelectorAll(".bj-celdas .bj-c")].map(c => c.innerText).join(""))), ["✓✓", "✓–", "––", "––", "✓–", "E–"]);
+  eq("cada persona con su etiqueta", await p.$$eval(".bj-fila:not(.bj-cab) .bj-tag", l => l.map(e => e.innerText)), ["Todo", "1 de 2", "Pendiente", "Error", "1 de 2", "1 de 2"]);
+  eq("un nombre con HTML se ve como texto: no se crea nada ni se ejecuta", [await p.$$eval(".bj img", l => l.length), await p.evaluate(() => window.__xss === 1)], [0, false]);
+  eq("sin la pregunta de siempre: no hay párrafos explicativos ni «¿Cómo funciona?» en la sección", await p.$$eval(".bj p, .bj details, .admin-ayuda", l => l.length), [0].map(() => 0)[0]);
+  eq("la cabecera lleva el botón de invitar", await textos(p, ".admin-cab-acc .bj-btn"), ["+ Invitar personas"]);
+  eq("«Actualizado» y el botón de actualizar", [(await textos(p, ".bj-actualiza span"))[0].startsWith("Actualizado"), await p.$$eval('[data-action="bj-recargar"]', l => l.length)], [true, 1]);
+
+  await p.fill("#bjBuscar", "camil"); await p.waitForTimeout(250);
+  eq("buscar filtra por nombre", await filas(p), ["Camila Ortega"]);
+  await p.fill("#bjBuscar", "HANNAH@example"); await p.waitForTimeout(250);
+  eq("…o por correo, sin mirar mayúsculas", await filas(p), ["Hannah Cole"]);
+  await p.fill("#bjBuscar", ""); await p.waitForTimeout(250);
+  eq("los filtros cuentan: pendientes 2, con problemas 1, parciales 3", await textos(p, ".bj-fchip"), ["Todas", "Pendientes · 2", "Con problemas · 1", "Parciales · 3"]);
+  await clic(p, '[data-action="bj-filtro"][data-key="pend"]');
+  eq("pendientes: los dos que esperan (uno con error)", await filas(p), ["Hannah Cole", "Joaquín Salas"]);
+  eq("pendientes: el aviso corto con el botón para darles acceso", await textos(p, ".bj-aviso"), ["2 personas esperan acceso. Dar acceso a las 2"]);
+  await clic(p, '[data-action="bj-filtro"][data-key="prob"]');
+  eq("con problemas: solo el que tiene error", await filas(p), ["Joaquín Salas"]);
+  await clic(p, '[data-action="bj-filtro"][data-key="parc"]');
+  eq("parciales: los que tienen algo pero no todo", await filas(p), ["Camila Ortega", "<img src=x onerror=window.__xss=1>", "Equipo"]);
+  eq("sin errores en la consola", errores, []);
+  await p.close();
+}
+
+/* ---------- Elegir a varios y quitar ---------- */
+{
+  const { p, pedidos } = await abrir({ guion: { quitar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), planilla: "no" }) } });
+  await p.check('[data-action="bj-sel"][data-correo="valeria@example.org"]'); await p.waitForTimeout(200);
+  await p.check('[data-action="bj-sel"][data-correo="camila@example.org"]'); await p.waitForTimeout(200);
+  eq("al elegir aparece la barra con cuántas", await textos(p, ".bj-barra strong"), ["2 personas elegidas"]);
+  eq("…con sus tres acciones y limpiar", await textos(p, ".bj-barra button"), ["Agregar carpeta", "Quitar de una carpeta", "Quitar todo el acceso", "Limpiar"]);
+  await clic(p, '[data-action="bj-quitar-todo-varios"]');
+  eq("quitar todo pide confirmar, con cuántas personas", (await textos(p, "#confirmMessage")).join(" ").includes("2 personas"), true);
+  await confirmar(p);
+  const q = pedidos.filter(x => x.accion === "quitar");
+  eq("se le pide a la función de a una persona, solo las carpetas que tiene y con los permisos de Drive que leyó",
+     q.map(x => [x.correo, x.carpetas, x.permisos, x.filas]),
+     [["valeria@example.org", [C1, C2], { [C1]: "pv1", [C2]: "pv2" }, [{ planilla: PL1, fila: 2 }]], ["camila@example.org", [C1], { [C1]: "pc1" }, []]]);
+  eq("muestra lo que salió: «Listo» y cada persona con sus carpetas", [await textos(p, ".bj-form h3"), await textos(p, ".bj-res-n")], [["Listo"], ["Valeria Montes", "Camila Ortega"]]);
+  eq("…y vuelve a leer Drive para mostrar lo nuevo", pedidos.filter(x => x.accion === "leer").length, 2);
+  eq("queda anotado en el registro de actividad, con quién lo hizo", (await tabla(p, "audit_log")).filter(x => x.type === "brujula_quito").map(x => [x.actor_email, x.target_email, x.detail]),
+     [[ADMIN, "valeria@example.org", "Brújula Cloud, CARE"], [ADMIN, "camila@example.org", "Brújula Cloud"]]);
+  await clic(p, '[data-action="bj-volver"]');
+  eq("«Entendido» vuelve a la lista y limpia lo elegido", [await p.$$eval(".bj-barra", l => l.length), (await filas(p)).length], [0, 6]);
+  await p.close();
+}
+
+/* ---------- Una persona ---------- */
+{
+  const { p, pedidos } = await abrir({ guion: { quitar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: false, error: "heredado" })), planilla: "no" }), dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), mail: "no", planilla: "no" }) } });
+  await clic(p, '[data-action="bj-persona"][data-correo="camila@example.org"]');
+  eq("la ficha: nombre, correo y estado", [await textos(p, ".bj-ficha h3"), await textos(p, ".bj-ficha .bj-mail"), await textos(p, ".bj-ficha .bj-tag")], [["Camila Ortega"], ["camila@example.org"], ["1 de 2"]]);
+  eq("cada carpeta ofrecida con su botón: quitar la que tiene, dar la que no (la desactivada no, si no la tiene)",
+     await textos(p, ".bj-carp"), ["📁 Brújula Cloud Tiene acceso Quitar", "📁 CARE Sin acceso Dar acceso"]);
+  await clic(p, '[data-action="bj-quitar-una"]');
+  await confirmar(p);
+  eq("quitar una carpeta: la función recibe solo esa", pedidos.filter(x => x.accion === "quitar").map(x => x.carpetas), [[C1]]);
+  eq("si es un acceso heredado, la pantalla lo explica con palabras (no con lo que dijo Google)", await textos(p, ".bj-res-l li"), ["! Brújula Cloud Le llega por otra carpeta: hay que sacarlo en Drive."]);
+  await clic(p, '[data-action="bj-volver"]');
+  await clic(p, '[data-action="bj-persona"][data-correo="camila@example.org"]');
+  await clic(p, '[data-action="bj-dar-una"]');
+  eq("dar acceso a una carpeta: sin mail y sin tocar la planilla", pedidos.filter(x => x.accion === "dar").map(x => [x.persona.correo, x.carpetas, x.mail, x.planilla ?? null]), [["camila@example.org", [C2], false, null]]);
+  await p.close();
+}
+
+/* ---------- Invitar ---------- */
+{
+  const { p, pedidos } = await abrir({ guion: { dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), mail: "enviado", planilla: "agregada" }) } });
+  await clic(p, '[data-action="bj-invitar-abrir"]');
+  eq("el formulario: persona, carpetas y mail; el paquete de siempre ya elegido con sus carpetas", [await textos(p, ".bj-form h3"), await textos(p, ".bj-campos legend"), await p.$$eval(".bj-lista-c input:checked", l => l.length), await p.$$eval(".bj-radio.active", l => l.map(e => e.innerText.replace(/\s+/g, " ")))],
+     [["Invitar personas"], ["Persona", "Carpetas"], 2, ["Todo Brújula 2 carpetas"]]);
+  eq("sin nombre ni correo no se puede invitar", await p.$eval('[data-action="bj-invitar"]', e => e.disabled), true);
+  await p.fill('[data-bj="f.nombre"]', "Elena Ríos");
+  await p.fill('[data-bj="f.correo"]', "Elena@Example.org");
+  await p.waitForTimeout(500);
+  await clic(p, '[data-action="bj-idioma"][data-key="he"]');
+  await p.fill('[data-bj="f.comunidad"]', "Chile");
+  await p.waitForTimeout(500);
+  eq("lo escrito no se pierde al cambiar el idioma", [await p.inputValue('[data-bj="f.nombre"]'), await p.inputValue('[data-bj="f.correo"]'), await p.inputValue('[data-bj="f.comunidad"]')], ["Elena Ríos", "Elena@Example.org", "Chile"]);
+  eq("el resumen dice cuántas carpetas y si va mail", await textos(p, ".bj-fin .bj-mail"), ["2 carpetas · con mail"]);
+  await clic(p, '[data-action="bj-mail"]');
+  eq("el mail se puede apagar", await textos(p, ".bj-fin .bj-mail"), ["2 carpetas · sin mail"]);
+  await clic(p, '[data-action="bj-mail"]');
+  await p.uncheck(`[data-action="bj-carpeta-marcar"][data-id="${C2}"]`); await p.waitForTimeout(250);
+  eq("sacar una carpeta pasa el paquete a «A medida»", await p.$$eval(".bj-radio.active", l => l.map(e => e.innerText.replace(/\s+/g, " "))), ["A medida Elegir carpetas"]);
+  await p.check(`[data-action="bj-carpeta-marcar"][data-id="${C2}"]`); await p.waitForTimeout(250);
+  await clic(p, '[data-action="bj-invitar"]', 600);
+  const d = pedidos.filter(x => x.accion === "dar");
+  eq("se le pide a la función: la persona normalizada, las carpetas en orden, el mail, y la planilla que corresponde a esas carpetas",
+     d.map(x => [x.persona, x.carpetas, x.mail, x.planilla]),
+     [[{ correo: "elena@example.org", nombre: "Elena Ríos", idioma: "he", comunidad: "Chile" }, [C1, C2], true, PL1]]);
+  eq("muestra «Listo» con el mail", [await textos(p, ".bj-form h3"), await textos(p, ".bj-res .bj-mail")], [["Listo"], ["Mail enviado"]]);
+  eq("queda anotado en el registro de actividad", (await tabla(p, "audit_log")).filter(x => x.type === "brujula_dio").map(x => [x.target_email, x.detail]), [["elena@example.org", "Brújula Cloud, CARE"]]);
+  await p.close();
+}
+{
+  // Solo CARE → la planilla de CARE; una lista pegada → una invitación por línea.
+  const { p, pedidos } = await abrir({ guion: { dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: id !== C2 || c.persona.correo !== "malo@example.org", error: "rechazado" })), mail: "no", planilla: "no" }) } });
+  await clic(p, '[data-action="bj-invitar-abrir"]');
+  await clic(p, '[data-action="bj-modo"][data-key="lista"]');
+  await p.fill('[data-bj="f.lista"]', "Ana Pérez, ana@example.org\nmalo@example.org\nesto no es un correo\nLuis Sosa <luis@example.org>");
+  await p.waitForTimeout(500);
+  await p.uncheck(`[data-action="bj-carpeta-marcar"][data-id="${C1}"]`); await p.waitForTimeout(250);
+  await clic(p, '[data-action="bj-invitar"]', 700);
+  const d = pedidos.filter(x => x.accion === "dar");
+  eq("una lista pegada: una invitación por cada línea con un correo (las demás se ignoran), con su nombre si lo trae",
+     d.map(x => [x.persona.correo, x.persona.nombre]), [["ana@example.org", "Ana Pérez"], ["malo@example.org", ""], ["luis@example.org", "Luis Sosa"]]);
+  eq("solo CARE: la planilla de CARE (la más específica que las tiene a todas marcadas)", [...new Set(d.map(x => x.planilla))], [PL2]);
+  eq("si a alguien no se le pudo dar, se dice cuál y por qué, en una frase", await textos(p, ".bj-res-l .mal"), ["! CARE Google no dejó compartir con ese correo."]);
+  eq("«Listo en 2 de 3»", await textos(p, ".bj-form h3"), ["Listo en 2 de 3"]);
+  await p.close();
+}
+
+/* ---------- Los pendientes de la planilla ---------- */
+{
+  const { p, pedidos } = await abrir({ guion: { dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), mail: "enviado", planilla: "actualizada" }) } });
+  await clic(p, '[data-action="bj-filtro"][data-key="pend"]');
+  await clic(p, '[data-action="bj-dar-pendientes"]');
+  eq("dar acceso a los pendientes pide confirmar, con cuántas personas y qué paquete", (await textos(p, "#confirmMessage")).join(" ").includes("2 personas (Todo Brújula)"), true);
+  await confirmar(p);
+  const d = pedidos.filter(x => x.accion === "dar");
+  eq("se les da el paquete de siempre, con mail, y se le pasa a la función la fila de la planilla para marcarla «Enviado»",
+     d.map(x => [x.persona.correo, x.carpetas, x.mail, x.planilla, x.fila]), [["hannah@example.org", [C1, C2], true, PL1, 3], ["joaquin@example.org", [C1, C2], true, PL1, 4]]);
+  await p.close();
+}
+
+/* ---------- El catálogo de carpetas ---------- */
+{
+  const guion = {
+    comprobar: c => /nueva/.test(c.link) ? { caso: "ok", id: "CarpetaCuatroQrStUv", nombre: "Material 2027" } : /atajo/.test(c.link) ? { caso: "atajo", destino: { id: "DestinoRealAbCdEfG", nombre: "Hadraja · Enseñanza" } }
+      : /sinperm/.test(c.link) ? { caso: "sinpermiso" } : { caso: "nocarpeta" },
+  };
+  const { p, pedidos } = await abrir({ guion });
+  await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  eq("las carpetas, en su orden, con cuántas personas y la desactivada marcada", await textos(p, ".bj-carp .bj-carp-t").then(l => l.slice(0, 3)), ["Brújula Cloud 4 personas", "CARE 1 personas", "Archivo 2025 0 personas"]);
+  eq("una etiqueta solo donde algo pide atención (la desactivada y la que Toldot no ve)", await p.$$eval(".bj-carp .bj-tag", l => l.map(e => e.innerText)), ["Desactivada"]);
+  eq("los paquetes con sus carpetas y las planillas con sus pendientes", [await textos(p, ".bj-paq"), await textos(p, ".bj-seccion .bj-carp-t").then(l => l.slice(-2))], [["Todo Brújula Editar Brújula Cloud CARE"], ["Users grande 3 filas · 2 pendientes", "Users CARE 0 filas · 0 pendientes"]]);
+
+  // Agregar por link
+  await p.fill("#bjLinkCarpeta", "https://drive.google.com/drive/folders/nueva");
+  await clic(p, '[data-action="bj-carpeta-nueva"]', 800);
+  eq("agregar por link: comprueba con la función y muestra lo encontrado", [pedidos.filter(x => x.accion === "comprobar").map(x => x.link), await textos(p, ".bj-ok"), await p.inputValue('[data-bj="f.nombre"]')], [["https://drive.google.com/drive/folders/nueva"], ["✓ Carpeta encontrada"], "Material 2027"]);
+  eq("…y avisa lo único que no es obvio, en una línea", await textos(p, ".bj-nota"), ["El Script de los lunes no da esta carpeta. Toldot sí."]);
+  await p.fill('[data-bj="f.nombre"]', "Material del año");
+  await p.check(`[data-action="bj-marca-paquete"][data-id="paq-todo"]`);
+  await p.check(`[data-action="bj-marca-planilla"][data-id="${PL2}"]`);
+  await clic(p, '[data-action="bj-carpeta-guardar"]', 800);
+  const nueva = (await tabla(p, "brujula_carpetas")).find(c => c.id === "CarpetaCuatroQrStUv");
+  eq("queda en el catálogo con su ID de Drive (el del link), el nombre elegido, al final y activa", [nueva.nombre, nueva.nombre_drive, nueva.orden, nueva.activa, nueva.planillas], ["Material del año", "Material 2027", 4, true, [PL2]]);
+  eq("…y en el paquete", (await tabla(p, "brujula_paquete_carpetas")).filter(x => x.carpeta === "CarpetaCuatroQrStUv").map(x => x.paquete), ["paq-todo"]);
+  eq("…y aparece en la lista", (await textos(p, ".bj-carp .bj-carp-n")).includes("Material del año"), true);
+
+  // Los otros casos del link
+  for(const [link, texto] of [["sinperm", "Toldot no puede ver esa carpeta. Compartila como Editor con la cuenta de Toldot y volvé a comprobar."], ["otracosa", "Ese link no es de una carpeta."]]){
+    await p.fill("#bjLinkCarpeta", "https://drive.google.com/" + link);
+    await clic(p, '[data-action="bj-carpeta-nueva"]', 800);
+    eq(`link «${link}»: lo dice en una frase y no deja agregar`, [await textos(p, ".bj-aviso"), await p.$eval('[data-action="bj-carpeta-guardar"]', e => e.disabled)], [[texto], true]);
+    await clic(p, '[data-action="bj-volver"]');
+    await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  }
+  await p.fill("#bjLinkCarpeta", "https://drive.google.com/atajo");
+  await clic(p, '[data-action="bj-carpeta-nueva"]', 800);
+  eq("un acceso directo propone la carpeta de verdad", await textos(p, ".bj-aviso"), ["Es un acceso directo a «Hadraja · Enseñanza». Usar esa carpeta"]);
+  await clic(p, '[data-action="bj-usar-destino"]');
+  eq("…y al usarla se puede agregar con su nombre", [await textos(p, ".bj-ok"), await p.inputValue('[data-bj="f.nombre"]')], [["✓ Carpeta encontrada"], "Hadraja · Enseñanza"]);
+  await clic(p, '[data-action="bj-volver"]');
+
+  // Editar, desactivar, ordenar, dejar de gestionar
+  await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  await clic(p, `[data-action="bj-carpeta-editar"][data-id="${C2}"]`);
+  await p.fill('[data-bj="f.nombre"]', "CARE (programa)");
+  await clic(p, '[data-action="bj-activa"]');
+  await clic(p, '[data-action="bj-carpeta-cambiar"]', 700);
+  const care = (await tabla(p, "brujula_carpetas")).find(c => c.id === C2);
+  eq("editar: nombre propio y desactivada (el de Drive no se toca)", [care.nombre, care.nombre_drive, care.activa], ["CARE (programa)", "CARE", false]);
+  eq("una carpeta desactivada ya no es una columna de la cuadrícula ni se ofrece al invitar", await p.$$eval(".bj-tab", l => l.map(e => e.innerText)), ["Personas · 6", "Carpetas · 2"]);
+  await clic(p, `[data-action="bj-mover"][data-id="${C1}"][data-d="1"]`, 700);
+  eq("ordenar: bajar una carpeta cambia el orden guardado", (await tabla(p, "brujula_carpetas")).sort((a, c) => a.orden - c.orden).map(c => c.id).slice(0, 2), [C2, C1]);
+  await clic(p, `[data-action="bj-carpeta-editar"][data-id="${C3}"]`);
+  eq("sacar a todos: el botón espera el nombre exacto de la carpeta", await p.$eval("#bjSacarTodos", e => e.disabled), true);
+  await p.fill("#bjConfirmar", "Archivo");
+  eq("…con el nombre a medias sigue apagado", await p.$eval("#bjSacarTodos", e => e.disabled), true);
+  await p.fill("#bjConfirmar", "Archivo 2025");
+  eq("…con el nombre completo se prende", await p.$eval("#bjSacarTodos", e => e.disabled), false);
+  await clic(p, '[data-action="bj-carpeta-borrar"]');
+  await confirmar(p);
+  eq("dejar de gestionar: sale del catálogo (y de los paquetes)", [(await tabla(p, "brujula_carpetas")).some(c => c.id === C3), (await textos(p, ".bj-carp .bj-carp-n")).includes("Archivo 2025")], [false, false]);
+
+  // Paquetes y planillas
+  await clic(p, '[data-action="bj-paquete-nuevo"]');
+  await p.fill('[data-bj="f.nombre"]', "Solo CARE");
+  await p.check(`[data-action="bj-carpeta-marcar"][data-id="${C2}"]`); await p.waitForTimeout(200);
+  await clic(p, '[data-action="bj-paquete-guardar"]', 700);
+  const paq = (await tabla(p, "brujula_paquetes")).find(x => x.nombre === "Solo CARE");
+  eq("un paquete nuevo con sus carpetas", [!!paq, (await tabla(p, "brujula_paquete_carpetas")).filter(x => paq && x.paquete === paq.id).map(x => x.carpeta)], [true, [C2]]);
+  await p.close();
+}
+
+/* ---------- El aviso por correo a los admin (Administración › Correos) ---------- */
+{
+  const { p } = await abrir();
+  await admin(p, "preferencias", "correos"); await p.waitForTimeout(400);
+  const estado = () => p.$$eval(".correos-brujula [role=radio][aria-checked=true]", l => l.map(e => e.innerText));
+  eq("el aviso de Brújula viene apagado", [await textos(p, ".correos-brujula .setting-label"), await estado()], [["📁 Brújula: personas esperando acceso"], ["Apagado"]]);
+  await clic(p, '[data-action="brujula-aviso"][data-key="on"]');
+  eq("se prende y queda guardado en la configuración de correos (lo lee supabase/avisos/brujula.mjs)",
+     [await estado(), ((await tabla(p, "app_config")).find(c => c.key === "preferences") || { value: {} }).value.correos.brujula], [["Prendido"], { on: true }]);
+  await clic(p, '[data-action="brujula-aviso"][data-key="off"]');
+  eq("y se vuelve a apagar", [await estado(), ((await tabla(p, "app_config")).find(c => c.key === "preferences")).value.correos.brujula], [["Apagado"], { on: false }]);
+  await p.close();
+}
+
+/* ---------- Cuando algo falla ---------- */
+{
+  const { p } = await abrir({ estado: 503 });
+  eq("sin la llave de Google: lo dice en una frase, con «Reintentar», y las carpetas siguen siendo editables", [await textos(p, ".bj-aviso"), await p.$$eval('[data-action="bj-tab"]', l => l.length)], [["Todavía no está conectado Google. Reintentar"], 2]);
+  await p.close();
+}
+{
+  const { p } = await abrir({ guion: { comprobar: () => ({ estado: 502, cuerpo: { error: "google" } }) } });
+  await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  await p.fill("#bjLinkCarpeta", "https://drive.google.com/drive/folders/x");
+  await clic(p, '[data-action="bj-carpeta-nueva"]', 800);
+  eq("si Google no contesta al comprobar, se dice y no se deja agregar", [(await textos(p, ".bj-aviso"))[0].startsWith("No se pudo leer Drive."), await p.$eval('[data-action="bj-carpeta-guardar"]', e => e.disabled)], [true, true]);
+  await p.close();
+}
+
+/* ---------- Todos los idiomas y el celular ---------- */
+for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"], ["he", "הזמנת אנשים"]]){
+  const { p, errores } = await abrir({ lang });
+  eq(`${lang}: el botón de invitar en su idioma`, await textos(p, ".admin-cab-acc .bj-btn"), ["+ " + titulo]);
+  eq(`${lang}: nada se sale de la pantalla`, await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true);
+  eq(`${lang}: sin errores en la consola`, errores, []);
+  await p.close();
+}
+{
+  const { p } = await abrir({ lang: "he" });
+  eq("hebreo: la pantalla va de derecha a izquierda", await p.evaluate(() => getComputedStyle(document.querySelector(".bj")).direction), "rtl");
+  await p.close();
+}
+{
+  const { p, errores } = await abrir({ viewport: { width: 390, height: 844 } });
+  eq("celular: no hay scroll de costado en la pantalla", await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true);
+  eq("celular: la cuadrícula se vuelve puntos (una fila por persona, sin columnas)", [await p.$$eval(".bj-celdas", l => l.every(e => getComputedStyle(e).display === "none")), await p.$$eval(".bj-puntos", l => l.every(e => getComputedStyle(e).display === "flex"))], [true, true]);
+  const chicos = await p.$$eval(".bj button, .bj input[type=checkbox], .bj-btn, .bj-tab, .bj-fchip", l => l.filter(e => e.offsetParent && !e.disabled).map(e => { const r = e.getBoundingClientRect(); return [e.className || e.tagName, Math.round(r.width), Math.round(r.height)]; }).filter(([, w, h]) => w < 24 || h < 24));
+  eq("celular: nada que se toque mide menos de 24 px (lo principal, 44)", chicos, []);
+  eq("celular: sin errores en la consola", errores, []);
+  await p.close();
+}
+{
+  // Alguien que no es admin no ve la sección ni puede llamarla.
+  const { p } = await entrar(b, PERS[1].email, PERS[1].name, { base: base() });
+  eq("un integrante común no tiene Administración ni Brújula", [await p.$$eval('[data-action="goto-view"][data-view="admin"], .admin-menu', l => l.length)], [0]);
+  await p.close();
+}
+
+await b.close();
+console.log(`${pass} pasaron, ${fail} fallaron`);
+process.exit(fail ? 1 : 0);

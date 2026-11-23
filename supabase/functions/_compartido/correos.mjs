@@ -43,6 +43,7 @@ const TX = {
     accParrafo:"Un administrador aprobó tu pedido. Entrá con la misma cuenta de Google con la que lo pediste: la primera vez te mostramos un recorrido corto.",
     accBoton:"Entrar a Toldot", accPie:"Te llega porque pediste entrar a Toldot.",
     brAsunto:"Te damos la bienvenida a Brújula", brTexto:"Hola{n}: ya tienes acceso a las carpetas de Brújula.", brPre:"Ya tienes acceso a las carpetas de Brújula.", brEtiqueta:"Brújula", brTitulo:"Hola{n}, te damos la bienvenida", brParrafo:"Ya tienes acceso a las carpetas de Brújula, con material para tu día a día. Si falta algo, escríbenos.", brBoton:"Abrir Brújula", brPie:"Te llega porque te dieron acceso a Brújula.",
+    bpAsunto1:"Hay 1 persona esperando acceso a Brújula", bpAsuntoN:"Hay {n} personas esperando acceso a Brújula", bpPre:"Cargadas en una planilla, todavía sin acceso.", bpEtiqueta:"Brújula", bpTitulo1:"1 persona espera acceso", bpTituloN:"{n} personas esperan acceso", bpMas:"y {n} más", bpBoton:"Abrir Toldot", bpPie:"Te llega porque prendiste este aviso en Administración › Correos.",
     mencion:["mención","menciones"], respuesta:["respuesta","respuestas"], nueva:["actividad nueva","actividades nuevas"], proximo:["evento próximo","eventos próximos"],
     reTituloSem:"Lo que pasó del {a} al {b}", reTituloDia:"Lo que pasó desde ayer", reSem:"Tu resumen de la semana", reDia:"Tu resumen del día",
     reMenc:"Te mencionaron", reResp:"Respuestas a tus posteos", reNuevo:"Nuevo en el Registro", reProx:"Empiezan pronto",
@@ -70,6 +71,7 @@ const TX = {
     accParrafo:"An administrator approved your request. Sign in with the same Google account you used to ask: the first time you'll see a short tour.",
     accBoton:"Sign in to Toldot", accPie:"You're getting this because you asked to join Toldot.",
     brAsunto:"Welcome to Brújula", brTexto:"Hi{n}: you now have access to the Brújula folders.", brPre:"You now have access to the Brújula folders.", brEtiqueta:"Brújula", brTitulo:"Hi{n}, welcome", brParrafo:"You now have access to the Brújula folders, with material for your daily work. If something is missing, let us know.", brBoton:"Open Brújula", brPie:"You're getting this because you were given access to Brújula.",
+    bpAsunto1:"There is 1 person waiting for access to Brújula", bpAsuntoN:"There are {n} people waiting for access to Brújula", bpPre:"Added to a spreadsheet, no access yet.", bpEtiqueta:"Brújula", bpTitulo1:"1 person is waiting for access", bpTituloN:"{n} people are waiting for access", bpMas:"and {n} more", bpBoton:"Open Toldot", bpPie:"You're getting this because you turned this notice on in Administration › Emails.",
     mencion:["mention","mentions"], respuesta:["reply","replies"], nueva:["new activity","new activities"], proximo:["upcoming event","upcoming events"],
     reTituloSem:"What happened from {a} to {b}", reTituloDia:"What happened since yesterday", reSem:"Your weekly summary", reDia:"Your daily summary",
     reMenc:"You were mentioned", reResp:"Replies to your posts", reNuevo:"New in the Log", reProx:"Starting soon",
@@ -97,6 +99,7 @@ const TX = {
     accParrafo:"Um administrador aprovou seu pedido. Entre com a mesma conta do Google com a qual você pediu: na primeira vez mostramos um tour curto.",
     accBoton:"Entrar no Toldot", accPie:"Chega porque você pediu para entrar no Toldot.",
     brAsunto:"Boas-vindas à Brújula", brTexto:"Olá{n}: você já tem acesso às pastas da Brújula.", brPre:"Você já tem acesso às pastas da Brújula.", brEtiqueta:"Brújula", brTitulo:"Olá{n}, boas-vindas", brParrafo:"Você já tem acesso às pastas da Brújula, com material para o seu dia a dia. Se faltar algo, avise-nos.", brBoton:"Abrir a Brújula", brPie:"Chega porque deram a você acesso à Brújula.",
+    bpAsunto1:"Há 1 pessoa esperando acesso à Brújula", bpAsuntoN:"Há {n} pessoas esperando acesso à Brújula", bpPre:"Cadastradas em uma planilha, ainda sem acesso.", bpEtiqueta:"Brújula", bpTitulo1:"1 pessoa espera acesso", bpTituloN:"{n} pessoas esperam acesso", bpMas:"e mais {n}", bpBoton:"Abrir o Toldot", bpPie:"Chega porque você ativou este aviso em Administração › E-mails.",
     mencion:["menção","menções"], respuesta:["resposta","respostas"], nueva:["atividade nova","atividades novas"], proximo:["evento próximo","eventos próximos"],
     reTituloSem:"O que aconteceu de {a} a {b}", reTituloDia:"O que aconteceu desde ontem", reSem:"Seu resumo da semana", reDia:"Seu resumo do dia",
     reMenc:"Mencionaram você", reResp:"Respostas às suas postagens", reNuevo:"Novo no Registro", reProx:"Começam em breve",
@@ -124,6 +127,7 @@ const TX = {
     accParrafo:"מנהל/ת אישר/ה את הבקשה שלך. היכנסו עם אותו חשבון Google שבו ביקשת: בפעם הראשונה יוצג סיור קצר.",
     accBoton:"כניסה לתולדות", accPie:"זה מגיע אליך כי ביקשת להצטרף לתולדות.",
     brAsunto:"ברוכים הבאים ל-Brújula", brTexto:"שלום{n}: כעת יש לך גישה לתיקיות של Brújula.", brPre:"כעת יש לך גישה לתיקיות של Brújula.", brEtiqueta:"Brújula", brTitulo:"שלום{n}, ברוכים הבאים", brParrafo:"כעת יש לך גישה לתיקיות של Brújula, עם חומרים לעבודה היומיומית שלך. אם משהו חסר, כתבו לנו.", brBoton:"לפתיחת Brújula", brPie:"ניתנה לך גישה ל-Brújula.",
+    bpAsunto1:"ממתין אדם אחד לגישה ל-Brújula", bpAsuntoN:"ממתינים {n} אנשים לגישה ל-Brújula", bpPre:"נוספו לגיליון, עדיין בלי גישה.", bpEtiqueta:"Brújula", bpTitulo1:"אדם אחד ממתין לגישה", bpTituloN:"{n} אנשים ממתינים לגישה", bpMas:"ועוד {n}", bpBoton:"לפתיחת תולדות", bpPie:"זה מגיע אליך כי הפעלת את ההתראה הזו בניהול › מיילים.",
     mencion:["אזכור","אזכורים"], respuesta:["תגובה","תגובות"], nueva:["פעילות חדשה","פעילויות חדשות"], proximo:["אירוע קרוב","אירועים קרובים"],
     reTituloSem:"מה קרה בין {a} ל־{b}", reTituloDia:"מה קרה מאתמול", reSem:"הסיכום השבועי שלך", reDia:"הסיכום היומי שלך",
     reMenc:"הזכירו אותך", reResp:"תגובות לפוסטים שלך", reNuevo:"חדש ביומן", reProx:"מתחילים בקרוב",
@@ -486,6 +490,23 @@ export function correoBrujula({ nombre, lang, enlace }){
       ${boton(T.brBoton, url, L)}`,
       pie: T.brPie,
     }),
+  };
+}
+
+// El aviso a los admin (si lo prendieron en Administración › Correos): hay personas cargadas en una planilla de Brújula que
+// todavía no recibieron acceso. Corto: cuántas y los primeros nombres; el resto se ve en la pantalla.
+export function correoPendientesBrujula({ nombres, total, lang }){
+  const L = idioma(lang), T = TX[L];
+  const lista = nombres.slice(0, 10), n = Math.max(Number(total) || 0, nombres.length), mas = n - lista.length;
+  const titulo = conVars(n === 1 ? T.bpTitulo1 : T.bpTituloN, { n });
+  return {
+    subject: asunto(conVars(n === 1 ? T.bpAsunto1 : T.bpAsuntoN, { n })),
+    text: `${titulo}\n${lista.map(x => "• " + x).join("\n")}${mas > 0 ? "\n" + conVars(T.bpMas, { n: mas }) : ""}\n${APP}\n`,
+    html: marco({ lang: L, pre: T.bpPre, etiqueta: T.bpEtiqueta, titulo,
+      cuerpo: `<ul style="margin:0;padding-inline-start:20px;font-size:15px;line-height:1.7;">${lista.map(x => `<li>${suyo(esc(x))}</li>`).join("")}</ul>
+      ${mas > 0 ? `<p style="font-size:14px;margin:8px 0 0;">${conVars(T.bpMas, { n: mas })}</p>` : ""}
+      ${boton(T.bpBoton, APP, L)}`,
+      pie: T.bpPie }),
   };
 }
 

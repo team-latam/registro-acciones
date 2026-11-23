@@ -376,8 +376,11 @@ const capa = fuente.slice(fuente.indexOf("function crearSupabaseStore"),
                           fuente.indexOf("// Qué implementación está en uso."));
 const inserts = (capa.match(/\.from\("(\w+)"\)\.insert\(/g) || [])
   .map(m => m.match(/"(\w+)"/)[1]);
+// Brújula (23/11/2026): los paquetes y sus carpetas tienen un uuid inventado en el momento; el catálogo de carpetas y de planillas
+// va por el ID de Drive, y ahí se usa insert A PROPÓSITO: si esa carpeta ya está, la base rechaza (clave repetida) y la pantalla
+// dice «Esa carpeta ya está» en vez de pisarle el nombre, el orden y las planillas.
 eq("solo se usa insert donde el id se inventa en el momento",
-   [...new Set(inserts)].sort(), ["audit_log","contactos","gastos","gastos_cambios","gastos_movimientos","instituciones","personas","posts","replies"]);
+   [...new Set(inserts)].sort(), ["audit_log","brujula_carpetas","brujula_paquete_carpetas","brujula_paquetes","brujula_planillas","contactos","gastos","gastos_cambios","gastos_movimientos","instituciones","personas","posts","replies"]);
 
 /* ---------------------------------------------------------------
    PARTE 3 — comentarios: agrupados y en orden

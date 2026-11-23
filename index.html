@@ -611,6 +611,117 @@
   .problema-texto{ width:100%; box-sizing:border-box; font:inherit; font-size:14px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--card); color:var(--text); resize:vertical; }
   .problema-texto:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:1px; }
   .problema-tecnico{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; font-size:13px; font-weight:600; }
+  /* ---- Brújula (Administración › Brújula, 23/11/2026) ---- */
+  .bj{ display:flex; flex-direction:column; gap:14px; }
+  .bj-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .bj-top{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .bj-tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+  .bj-tab, .bj-fchip{ border:1px solid var(--border); background:var(--card); color:var(--ink); padding:0 16px; min-height:44px; border-radius:999px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .bj-tab.active, .bj-fchip.active{ background:var(--petroleo); border-color:var(--petroleo); color:#fff; }
+  .bj-actualiza{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-muted); }
+  .bj-redondo{ width:44px; height:44px; border:none; border-radius:50%; background:var(--surface-alt); color:var(--ink); font:inherit; font-size:16px; cursor:pointer; flex:none; }
+  .bj-redondo:disabled, .bj-btn:disabled{ opacity:.45; cursor:default; }
+  .bj-tools{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .bj-buscar-w{ flex:1 1 240px; display:flex; position:relative; }
+  .bj-buscar{ flex:1; min-width:0; min-height:44px; border:1px solid var(--border); border-radius:999px; padding:0 16px; font:inherit; font-size:13.5px; background:var(--card); color:var(--text); }
+  .bj-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
+  .bj-btn{ border:none; border-radius:999px; background:var(--petroleo); color:#fff; padding:0 20px; min-height:44px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
+  .bj-btn.claro{ background:var(--surface-alt); color:var(--text); }
+  .bj-btn.peligro{ background:var(--danger); color:#fff; }
+  .bj-btn.peligro-claro{ background:var(--card); color:var(--danger-fg); border:1px solid var(--danger-bg); }
+  .bj-link{ border:none; background:none; color:var(--link); font:inherit; font-size:12.5px; font-weight:700; text-decoration:underline; cursor:pointer; min-height:44px; padding:0 6px; }
+  .bj-volver{ align-self:flex-start; border:none; background:none; color:var(--link); font:inherit; font-size:13px; font-weight:700; cursor:pointer; min-height:44px; padding:0; }
+  .bj-aviso{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); border-radius:var(--radius-md); padding:12px 16px; font-size:13px; }
+  .bj-barra{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--petroleo); color:#fff; border-radius:var(--radius-md); padding:10px 14px; }
+  .bj-barra .bj-btn.claro{ background:rgba(255,255,255,.16); color:#fff; }
+  .bj-barra .bj-link{ color:#bfe9ef; margin-inline-start:auto; }
+  .bj-vacio{ padding:22px; text-align:center; color:var(--text-muted); font-size:13.5px; }
+  .bj-fila{ display:grid; grid-template-columns:32px minmax(220px,1fr) calc(var(--bj-n, 7) * 64px) 44px; align-items:center; gap:10px; padding:10px 14px; border-top:1px solid var(--border); }
+  .bj-fila.sel{ background:var(--celeste-soft); }
+  .bj-cab{ border-top:none; font-size:12px; font-weight:700; color:var(--text-muted); }
+  .bj-tabla{ overflow-x:auto; }
+  .bj-celdas{ display:grid; grid-template-columns:repeat(var(--bj-n, 7), 64px); }
+  .bj-c, .bj-c-cab{ text-align:center; }
+  .bj-c{ font-weight:800; font-size:15px; }
+  .bj-c.si{ color:var(--ok-text); } .bj-c.no{ color:var(--text-muted); } .bj-c.ed{ color:var(--link); }
+  .bj-c-cab{ font-size:12px; line-height:1.2; overflow-wrap:anywhere; padding:0 2px; }
+  .bj-puntos{ display:none; gap:3px; }
+  .bj-puntos i{ width:9px; height:9px; border-radius:50%; border:1.5px solid var(--text-muted); display:block; }
+  .bj-puntos i.on{ background:var(--ok-text); border-color:var(--ok-text); }
+  .bj input[type=checkbox], .bj input[type=checkbox][data-action]{ width:24px; height:24px; min-width:24px; accent-color:var(--petroleo); }
+  .bj-mas-btn{ width:44px; height:44px; border:none; background:none; font-size:20px; color:var(--ink); cursor:pointer; border-radius:50%; }
+  .bj-quien{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .bj-datos{ min-width:0; }
+  .bj-av{ flex:none; width:34px; height:34px; border-radius:50%; background:var(--chip-bg); color:var(--ink); font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .bj-av.grande{ width:56px; height:56px; font-size:18px; }
+  .bj-nombre{ border:none; background:none; padding:0; font:inherit; font-size:13.5px; font-weight:700; color:var(--text); cursor:pointer; text-align:start; min-height:24px; }
+  .bj-mail{ font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
+  .bj-chips{ display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .bj-chip, .bj-tag{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--chip-bg); color:var(--ink); }
+  .bj-tag.todo{ background:var(--ok-bg); color:var(--ok-text); }
+  .bj-tag.parc, .bj-tag.pend{ background:var(--warn-bg); color:var(--warn-text); }
+  .bj-tag.prob{ background:var(--danger-bg); color:var(--danger-text); }
+  .bj-tag.sin{ background:var(--surface-alt); color:var(--text-muted); }
+  .bj-pie{ display:flex; justify-content:space-between; align-items:center; padding:6px 16px; font-size:12.5px; color:var(--text-muted); border-top:1px solid var(--border); }
+  .bj-carp{ display:flex; align-items:center; gap:12px; padding:12px 18px; border-top:1px solid var(--border); flex-wrap:wrap; }
+  .bj-carp.off .bj-carp-n{ color:var(--text-muted); }
+  .bj-carp-t{ flex:1 1 200px; min-width:0; }
+  .bj-carp-n{ font-size:13.5px; font-weight:700; }
+  .bj-flechas{ display:flex; gap:2px; }
+  .bj-agregar{ display:flex; gap:10px; flex-wrap:wrap; padding:14px 18px; }
+  .bj-agregar.sin-borde{ padding:0; }
+  .bj-seccion-t{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:14px 18px; }
+  .bj-seccion-t h3, .bj-form h3, .bj-ficha h3{ margin:0; font-size:15px; font-weight:800; color:var(--ink-strong); }
+  .bj-paquetes{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; padding:0 18px 16px; }
+  .bj-paq{ border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; }
+  .bj-paq-t{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .bj-form{ padding:20px 22px; display:flex; flex-direction:column; gap:16px; }
+  .bj-form h3{ font-size:19px; }
+  .bj-campos{ border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .bj-campos legend{ font-size:12.5px; font-weight:800; padding:0 6px; }
+  .bj-campos label, .bj-campo{ display:flex; flex-direction:column; gap:5px; font-size:12.5px; font-weight:700; }
+  .bj-campo.fila{ flex-direction:row; justify-content:space-between; align-items:center; min-height:44px; }
+  .bj-ancho{ grid-column:1 / -1; }
+  .bj-form input[type=text], .bj-form input[type=email], .bj-form input[type=url], .bj-form textarea{ border:1px solid var(--border); border-radius:10px; padding:11px 12px; font:inherit; font-size:14px; background:var(--card); color:var(--text); min-height:44px; }
+  .bj-seg{ display:flex; gap:6px; flex-wrap:wrap; }
+  .bj-seg button{ flex:1; min-width:84px; min-height:44px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--ink); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .bj-seg button.active{ background:var(--petroleo); color:#fff; border-color:var(--petroleo); }
+  .bj-radios{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; grid-column:1 / -1; }
+  .bj-radio{ text-align:start; border:2px solid var(--border); border-radius:var(--radius-md); background:var(--card); padding:12px 14px; cursor:pointer; font:inherit; display:flex; flex-direction:column; gap:2px; color:var(--text); min-height:44px; }
+  .bj-radio.active{ border-color:var(--petroleo); background:var(--celeste-soft); }
+  .bj-radio span{ font-size:12px; color:var(--text-muted); font-weight:500; }
+  .bj-lista-c{ grid-column:1 / -1; display:grid; gap:2px; }
+  .bj-opcion{ display:flex; flex-direction:row !important; align-items:center; gap:10px; min-height:44px; font-size:13.5px !important; font-weight:600 !important; cursor:pointer; }
+  .bj .bj-opcion input{ flex:none; }
+  .bj-dos{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+  .bj-interruptor{ flex:none; width:52px; height:30px; border-radius:999px; border:none; padding:3px; background:var(--text-muted); cursor:pointer; display:flex; }
+  .bj-interruptor i{ width:24px; height:24px; border-radius:50%; background:#fff; display:block; transition:transform .15s; }
+  .bj-interruptor.on{ background:var(--olivo); }
+  .bj-interruptor.on i{ transform:translateX(22px); }
+  html[dir="rtl"] .bj-interruptor.on i{ transform:translateX(-22px); }
+  .bj-fin{ display:flex; justify-content:flex-end; align-items:center; gap:10px; flex-wrap:wrap; border-top:1px solid var(--border); padding-top:14px; }
+  .bj-fin .bj-mail{ margin-inline-end:auto; }
+  .bj-nota{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); border-radius:12px; padding:10px 14px; font-size:12.5px; }
+  .bj-nota.ancho{ grid-column:1 / -1; }
+  .bj-ok{ color:var(--ok-text); font-weight:700; font-size:13.5px; }
+  .bj-ficha{ padding:18px 20px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; }
+  .bj-ficha h3{ font-size:20px; }
+  .bj-acciones{ display:flex; gap:10px; flex-wrap:wrap; }
+  .bj-peligro{ border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; }
+  .bj-peligro-f{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 16px; }
+  .bj-peligro-f.rojo{ border-top:1px solid var(--border); background:var(--danger-soft); }
+  .bj-res{ border-top:1px solid var(--border); padding-top:10px; }
+  .bj-res-n{ font-weight:700; font-size:13.5px; }
+  .bj-res-l{ list-style:none; margin:6px 0 0; padding:0; display:grid; gap:4px; font-size:13.5px; }
+  .bj-res-l .ok > span:first-child{ color:var(--ok-text); font-weight:800; }
+  .bj-res-l .mal > span:first-child{ color:var(--danger-fg); font-weight:800; }
+  @media (max-width:760px){
+    .bj-celdas, .bj-cab{ display:none; }
+    .bj-puntos{ display:flex; }
+    .bj-fila{ grid-template-columns:32px minmax(0,1fr) 44px; }
+    .bj-puntos{ grid-column:2; }
+    .bj-dos, .bj-campos{ grid-template-columns:1fr; }
+  }
   .pb-lista{ list-style:none; margin:0; padding:0; display:grid; gap:12px; }
   .pb-fila{ border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:grid; gap:6px; background:var(--card); }
   .pb-cabeza{ display:flex; gap:8px; align-items:flex-start; }
@@ -9584,6 +9695,12 @@ function crearSupabaseStore(sb, opciones = {}){
       body: JSON.stringify(cuerpo) });
     return { res, r: await res.json().catch(()=>null) };
   };
+  // Brújula (supabase/functions/_compartido/brujula.mjs): lo que la función contesta con error viaja como Error con `codigo`.
+  const llamarBrujula = async pedido => {
+    const { res, r } = await llamarFuncion("brujula", pedido);
+    if(!res.ok || !r){ const e = new Error(`brujula ${res.status}`); e.codigo = (r && r.error) || "google"; throw e; }
+    return r;
+  };
 
   /* --- Los adjuntos ------------------------------------------------
      El archivo no viaja adentro de la fila: vive en el bucket, que es
@@ -10347,6 +10464,44 @@ function crearSupabaseStore(sb, opciones = {}){
         if(error) throw error;
         return !!data;
       },
+    },
+
+    // ---- Brújula (supabase/30-brujula.sql y la función `brujula`) ----
+    // El catálogo vive en la base (solo un admin lo ve y lo toca); quién tiene acceso a qué se LEE de Drive y de las planillas
+    // por la función, que también da y quita el acceso. Los errores de la función llevan `codigo`.
+    brujula: {
+      async catalogo(){
+        const [c, pl, pa, pc] = await Promise.all([
+          sb.from("brujula_carpetas").select("*").order("orden", { ascending: true }).order("nombre", { ascending: true }),
+          sb.from("brujula_planillas").select("*").order("orden", { ascending: true }).order("nombre", { ascending: true }),
+          sb.from("brujula_paquetes").select("*").order("orden", { ascending: true }).order("nombre", { ascending: true }),
+          sb.from("brujula_paquete_carpetas").select("*"),
+        ]);
+        for(const x of [c, pl, pa, pc]) if(x.error) throw x.error;
+        return { carpetas: (c.data || []).map(aObjeto), planillas: (pl.data || []).map(aObjeto), paquetes: (pa.data || []).map(aObjeto), enPaquete: (pc.data || []).map(aObjeto) };
+      },
+      leer: () => llamarBrujula({ accion: "leer" }),
+      comprobar: link => llamarBrujula({ accion: "comprobar", link }),
+      comprobarPlanilla: link => llamarBrujula({ accion: "comprobar-planilla", link }),
+      dar: cuerpo => llamarBrujula({ accion: "dar", ...cuerpo }),
+      quitar: cuerpo => llamarBrujula({ accion: "quitar", ...cuerpo }),
+      sacarATodos: cuerpo => llamarBrujula({ accion: "sacar-todos", ...cuerpo }),
+      async carpetaNueva(c){ revienta(await sb.from("brujula_carpetas").insert({ id: c.id, nombre: c.nombre, nombre_drive: c.nombreDrive || null, orden: c.orden, activa: c.activa, planillas: c.planillas || [] })); },
+      async carpetaCambiar(id, p){ revienta(await sb.from("brujula_carpetas").update({ nombre: p.nombre, activa: p.activa, planillas: p.planillas }).eq("id", id)); },
+      async carpetaBorrar(id){ revienta(await sb.from("brujula_carpetas").delete().eq("id", id)); },
+      async ordenar(ids){ for(let i = 0; i < ids.length; i++) revienta(await sb.from("brujula_carpetas").update({ orden: i + 1 }).eq("id", ids[i])); },
+      async planillaNueva(p){ revienta(await sb.from("brujula_planillas").insert({ id: p.id, nombre: p.nombre, orden: p.orden })); },
+      async planillaBorrar(id){ revienta(await sb.from("brujula_planillas").delete().eq("id", id)); },
+      async paqueteSumar(paquete, carpeta){ revienta(await sb.from("brujula_paquete_carpetas").insert({ id: nuevoUuid(), paquete, carpeta })); },
+      async paqueteSacar(paquete, carpeta){ revienta(await sb.from("brujula_paquete_carpetas").delete().eq("paquete", paquete).eq("carpeta", carpeta)); },
+      async paqueteGuardar({ id, nombre, orden, carpetas }){
+        const pid = id || nuevoUuid();
+        if(id) revienta(await sb.from("brujula_paquetes").update({ nombre }).eq("id", id));
+        else revienta(await sb.from("brujula_paquetes").insert({ id: pid, nombre, orden }));
+        revienta(await sb.from("brujula_paquete_carpetas").delete().eq("paquete", pid));
+        if(carpetas.length) revienta(await sb.from("brujula_paquete_carpetas").insert(carpetas.map(carpeta => ({ id: nuevoUuid(), paquete: pid, carpeta }))));
+      },
+      async paqueteBorrar(id){ revienta(await sb.from("brujula_paquetes").delete().eq("id", id)); },
     },
 
     // ---- El informe mensual (23-informe-mensual.sql) ----
@@ -14322,6 +14477,7 @@ function adminMenuItems(){
     { grupo:null, items:[ { key:"resumen", view:"admin", label:t("Resumen","Overview","Resumo","סיכום") } ] },
     { grupo:t("Equipo","Team","Equipe","צוות"), items:[
       { key:"personas", view:"solicitudes", sub:"usuarios", label:t("Personas","People","Pessoas","אנשים"), badge:pend },
+      { key:"brujula", view:"preferencias", sub:"brujula", label:"Brújula", badge:bjPendientesN() },
       { key:"actividad", view:"auditoria", label:t("Registro de actividad","Activity log","Registro de atividade","יומן פעילות") },
     ] },
     { grupo:t("Cómo se carga","How things are logged","Como se carrega","איך רושמים"), items:[
@@ -14376,6 +14532,7 @@ function adminSeccionActual(){
 // El botón de la acción principal de cada sección, para la cabecera.
 function adminSeccionAccion(key){
   if(key === "tipos") return `<button type="button" class="btn-mini" data-action="tipo-nuevo">+ ${t("Agregar tipo","Add type","Adicionar tipo","הוספת סוג")}</button>`;
+  if(key === "brujula" && bj.cat && bj.vista === "lista" && bj.tab === "personas") return `<button type="button" class="bj-btn" data-action="bj-invitar-abrir">+ ${t("Invitar personas","Invite people","Convidar pessoas","הזמנת אנשים")}</button>`;
   return "";
 }
 function adminSeccionTextos(key){
@@ -14570,6 +14727,11 @@ function auditLabels(){
     // Unificar dos cuentas (Administración › Personas): lo anota la base,
     // con la cuenta vieja en target y la nueva en detail (6/10/2026).
     accounts_merged: { icon:"🔀", filterLabel:t("Unificó cuentas","Merged accounts","Unificou contas","איחד/ה חשבונות"), text: e => t("{n} pasó todo lo de {target} a {d}.","{n} moved everything from {target} to {d}.","{n} passou tudo de {target} para {d}.","{n} העביר/ה את כל מה של {target} אל {d}.",{n:e.actorName,target:e.targetEmail,d:e.detail || ""}) },
+    // Brújula (30-brujula.sql): quién le dio o le sacó a alguien el acceso a unas carpetas.
+    brujula_dio: { icon:"📁", filterLabel:t("Dio acceso a Brújula","Gave Brújula access","Deu acesso à Brújula","נתן/ה גישה ל-Brújula"), text: e => t("{n} le dio a {target} acceso a {d}.","{n} gave {target} access to {d}.","{n} deu a {target} acesso a {d}.","{n} נתן/ה ל-{target} גישה ל-{d}.",{n:e.actorName,target:e.targetEmail,d:e.detail||""}) },
+    brujula_quito: { icon:"📁", filterLabel:t("Quitó acceso a Brújula","Removed Brújula access","Tirou acesso à Brújula","הסיר/ה גישה ל-Brújula"), text: e => e.targetEmail
+      ? t("{n} le quitó a {target} el acceso a {d}.","{n} removed {target}'s access to {d}.","{n} tirou o acesso de {target} a {d}.","{n} הסיר/ה את הגישה של {target} ל-{d}.",{n:e.actorName,target:e.targetEmail,d:e.detail||""})
+      : t("{n} sacó a todos los lectores: {d}.","{n} removed all readers: {d}.","{n} tirou todos os leitores: {d}.","{n} הסיר/ה את כל הקוראים: {d}.",{n:e.actorName,d:e.detail||""}) },
     post_deleted: { icon:"🗑️", filterLabel:t("Borró","Deleted","Apagou","מחק/ה"), text: e => t("{n} borró {d}.","{n} deleted {d}.","{n} apagou {d}.","{n} מחק/ה את {d}.",{n:e.actorName,d:e.detail || t("una actividad","an activity","uma atividade","פעילות")}) },
   };
 }
@@ -15506,6 +15668,7 @@ function renderPreferenciasView(){
     : sec==="copia" ? renderCopiaSection()
     : sec==="correos" ? renderCorreosSection()
     : sec==="problemas" ? renderProblemasSection()
+    : sec==="brujula" ? renderBrujulaSection()
     : sec==="avanzado" ? renderAvanzadoSection()
     : sec==="agenda" ? renderAgendaAdminSection()
     : sec==="gastos" ? renderGastosAdminSection()
@@ -20811,7 +20974,7 @@ function renderCorreosSection(){
         <div class="setting-label">${t("Personas","People","Pessoas","אנשים")}</div>
         <div class="pref-chips" style="margin-top:8px;">${personas.map(m => `<button type="button" class="chip-toggle${elegidos.includes(m.email)?" active":""}" data-action="correos-elegir" data-email="${esc(m.email)}" aria-pressed="${elegidos.includes(m.email)}">${esc(m.name || m.email)}</button>`).join("") || `<span class="setting-sub">${t("Todavía no hay nadie más en el equipo.","There's nobody else on the team yet.","Ainda não há mais ninguém na equipe.","עדיין אין עוד אנשים בצוות.")}</span>`}</div>
       </div>` : ""}
-    </div>${renderLugaresDeCorreo()}${renderInformeDeCorreo()}`;
+    </div>${renderLugaresDeCorreo()}${renderInformeDeCorreo()}${renderBrujulaDeCorreo()}`;
 }
 // El aviso del primer lunes de cada mes con los países sin actividad (propuesta 2-A):
 // apagado, o el plazo en meses. Lo manda supabase/avisos/lugares.mjs; lo guardado
@@ -20837,6 +21000,20 @@ function renderLugaresDeCorreo(){
 // horas. Lo manda supabase/avisos/informe.mjs; lo guardado es correos.informe = {on, para}.
 const informePrueba = { mandando:false, msg:"" };
 const mesDelInformeDeAhora = () => addMonthsISO(todayISO().slice(0, 7) + "-01", -1).slice(0, 7);
+// El aviso de Brújula (23/11/2026): si hay personas cargadas en una planilla esperando acceso, un correo a los admin que reciben
+// correos. VIENE APAGADO. Lo manda supabase/avisos/brujula.mjs; lo guardado es correos.brujula = { on }.
+const brujulaAvisoConfig = () => ({ on: !!(correosConfig && correosConfig.brujula && correosConfig.brujula.on === true) });
+function renderBrujulaDeCorreo(){
+  const { on } = brujulaAvisoConfig();
+  const modo = (k, txt, act) => `<button type="button" role="radio" aria-checked="${act}" class="chip-toggle${act ? " active" : ""}" data-action="brujula-aviso" data-key="${k}">${esc(txt)}</button>`;
+  const nombre = t("Brújula: personas esperando acceso","Brújula: people waiting for access","Brújula: pessoas esperando acesso","Brújula: אנשים שממתינים לגישה");
+  return `<div class="settings-card correos-brujula" style="margin-top:16px;">
+      <div class="setting-row" style="display:block;">
+        <div class="setting-label">📁 ${esc(nombre)}</div>
+        <div role="radiogroup" aria-label="${esc(nombre)}" class="pref-chips" style="margin-top:8px;">${modo("off", t("Apagado","Off","Desligado","כבוי"), !on)}${modo("on", t("Prendido","On","Ligado","פועל"), on)}</div>
+      </div>
+    </div>`;
+}
 function renderInformeDeCorreo(){
   const { on, para } = informeConfig();
   const personas = (state.roster || []).filter(m => m.email).sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
@@ -30495,6 +30672,583 @@ function renderProblemasSection(){
 }
 
 /* ======================================================================
+   BRÚJULA (Administración › Brújula), 23/11/2026
+   ======================================================================
+   Quién tiene acceso a las carpetas de Brújula (carpetas de Google Drive que
+   se comparten, en modo lectura, con la gente de las comunidades) y a cuáles:
+   invitar, agregar carpetas a alguien, quitar acceso (total o parcial) y editar
+   el catálogo de carpetas, siempre a partir de un link de Drive. Solo un admin.
+   Todo el diseño, lo decidido y las etapas: docs/brujula/README.md.
+
+   Quién tiene qué NO se guarda: se LEE de Drive y de las planillas de Google
+   cada vez (las planillas y su Script también dan accesos), por la función
+   `brujula` de Supabase (supabase/functions/). Lo que sí vive en la base es el
+   catálogo (carpetas, paquetes y planillas: supabase/30-brujula.sql).
+
+   Pocas palabras a propósito: el título y los controles se explican solos, y un
+   texto aparece solo donde evita un error. */
+const bj = {
+  cat: null, datos: null, cargando: false, error: "", errorCat: false,
+  tab: "personas", vista: "lista", filtro: "todas", buscar: "", mas: 50,
+  sel: new Set(), persona: null, form: {}, resultado: null, ocupado: false,
+  planillaLink: "", planillaMsg: "",
+};
+const BJ_TOPE_CARPETAS = 40;
+const bjActiva = () => state.view === "preferencias" && state.preferenciasSection === "brujula";
+const bjCarpetas = () => (bj.cat ? bj.cat.carpetas : []);
+const bjActivas = () => bjCarpetas().filter(c => c.activa);
+const bjCarpeta = id => bjCarpetas().find(c => c.id === id);
+const bjNombreDe = id => { const c = bjCarpeta(id); return c ? c.nombre : id; };
+const bjPersonas = () => (bj.datos ? bj.datos.personas : []);
+const bjDe = correo => bjPersonas().find(p => p.correo === correo);
+const bjPendientes = () => bjPersonas().filter(p => p.pendiente);
+
+async function bjCargar(){
+  if(!isAdmin() || !store || !store.brujula || bj.cargando) return;
+  bj.cargando = true;
+  const [cat, dat] = await Promise.allSettled([store.brujula.catalogo(), store.brujula.leer()]);
+  if(cat.status === "fulfilled"){ bj.cat = cat.value; bj.errorCat = false; }
+  else{ bj.errorCat = true; if(!bj.cat) bj.cat = { carpetas: [], planillas: [], paquetes: [], enPaquete: [] }; console.warn("No se pudo leer el catálogo de Brújula:", cat.reason && cat.reason.message); }
+  if(dat.status === "fulfilled"){ bj.datos = dat.value; bj.error = ""; }
+  else{ bj.error = (dat.reason && dat.reason.codigo) || "google"; if(!bj.datos) bj.datos = { personas: [], carpetas: [], planillas: [], leido: null }; }
+  bj.cargando = false;
+  if(bjActiva()) render();
+}
+function bjPendientesN(){ return bj.datos ? bjPendientes().length : 0; }
+
+// Qué dice cada código de error, en una frase (nunca lo que contestó Google: puede traer correos).
+function bjMotivo(c){
+  return ({
+    rechazado: t("Google no dejó compartir con ese correo.","Google wouldn't share with that email.","O Google não deixou compartilhar com esse e-mail.","Google לא אפשר לשתף עם המייל הזה."),
+    permiso: t("Toldot no tiene permiso en esa carpeta.","Toldot has no permission on that folder.","O Toldot não tem permissão nessa pasta.","לתולדות אין הרשאה בתיקייה הזו."),
+    carpeta: t("Esa carpeta ya no está en Drive.","That folder is no longer in Drive.","Essa pasta não está mais no Drive.","התיקייה הזו כבר לא ב-Drive."),
+    heredado: t("Le llega por otra carpeta: hay que sacarlo en Drive.","It comes through another folder: remove it in Drive.","Chega por outra pasta: é preciso tirar no Drive.","מגיע דרך תיקייה אחרת: צריך להסיר ב-Drive."),
+    editor: t("Es editor: eso se cambia en Drive.","They're an editor: change that in Drive.","É editor: isso se muda no Drive.","זה עורך: משנים ב-Drive."),
+    limite: t("Google pide esperar un momento.","Google asks to wait a moment.","O Google pede para esperar um momento.","Google מבקש להמתין רגע."),
+    "no-coincide": t("Actualizá la lista y probá de nuevo.","Refresh the list and try again.","Atualize a lista e tente de novo.","רעננו את הרשימה ונסו שוב."),
+    "sin-dato": t("Actualizá la lista y probá de nuevo.","Refresh the list and try again.","Atualize a lista e tente de novo.","רעננו את הרשימה ונסו שוב."),
+  })[c] || t("Google no contestó.","Google didn't answer.","O Google não respondeu.","Google לא ענה.");
+}
+function bjMensajeDeError(c){
+  return ({
+    "sin-configurar": t("Todavía no está conectado Google.","Google isn't connected yet.","O Google ainda não está conectado.","Google עדיין לא מחובר."),
+    "google-permiso": t("Google no aceptó la conexión.","Google didn't accept the connection.","O Google não aceitou a conexão.","Google לא קיבל את החיבור."),
+    "no-admin": t("Solo un admin puede ver esto.","Only an admin can see this.","Só um admin pode ver isto.","רק מנהל/ת יכול/ה לראות את זה."),
+    base: t("No se pudo leer la base.","The database couldn't be read.","Não foi possível ler a base.","לא ניתן היה לקרוא את בסיס הנתונים."),
+  })[c] || t("No se pudo leer Drive.","Drive couldn't be read.","Não foi possível ler o Drive.","לא ניתן היה לקרוא את Drive.");
+}
+function bjHace(iso){
+  if(!iso) return "";
+  const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  return m < 1 ? t("ahora","just now","agora","ממש עכשיו") : m < 60 ? t("hace {n} min","{n} min ago","há {n} min","לפני {n} דק׳", { n: m }) : t("hace {n} h","{n} h ago","há {n} h","לפני {n} שע׳", { n: Math.round(m / 60) });
+}
+const bjIni = p => ((p.nombre || p.correo).split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(x => x[0]).join("") || "?").toUpperCase();
+
+// El estado de una persona respecto de las carpetas que se ofrecen hoy.
+function bjEstado(p){
+  const act = bjActivas();
+  const tiene = act.filter(c => p.carpetas[c.id]).length;
+  if(p.error) return "prob";
+  if(p.pendiente) return "pend";
+  if(!act.length || tiene === 0) return "sin";
+  return tiene === act.length ? "todo" : "parc";
+}
+const bjEtiqueta = (p, e) => ({
+  todo: t("Todo","All","Tudo","הכול"), sin: t("Sin acceso","No access","Sem acesso","ללא גישה"), pend: t("Pendiente","Pending","Pendente","ממתין"),
+  prob: t("Error","Error","Erro","שגיאה"), parc: `${bjActivas().filter(c => p.carpetas[c.id]).length} ${t("de","of","de","מתוך")} ${bjActivas().length}`,
+})[e];
+// Pendiente: está cargada en una planilla y todavía no recibió acceso (incluye a quien el Script no pudo dar y dejó un error).
+const bjCumple = (p, f) => f === "todas" || (f === "pend" && p.pendiente) || (f === "prob" && !!p.error) || (f === "parc" && bjEstado(p) === "parc");
+function bjFiltradas(){
+  const q = bj.buscar.trim().toLowerCase();
+  return bjPersonas().filter(p => bjCumple(p, bj.filtro) && (!q || p.correo.includes(q) || (p.nombre || "").toLowerCase().includes(q)));
+}
+const bjContar = f => bjPersonas().filter(p => bjCumple(p, f)).length;
+
+function bjCelda(p, c){
+  const rol = p.carpetas[c.id];
+  if(!rol) return `<span class="bj-c no" aria-label="${esc(t("Sin acceso","No access","Sem acesso","ללא גישה"))}">–</span>`;
+  if(rol === "reader" || rol === "commenter") return `<span class="bj-c si" aria-label="${esc(t("Tiene acceso","Has access","Tem acesso","יש גישה"))}">✓</span>`;
+  return `<span class="bj-c ed" aria-label="${esc(t("Editor","Editor","Editor","עורך/ת"))}">E</span>`;
+}
+function bjFila(p){
+  const act = bjActivas(), e = bjEstado(p), sel = bj.sel.has(p.correo);
+  const lang = ({ es: "ES", en: "EN", pt: "PT", he: "HE" })[({ "español": "es", "inglés": "en", "portugués": "pt", "hebreo": "he" })[(p.idioma || "").toLowerCase()]] || "";
+  return `<div class="bj-fila${sel ? " sel" : ""}" role="row" style="--bj-n:${act.length}">
+    <input type="checkbox" class="bj-check" data-action="bj-sel" data-correo="${esc(p.correo)}" ${sel ? "checked" : ""} aria-label="${esc(t("Elegir a {n}","Select {n}","Escolher {n}","בחירת {n}", { n: p.nombre || p.correo }))}">
+    <div class="bj-quien"><span class="bj-av" aria-hidden="true">${esc(bjIni(p))}</span>
+      <div class="bj-datos"><button type="button" class="bj-nombre" data-action="bj-persona" data-correo="${esc(p.correo)}" dir="auto">${esc(p.nombre || p.correo)}</button>
+        <div class="bj-mail" dir="ltr">${esc(p.correo)}</div>
+        <div class="bj-chips">${lang ? `<span class="bj-chip">${lang}</span>` : ""}<span class="bj-tag ${e}">${esc(bjEtiqueta(p, e))}</span></div></div></div>
+    <div class="bj-celdas">${act.map(c => bjCelda(p, c)).join("")}</div>
+    <div class="bj-puntos" aria-hidden="true">${act.map(c => `<i class="${p.carpetas[c.id] ? "on" : ""}"></i>`).join("")}</div>
+    <button type="button" class="bj-mas-btn" data-action="bj-persona" data-correo="${esc(p.correo)}" aria-label="${esc(t("Gestionar a {n}","Manage {n}","Gerenciar {n}","ניהול של {n}", { n: p.nombre || p.correo }))}">⋯</button>
+  </div>`;
+}
+function bjHtmlLista(){
+  const act = bjActivas(), todas = bjFiltradas(), lista = todas.slice(0, bj.mas);
+  if(!bjPersonas().length) return `<div class="bj-vacio">${esc(bj.error ? bjMensajeDeError(bj.error) : t("Todavía no hay nadie.","Nobody yet.","Ainda não há ninguém.","עדיין אין אף אחד."))}</div>`;
+  if(!todas.length) return `<div class="bj-vacio">${esc(t("Nadie coincide.","No matches.","Ninguém corresponde.","אין התאמות."))}</div>`;
+  return `<div class="bj-tabla" role="table"><div class="bj-fila bj-cab" role="row" style="--bj-n:${act.length}"><span></span><span>${esc(t("Persona","Person","Pessoa","אדם"))}</span>
+    <div class="bj-celdas">${act.map(c => `<span class="bj-c-cab" title="${esc(c.nombre)}">${esc(c.nombre)}</span>`).join("")}</div><span></span></div>
+    ${lista.map(bjFila).join("")}</div>
+    <div class="bj-pie"><span>${esc(t("Mostrando {a} de {b}","Showing {a} of {b}","Mostrando {a} de {b}","מוצגים {a} מתוך {b}", { a: lista.length, b: todas.length }))}</span>
+    ${todas.length > lista.length ? `<button type="button" class="btn-text-add" data-action="bj-ver-mas">${esc(t("Ver más","See more","Ver mais","עוד"))}</button>` : ""}</div>`;
+}
+function bjRepintarLista(){ const el = document.getElementById("bjLista"); if(el) el.innerHTML = bjHtmlLista(); const b = document.getElementById("bjBarra"); if(b) b.innerHTML = bjHtmlBarra(); }
+function bjHtmlBarra(){
+  const n = bj.sel.size;
+  if(!n) return "";
+  return `<div class="bj-barra" role="region" aria-label="${esc(t("Acciones","Actions","Ações","פעולות"))}"><strong>${esc(n === 1 ? t("1 persona elegida","1 person selected","1 pessoa escolhida","אדם אחד נבחר") : t("{n} personas elegidas","{n} people selected","{n} pessoas escolhidas","{n} אנשים נבחרו", { n }))}</strong>
+    <button type="button" class="bj-btn claro" data-action="bj-cambiar" data-modo="agregar">${esc(t("Agregar carpeta","Add folder","Adicionar pasta","הוספת תיקייה"))}</button>
+    <button type="button" class="bj-btn claro" data-action="bj-cambiar" data-modo="quitar">${esc(t("Quitar de una carpeta","Remove from a folder","Tirar de uma pasta","הסרה מתיקייה"))}</button>
+    <button type="button" class="bj-btn peligro" data-action="bj-quitar-todo-varios">${esc(t("Quitar todo el acceso","Remove all access","Tirar todo o acesso","הסרת כל הגישה"))}</button>
+    <button type="button" class="bj-link" data-action="bj-limpiar">${esc(t("Limpiar","Clear","Limpar","ניקוי"))}</button></div>`;
+}
+
+/* ---------- La pantalla principal: dos solapas ---------- */
+function bjCabecera(){
+  const pers = bjPersonas().length, act = bjActivas().length;
+  const tab = (k, txt) => `<button type="button" class="bj-tab${bj.tab === k ? " active" : ""}" data-action="bj-tab" data-key="${k}" aria-pressed="${bj.tab === k}">${esc(txt)}</button>`;
+  return `<div class="bj-top"><div class="bj-tabs" role="group" aria-label="${esc(t("Qué ver","What to see","O que ver","מה להציג"))}">
+    ${tab("personas", `${t("Personas","People","Pessoas","אנשים")} · ${pers}`)}${tab("carpetas", `${t("Carpetas","Folders","Pastas","תיקיות")} · ${act}`)}</div>
+    <div class="bj-actualiza"><span>${esc(bj.cargando ? t("Actualizando…","Updating…","Atualizando…","מרענן…") : (bj.datos && bj.datos.leido ? `${t("Actualizado","Updated","Atualizado","עודכן")} ${bjHace(bj.datos.leido)}` : ""))}</span>
+    <button type="button" class="bj-redondo" data-action="bj-recargar" aria-label="${esc(t("Actualizar","Refresh","Atualizar","רענון"))}"${bj.cargando ? " disabled" : ""}>↻</button></div></div>`;
+}
+function bjVistaPersonas(){
+  const pend = bjContar("pend"), prob = bjContar("prob"), parc = bjContar("parc");
+  const chip = (k, txt, n) => `<button type="button" class="bj-fchip${bj.filtro === k ? " active" : ""}" data-action="bj-filtro" data-key="${k}" aria-pressed="${bj.filtro === k}">${esc(txt)}${n ? ` · ${n}` : ""}</button>`;
+  const aviso = bj.error ? `<div class="bj-aviso" role="status">${esc(bjMensajeDeError(bj.error))} <button type="button" class="bj-link" data-action="bj-recargar">${esc(t("Reintentar","Retry","Tentar de novo","ניסיון חוזר"))}</button></div>` : "";
+  const banda = bj.filtro === "pend" && pend ? `<div class="bj-aviso" role="status"><strong>${esc(pend === 1 ? t("1 persona espera acceso.","1 person is waiting for access.","1 pessoa espera acesso.","אדם אחד ממתין לגישה.") : t("{n} personas esperan acceso.","{n} people are waiting for access.","{n} pessoas esperam acesso.","{n} אנשים ממתינים לגישה.", { n: pend }))}</strong>
+    <button type="button" class="bj-btn" data-action="bj-dar-pendientes"${bj.ocupado ? " disabled" : ""}>${esc(pend === 1 ? t("Dar acceso","Give access","Dar acesso","מתן גישה") : t("Dar acceso a las {n}","Give access to all {n}","Dar acesso às {n}","מתן גישה ל-{n}", { n: pend }))}</button></div>` : "";
+  return `${aviso}<div class="bj-tools"><label class="bj-buscar-w"><span class="bj-sr">${esc(t("Buscar","Search","Buscar","חיפוש"))}</span>
+      <input type="search" class="bj-buscar" id="bjBuscar" data-bj="buscar" placeholder="${esc(t("Buscar por nombre o correo","Search by name or email","Buscar por nome ou e-mail","חיפוש לפי שם או מייל"))}" value="${esc(bj.buscar)}"></label>
+    ${chip("todas", t("Todas","All","Todas","הכול"), 0)}${chip("pend", t("Pendientes","Pending","Pendentes","ממתינים"), pend)}${chip("prob", t("Con problemas","With problems","Com problemas","עם בעיות"), prob)}${chip("parc", t("Parciales","Partial","Parciais","חלקיים"), parc)}</div>
+    ${banda}<div id="bjBarra">${bjHtmlBarra()}</div><div class="bj-card" id="bjLista">${bjHtmlLista()}</div>`;
+}
+
+/* ---------- Carpetas, paquetes y planillas ---------- */
+function bjVistaCarpetas(){
+  const cs = bjCarpetas(), pq = bj.cat.paquetes, pl = bj.cat.planillas;
+  const dato = id => (bj.datos && bj.datos.carpetas || []).find(c => c.id === id);
+  const fila = (c, i) => {
+    const d = dato(c.id), problema = d && d.estado !== "ok";
+    return `<div class="bj-carp${c.activa ? "" : " off"}"><span class="bj-ic" aria-hidden="true">📁</span>
+      <div class="bj-carp-t"><div class="bj-carp-n" dir="auto">${esc(c.nombre)}</div><div class="bj-mail">${d ? esc(t("{n} personas","{n} people","{n} pessoas","{n} אנשים", { n: d.personas })) : ""}</div></div>
+      ${!c.activa ? `<span class="bj-tag sin">${esc(t("Desactivada","Off","Desativada","כבויה"))}</span>` : (problema ? `<span class="bj-tag parc">${esc(t("Falta permiso","Missing permission","Falta permissão","חסרה הרשאה"))}</span>` : "")}
+      <span class="bj-flechas"><button type="button" class="bj-redondo" data-action="bj-mover" data-id="${esc(c.id)}" data-d="-1" aria-label="${esc(t("Subir {n}","Move {n} up","Subir {n}","הזזת {n} למעלה", { n: c.nombre }))}"${i === 0 ? " disabled" : ""}>↑</button>
+        <button type="button" class="bj-redondo" data-action="bj-mover" data-id="${esc(c.id)}" data-d="1" aria-label="${esc(t("Bajar {n}","Move {n} down","Descer {n}","הזזת {n} למטה", { n: c.nombre }))}"${i === cs.length - 1 ? " disabled" : ""}>↓</button></span>
+      <button type="button" class="bj-btn claro" data-action="bj-carpeta-editar" data-id="${esc(c.id)}">${esc(t("Editar","Edit","Editar","עריכה"))}</button></div>`;
+  };
+  const nombres = ids => ids.map(bjNombreDe);
+  return `<div class="bj-card"><div class="bj-agregar"><label class="bj-buscar-w"><span class="bj-sr">${esc(t("Link de una carpeta de Drive","Link to a Drive folder","Link de uma pasta do Drive","קישור לתיקיית Drive"))}</span>
+      <input type="url" class="bj-buscar" id="bjLinkCarpeta" data-bj="linkCarpeta" placeholder="${esc(t("Pegá el link de una carpeta de Drive","Paste a Drive folder link","Cole o link de uma pasta do Drive","הדביקו קישור לתיקיית Drive"))}" value="${esc(bj.form.linkCarpeta || "")}"></label>
+      <button type="button" class="bj-btn" data-action="bj-carpeta-nueva">${esc(t("Agregar","Add","Adicionar","הוספה"))}</button></div>
+    ${cs.length ? cs.map(fila).join("") : `<div class="bj-vacio">${esc(t("Todavía no hay carpetas.","No folders yet.","Ainda não há pastas.","עדיין אין תיקיות."))}</div>`}</div>
+  <div class="bj-card bj-seccion"><div class="bj-seccion-t"><h3>${esc(t("Paquetes","Packages","Pacotes","חבילות"))}</h3><button type="button" class="bj-btn claro" data-action="bj-paquete-nuevo">${esc(t("Nuevo paquete","New package","Novo pacote","חבילה חדשה"))}</button></div>
+    <div class="bj-paquetes">${pq.length ? pq.map(p => `<div class="bj-paq"><div class="bj-paq-t"><b dir="auto">${esc(p.nombre)}</b><button type="button" class="bj-link" data-action="bj-paquete-editar" data-id="${esc(p.id)}">${esc(t("Editar","Edit","Editar","עריכה"))}</button></div>
+      <div class="bj-chips">${nombres(bj.cat.enPaquete.filter(x => x.paquete === p.id).map(x => x.carpeta)).map(n => `<span class="bj-chip" dir="auto">${esc(n)}</span>`).join("")}</div></div>`).join("") : `<div class="bj-vacio">${esc(t("Sin paquetes.","No packages.","Sem pacotes.","אין חבילות."))}</div>`}</div></div>
+  <div class="bj-card bj-seccion"><div class="bj-seccion-t"><h3>${esc(t("Planillas","Spreadsheets","Planilhas","גיליונות"))}</h3></div>
+    ${pl.map(p => { const d = (bj.datos && bj.datos.planillas || []).find(x => x.id === p.id); return `<div class="bj-carp"><span class="bj-ic" aria-hidden="true">▦</span><div class="bj-carp-t"><div class="bj-carp-n" dir="auto">${esc(p.nombre)}</div><div class="bj-mail">${d ? esc(t("{n} filas · {p} pendientes","{n} rows · {p} pending","{n} linhas · {p} pendentes","{n} שורות · {p} ממתינים", { n: d.filas, p: d.pendientes })) : ""}</div></div>
+      ${d && d.estado !== "ok" ? `<span class="bj-tag parc">${esc(t("Falta permiso","Missing permission","Falta permissão","חסרה הרשאה"))}</span>` : ""}
+      <button type="button" class="bj-btn claro" data-action="bj-planilla-borrar" data-id="${esc(p.id)}">${esc(t("Dejar de usar","Stop using","Deixar de usar","הפסקת שימוש"))}</button></div>`; }).join("")}
+    <div class="bj-agregar"><label class="bj-buscar-w"><span class="bj-sr">${esc(t("Link de una planilla","Link to a spreadsheet","Link de uma planilha","קישור לגיליון"))}</span>
+      <input type="url" class="bj-buscar" id="bjLinkPlanilla" data-bj="planillaLink" placeholder="${esc(t("Pegá el link de una planilla","Paste a spreadsheet link","Cole o link de uma planilha","הדביקו קישור לגיליון"))}" value="${esc(bj.planillaLink)}"></label>
+      <button type="button" class="bj-btn" data-action="bj-planilla-nueva"${bj.ocupado ? " disabled" : ""}>${esc(t("Agregar","Add","Adicionar","הוספה"))}</button></div>
+    ${bj.planillaMsg ? `<div class="bj-aviso" role="status">${esc(bj.planillaMsg)}</div>` : ""}</div>`;
+}
+
+/* ---------- Una persona ---------- */
+function bjVistaPersona(){
+  const p = bjDe(bj.persona);
+  if(!p) { bj.vista = "lista"; return bjVistaPrincipal(); }
+  const e = bjEstado(p), act = bjCarpetas().filter(c => c.activa || p.carpetas[c.id]);
+  const fila = c => {
+    const rol = p.carpetas[c.id], editor = rol && rol !== "reader" && rol !== "commenter";
+    return `<div class="bj-carp"><span class="bj-ic" aria-hidden="true">📁</span><div class="bj-carp-t"><div class="bj-carp-n" dir="auto">${esc(c.nombre)}</div>
+      <div class="bj-mail">${esc(editor ? t("Editor","Editor","Editor","עורך/ת") : rol ? t("Tiene acceso","Has access","Tem acesso","יש גישה") : t("Sin acceso","No access","Sem acesso","ללא גישה"))}</div></div>
+      ${editor ? "" : rol ? `<button type="button" class="bj-btn peligro-claro" data-action="bj-quitar-una" data-id="${esc(c.id)}"${bj.ocupado ? " disabled" : ""}>${esc(t("Quitar","Remove","Tirar","הסרה"))}</button>`
+        : `<button type="button" class="bj-btn claro" data-action="bj-dar-una" data-id="${esc(c.id)}"${bj.ocupado ? " disabled" : ""}>${esc(t("Dar acceso","Give access","Dar acesso","מתן גישה"))}</button>`}</div>`;
+  };
+  const lector = Object.values(p.carpetas).some(r => r === "reader" || r === "commenter");
+  return `<button type="button" class="bj-volver" data-action="bj-volver">‹ ${esc(t("Volver a Brújula","Back to Brújula","Voltar à Brújula","חזרה ל-Brújula"))}</button>
+    <div class="bj-card bj-ficha"><div class="bj-quien"><span class="bj-av grande" aria-hidden="true">${esc(bjIni(p))}</span><div class="bj-datos"><h3 dir="auto">${esc(p.nombre || p.correo)}</h3><div class="bj-mail" dir="ltr">${esc(p.correo)}</div>
+      <div class="bj-chips">${p.idioma ? `<span class="bj-chip">${esc(p.idioma)}</span>` : ""}${p.comunidad ? `<span class="bj-chip" dir="auto">${esc(p.comunidad)}</span>` : ""}<span class="bj-tag ${e}">${esc(bjEtiqueta(p, e))}</span></div></div></div>
+      <div class="bj-acciones">${lector ? `<button type="button" class="bj-btn claro" data-action="bj-reenviar"${bj.ocupado ? " disabled" : ""}>${esc(t("Reenviar el mail","Resend the email","Reenviar o e-mail","שליחת המייל שוב"))}</button>` : ""}
+        ${lector ? `<button type="button" class="bj-btn peligro-claro" data-action="bj-quitar-todo"${bj.ocupado ? " disabled" : ""}>${esc(t("Quitar todo el acceso","Remove all access","Tirar todo o acesso","הסרת כל הגישה"))}</button>` : ""}</div></div>
+    ${p.error ? `<div class="bj-aviso" role="status" dir="auto">${esc(p.error)}</div>` : ""}
+    <div class="bj-card">${act.length ? act.map(fila).join("") : `<div class="bj-vacio">${esc(t("Todavía no hay carpetas.","No folders yet.","Ainda não há pastas.","עדיין אין תיקיות."))}</div>`}</div>`;
+}
+
+/* ---------- Invitar ---------- */
+const BJ_IDIOMAS = [["es", "Español", "Spanish", "Espanhol", "ספרדית"], ["en", "Inglés", "English", "Inglês", "אנגלית"], ["pt", "Portugués", "Portuguese", "Português", "פורטוגזית"], ["he", "Hebreo", "Hebrew", "Hebraico", "עברית"]];
+function bjFormInvitar(){
+  if(!bj.form.carpetas){
+    const pq = bj.cat.paquetes[0];
+    bj.form = { modo: "una", nombre: "", correo: "", idioma: currentLang(), comunidad: "", lista: "", mail: true, paquete: pq ? pq.id : "medida",
+      carpetas: new Set(pq ? bj.cat.enPaquete.filter(x => x.paquete === pq.id).map(x => x.carpeta) : bjActivas().map(c => c.id)) };
+  }
+  return bj.form;
+}
+function bjLeerLista(texto, idioma){
+  const salida = [];
+  for(const ln of String(texto || "").split(/\r?\n/)){
+    const m = /([^\s,;<>]+@[^\s,;<>]+\.[^\s,;<>]+)/.exec(ln);
+    if(!m) continue;
+    const nombre = ln.replace(m[1], "").replace(/[<>,;]+/g, " ").replace(/\s+/g, " ").trim();
+    salida.push({ correo: m[1].toLowerCase(), nombre, idioma });
+  }
+  return salida;
+}
+function bjVistaInvitar(){
+  const f = bjFormInvitar(), act = bjActivas();
+  const pq = bj.cat.paquetes;
+  const yaTiene = f.modo === "una" ? bjDe((f.correo || "").trim().toLowerCase()) : null;
+  const yaN = yaTiene ? bjActivas().filter(c => yaTiene.carpetas[c.id]).length : 0;
+  const personas = f.modo === "una" ? ((f.correo || "").trim() ? [1] : []) : bjLeerLista(f.lista, f.idioma);
+  const n = f.carpetas.size;
+  const radio = (id, txt, sub) => `<button type="button" class="bj-radio${f.paquete === id ? " active" : ""}" data-action="bj-paquete-elegir" data-id="${esc(id)}" role="radio" aria-checked="${f.paquete === id}"><b dir="auto">${esc(txt)}</b><span>${esc(sub)}</span></button>`;
+  return `<button type="button" class="bj-volver" data-action="bj-volver">‹ ${esc(t("Volver a Brújula","Back to Brújula","Voltar à Brújula","חזרה ל-Brújula"))}</button>
+  <div class="bj-card bj-form"><h3>${esc(t("Invitar personas","Invite people","Convidar pessoas","הזמנת אנשים"))}</h3>
+    <div class="bj-tabs" role="group"><button type="button" class="bj-tab${f.modo === "una" ? " active" : ""}" data-action="bj-modo" data-key="una" aria-pressed="${f.modo === "una"}">${esc(t("Una persona","One person","Uma pessoa","אדם אחד"))}</button>
+      <button type="button" class="bj-tab${f.modo === "lista" ? " active" : ""}" data-action="bj-modo" data-key="lista" aria-pressed="${f.modo === "lista"}">${esc(t("Pegar una lista","Paste a list","Colar uma lista","הדבקת רשימה"))}</button></div>
+    <fieldset class="bj-campos"><legend>${esc(t("Persona","Person","Pessoa","אדם"))}</legend>
+      ${f.modo === "una" ? `<label>${esc(t("Nombre y apellido","Full name","Nome e sobrenome","שם מלא"))}<input type="text" data-bj="f.nombre" value="${esc(f.nombre)}" autocomplete="off"></label>
+        <label>${esc(t("Correo","Email","E-mail","מייל"))}<input type="email" data-bj="f.correo" value="${esc(f.correo)}" autocomplete="off" dir="ltr"></label>`
+      : `<label class="bj-ancho">${esc(t("Un nombre y un correo por renglón","One name and email per line","Um nome e e-mail por linha","שם ומייל בכל שורה"))}<textarea rows="6" data-bj="f.lista" dir="auto" placeholder="Ana Pérez, ana@ejemplo.org">${esc(f.lista)}</textarea></label>`}
+      <div class="bj-campo"><span id="bjIdiomaT">${esc(t("Idioma del mail","Email language","Idioma do e-mail","שפת המייל"))}</span><div class="bj-seg" role="radiogroup" aria-labelledby="bjIdiomaT">${BJ_IDIOMAS.map(x => `<button type="button" role="radio" aria-checked="${f.idioma === x[0]}" class="${f.idioma === x[0] ? "active" : ""}" data-action="bj-idioma" data-key="${x[0]}">${esc(t(x[1], x[2], x[3], x[4]))}</button>`).join("")}</div></div>
+      ${f.modo === "una" ? `<label>${esc(t("Comunidad","Community","Comunidade","קהילה"))}<input type="text" list="bjComunidades" data-bj="f.comunidad" value="${esc(f.comunidad)}" autocomplete="off"></label>
+        <datalist id="bjComunidades">${[...new Set(bjPersonas().map(p => p.comunidad).filter(Boolean))].sort().map(c => `<option value="${esc(c)}">`).join("")}</datalist>` : ""}
+      ${yaN ? `<div class="bj-nota ancho">${esc(t("Ya tiene {n} carpetas.","Already has {n} folders.","Já tem {n} pastas.","כבר יש לו/ה {n} תיקיות.", { n: yaN }))}</div>` : ""}</fieldset>
+    <fieldset class="bj-campos"><legend>${esc(t("Carpetas","Folders","Pastas","תיקיות"))}</legend>
+      <div class="bj-radios" role="radiogroup">${pq.map(p => radio(p.id, p.nombre, t("{n} carpetas","{n} folders","{n} pastas","{n} תיקיות", { n: bj.cat.enPaquete.filter(x => x.paquete === p.id).length }))).join("")}${radio("medida", t("A medida","Custom","Sob medida","מותאם"), t("Elegir carpetas","Choose folders","Escolher pastas","בחירת תיקיות"))}</div>
+      <div class="bj-lista-c">${act.length ? act.map(c => `<label class="bj-opcion"><input type="checkbox" data-action="bj-carpeta-marcar" data-id="${esc(c.id)}" ${f.carpetas.has(c.id) ? "checked" : ""}><span dir="auto">${esc(c.nombre)}</span></label>`).join("") : `<div class="bj-vacio">${esc(t("Todavía no hay carpetas.","No folders yet.","Ainda não há pastas.","עדיין אין תיקיות."))}</div>`}</div></fieldset>
+    <div class="bj-campo fila"><span>${esc(t("Mail de bienvenida","Welcome email","E-mail de boas-vindas","מייל ברוכים הבאים"))}</span><button type="button" role="switch" aria-checked="${f.mail}" class="bj-interruptor${f.mail ? " on" : ""}" data-action="bj-mail" aria-label="${esc(t("Mail de bienvenida","Welcome email","E-mail de boas-vindas","מייל ברוכים הבאים"))}"><i></i></button></div>
+    <div class="bj-fin"><span class="bj-mail">${esc(n === 1 ? t("1 carpeta","1 folder","1 pasta","תיקייה אחת") : t("{n} carpetas","{n} folders","{n} pastas","{n} תיקיות", { n }))}${f.mail ? ` · ${esc(t("con mail","with email","com e-mail","עם מייל"))}` : ` · ${esc(t("sin mail","no email","sem e-mail","בלי מייל"))}`}</span>
+      <button type="button" class="bj-btn claro" data-action="bj-volver">${esc(t("Cancelar","Cancel","Cancelar","ביטול"))}</button>
+      <button type="button" class="bj-btn" data-action="bj-invitar"${!n || !personas.length || bj.ocupado ? " disabled" : ""}>${esc(bj.ocupado ? t("Trabajando…","Working…","Trabalhando…","עובד…") : t("Invitar","Invite","Convidar","הזמנה"))}</button></div></div>`;
+}
+
+/* ---------- Agregar o quitar carpetas a varias personas ---------- */
+function bjVistaCambiar(){
+  const f = bj.form, quitar = f.modo === "quitar", cs = quitar ? bjCarpetas() : bjActivas();
+  return `<button type="button" class="bj-volver" data-action="bj-volver">‹ ${esc(t("Volver a Brújula","Back to Brújula","Voltar à Brújula","חזרה ל-Brújula"))}</button>
+  <div class="bj-card bj-form"><h3>${esc(quitar ? t("Quitar de una carpeta","Remove from a folder","Tirar de uma pasta","הסרה מתיקייה") : t("Agregar carpeta","Add folder","Adicionar pasta","הוספת תיקייה"))} · ${esc(f.correos.length === 1 ? (bjDe(f.correos[0]) || {}).nombre || f.correos[0] : t("{n} personas","{n} people","{n} pessoas","{n} אנשים", { n: f.correos.length }))}</h3>
+    <div class="bj-lista-c">${cs.map(c => `<label class="bj-opcion"><input type="checkbox" data-action="bj-carpeta-marcar" data-id="${esc(c.id)}" ${f.carpetas.has(c.id) ? "checked" : ""}><span dir="auto">${esc(c.nombre)}</span></label>`).join("")}</div>
+    ${quitar ? "" : `<div class="bj-campo fila"><span>${esc(t("Mail de bienvenida","Welcome email","E-mail de boas-vindas","מייל ברוכים הבאים"))}</span><button type="button" role="switch" aria-checked="${f.mail}" class="bj-interruptor${f.mail ? " on" : ""}" data-action="bj-mail" aria-label="${esc(t("Mail de bienvenida","Welcome email","E-mail de boas-vindas","מייל ברוכים הבאים"))}"><i></i></button></div>`}
+    <div class="bj-fin"><button type="button" class="bj-btn claro" data-action="bj-volver">${esc(t("Cancelar","Cancel","Cancelar","ביטול"))}</button>
+      <button type="button" class="bj-btn${quitar ? " peligro" : ""}" data-action="bj-aplicar"${!f.carpetas.size || bj.ocupado ? " disabled" : ""}>${esc(bj.ocupado ? t("Trabajando…","Working…","Trabalhando…","עובד…") : quitar ? t("Quitar","Remove","Tirar","הסרה") : t("Agregar","Add","Adicionar","הוספה"))}</button></div></div>`;
+}
+
+/* ---------- Lo que salió ---------- */
+function bjVistaResultado(){
+  const r = bj.resultado, filas = r.filas;
+  const total = filas.reduce((a, f) => a + f.carpetas.length, 0), bien = filas.reduce((a, f) => a + f.carpetas.filter(c => c.ok).length, 0);
+  const titulo = bien === total ? t("Listo","Done","Pronto","בוצע") : t("Listo en {a} de {b}","Done in {a} of {b}","Pronto em {a} de {b}","בוצע ב-{a} מתוך {b}", { a: bien, b: total });
+  const mailTxt = m => m === "enviado" ? t("Mail enviado","Email sent","E-mail enviado","המייל נשלח") : m === "sin-configurar" ? t("Mail sin configurar","Email not set up","E-mail não configurado","המייל לא מוגדר") : m === "error" ? t("El mail no salió","The email wasn't sent","O e-mail não saiu","המייל לא נשלח") : "";
+  return `<div class="bj-card bj-form"><h3>${esc(titulo)}</h3>
+    ${filas.map(f => `<div class="bj-res"><div class="bj-res-n" dir="auto">${esc(f.nombre || f.correo)}${f.error ? ` <span class="bj-mail">${esc(f.error === "correo" ? t("Correo no válido.","Invalid email.","E-mail inválido.","מייל לא תקין.") : t("No se pudo.","Couldn't.","Não foi possível.","לא ניתן."))}</span>` : ""}</div>
+      <ul class="bj-res-l">${f.carpetas.map(c => `<li class="${c.ok ? "ok" : "mal"}"><span aria-hidden="true">${c.ok ? "✓" : "!"}</span> <span dir="auto">${esc(bjNombreDe(c.id))}</span>${c.ok ? "" : ` <span class="bj-mail">${esc(bjMotivo(c.error))}</span>`}</li>`).join("")}</ul>
+      ${f.mail && f.mail !== "no" ? `<div class="bj-mail">${esc(mailTxt(f.mail))}</div>` : ""}</div>`).join("")}
+    <div class="bj-fin"><button type="button" class="bj-btn" data-action="bj-volver">${esc(t("Entendido","Got it","Entendi","הבנתי"))}</button></div></div>`;
+}
+
+/* ---------- Agregar o editar una carpeta ---------- */
+function bjVistaCarpetaNueva(){
+  const f = bj.form, r = f.res, pq = bj.cat.paquetes, pl = bj.cat.planillas;
+  let caso = "";
+  if(r && r.caso && r.caso !== "ok"){
+    const txt = ({
+      sinpermiso: t("Toldot no puede ver esa carpeta. Compartila como Editor con la cuenta de Toldot y volvé a comprobar.","Toldot can't see that folder. Share it as Editor with Toldot's account and check again.","O Toldot não vê essa pasta. Compartilhe como Editor com a conta do Toldot e confira de novo.","לתולדות אין גישה לתיקייה. שתפו כעורך/ת עם החשבון של תולדות ובדקו שוב."),
+      atajo: t("Es un acceso directo a «{n}».","It's a shortcut to “{n}”.","É um atalho para «{n}».","זה קיצור דרך אל «{n}».", { n: r.destino ? r.destino.nombre : "" }),
+      nocarpeta: t("Ese link no es de una carpeta.","That link isn't a folder.","Esse link não é de uma pasta.","הקישור הזה אינו של תיקייה."),
+      "unidad-compartida": t("Las unidades compartidas todavía no se pueden gestionar.","Shared drives can't be managed yet.","As unidades compartilhadas ainda não podem ser gerenciadas.","כוננים משותפים עדיין לא ניתנים לניהול."),
+      papelera: t("Esa carpeta está en la papelera.","That folder is in the trash.","Essa pasta está na lixeira.","התיקייה הזו בפח."),
+      link: t("Eso no es un link de Drive.","That isn't a Drive link.","Isso não é um link do Drive.","זה לא קישור של Drive."),
+      repetida: t("Esa carpeta ya está.","That folder is already there.","Essa pasta já está.","התיקייה הזו כבר קיימת."),
+    })[r.caso] || bjMensajeDeError(r.caso);
+    caso = `<div class="bj-aviso" role="status">${esc(txt)} ${r.caso === "atajo" && r.destino ? `<button type="button" class="bj-btn" data-action="bj-usar-destino">${esc(t("Usar esa carpeta","Use that folder","Usar essa pasta","שימוש בתיקייה הזו"))}</button>` : ""}</div>`;
+  }
+  const ok = r && r.caso === "ok";
+  return `<button type="button" class="bj-volver" data-action="bj-volver">‹ ${esc(t("Volver a Brújula","Back to Brújula","Voltar à Brújula","חזרה ל-Brújula"))}</button>
+  <div class="bj-card bj-form"><h3>${esc(t("Agregar carpeta","Add folder","Adicionar pasta","הוספת תיקייה"))}</h3>
+    <div class="bj-agregar sin-borde"><label class="bj-buscar-w"><span class="bj-sr">${esc(t("Link de la carpeta","Folder link","Link da pasta","קישור לתיקייה"))}</span><input type="url" class="bj-buscar" data-bj="linkCarpeta" value="${esc(f.linkCarpeta || "")}" dir="ltr"></label>
+      <button type="button" class="bj-btn" data-action="bj-comprobar"${bj.ocupado ? " disabled" : ""}>${esc(bj.ocupado ? t("Comprobando…","Checking…","Verificando…","בודק…") : t("Comprobar","Check","Verificar","בדיקה"))}</button></div>
+    ${caso}${ok ? `<div class="bj-ok">✓ ${esc(t("Carpeta encontrada","Folder found","Pasta encontrada","התיקייה נמצאה"))}</div>
+      <label class="bj-campo">${esc(t("Nombre","Name","Nome","שם"))}<input type="text" data-bj="f.nombre" value="${esc(f.nombre)}" autocomplete="off"></label>
+      <div class="bj-dos"><fieldset class="bj-campos"><legend>${esc(t("Paquetes","Packages","Pacotes","חבילות"))}</legend>${pq.map(p => `<label class="bj-opcion"><input type="checkbox" data-action="bj-marca-paquete" data-id="${esc(p.id)}" ${f.paquetes.has(p.id) ? "checked" : ""}><span dir="auto">${esc(p.nombre)}</span></label>`).join("") || `<span class="bj-mail">${esc(t("Sin paquetes.","No packages.","Sem pacotes.","אין חבילות."))}</span>`}</fieldset>
+      <fieldset class="bj-campos"><legend>${esc(t("Planilla","Spreadsheet","Planilha","גיליון"))}</legend>${pl.map(p => `<label class="bj-opcion"><input type="checkbox" data-action="bj-marca-planilla" data-id="${esc(p.id)}" ${f.planillas.has(p.id) ? "checked" : ""}><span dir="auto">${esc(p.nombre)}</span></label>`).join("") || `<span class="bj-mail">${esc(t("Sin planillas.","No spreadsheets.","Sem planilhas.","אין גיליונות."))}</span>`}</fieldset></div>
+      <div class="bj-campo fila"><span>${esc(t("Ofrecer al invitar","Offer when inviting","Oferecer ao convidar","להציע בהזמנה"))}</span><button type="button" role="switch" aria-checked="${f.activa}" class="bj-interruptor${f.activa ? " on" : ""}" data-action="bj-activa" aria-label="${esc(t("Ofrecer al invitar","Offer when inviting","Oferecer ao convidar","להציע בהזמנה"))}"><i></i></button></div>
+      <div class="bj-nota">${esc(t("El Script de los lunes no da esta carpeta. Toldot sí.","Monday's Script won't give this folder. Toldot will.","O Script de segunda não dá esta pasta. O Toldot dá.","הסקריפט של יום שני לא נותן את התיקייה הזו. תולדות כן."))}</div>` : ""}
+    <div class="bj-fin"><button type="button" class="bj-btn claro" data-action="bj-volver">${esc(t("Cancelar","Cancel","Cancelar","ביטול"))}</button>
+      <button type="button" class="bj-btn" data-action="bj-carpeta-guardar"${ok && !bj.ocupado && f.nombre.trim() ? "" : " disabled"}>${esc(t("Agregar","Add","Adicionar","הוספה"))}</button></div></div>`;
+}
+function bjVistaCarpetaEditar(){
+  const f = bj.form, c = bjCarpeta(f.id);
+  if(!c){ bj.vista = "lista"; return bjVistaPrincipal(); }
+  const pq = bj.cat.paquetes, pl = bj.cat.planillas, d = (bj.datos && bj.datos.carpetas || []).find(x => x.id === c.id);
+  return `<button type="button" class="bj-volver" data-action="bj-volver">‹ ${esc(t("Volver a Brújula","Back to Brújula","Voltar à Brújula","חזרה ל-Brújula"))}</button>
+  <div class="bj-card bj-form"><h3>${esc(t("Editar carpeta","Edit folder","Editar pasta","עריכת תיקייה"))}</h3>
+    <div class="bj-mail">${d ? esc(t("{n} personas","{n} people","{n} pessoas","{n} אנשים", { n: d.personas })) : ""} · <a href="https://drive.google.com/drive/folders/${esc(c.id)}" target="_blank" rel="noopener noreferrer">${esc(t("Abrir en Drive","Open in Drive","Abrir no Drive","פתיחה ב-Drive"))}</a></div>
+    <label class="bj-campo">${esc(t("Nombre","Name","Nome","שם"))}<input type="text" data-bj="f.nombre" value="${esc(f.nombre)}" autocomplete="off"></label>
+    <div class="bj-dos"><fieldset class="bj-campos"><legend>${esc(t("Paquetes","Packages","Pacotes","חבילות"))}</legend>${pq.map(p => `<label class="bj-opcion"><input type="checkbox" data-action="bj-marca-paquete" data-id="${esc(p.id)}" ${f.paquetes.has(p.id) ? "checked" : ""}><span dir="auto">${esc(p.nombre)}</span></label>`).join("") || `<span class="bj-mail">${esc(t("Sin paquetes.","No packages.","Sem pacotes.","אין חבילות."))}</span>`}</fieldset>
+      <fieldset class="bj-campos"><legend>${esc(t("Planilla","Spreadsheet","Planilha","גיליון"))}</legend>${pl.map(p => `<label class="bj-opcion"><input type="checkbox" data-action="bj-marca-planilla" data-id="${esc(p.id)}" ${f.planillas.has(p.id) ? "checked" : ""}><span dir="auto">${esc(p.nombre)}</span></label>`).join("") || `<span class="bj-mail">${esc(t("Sin planillas.","No spreadsheets.","Sem planilhas.","אין גיליונות."))}</span>`}</fieldset></div>
+    <div class="bj-campo fila"><span>${esc(t("Ofrecer al invitar","Offer when inviting","Oferecer ao convidar","להציע בהזמנה"))}</span><button type="button" role="switch" aria-checked="${f.activa}" class="bj-interruptor${f.activa ? " on" : ""}" data-action="bj-activa" aria-label="${esc(t("Ofrecer al invitar","Offer when inviting","Oferecer ao convidar","להציע בהזמנה"))}"><i></i></button></div>
+    <div class="bj-peligro"><div class="bj-peligro-f"><div><b>${esc(t("Dejar de gestionar","Stop managing","Deixar de gerenciar","הפסקת ניהול"))}</b><div class="bj-mail">${esc(t("En Drive no cambia nada.","Nothing changes in Drive.","No Drive nada muda.","ב-Drive שום דבר לא משתנה."))}</div></div>
+      <button type="button" class="bj-btn claro" data-action="bj-carpeta-borrar"${bj.ocupado ? " disabled" : ""}>${esc(t("Dejar de gestionar","Stop managing","Deixar de gerenciar","הפסקת ניהול"))}</button></div>
+      <div class="bj-peligro-f rojo"><div><b>${esc(t("Sacar a todos los lectores","Remove all readers","Tirar todos os leitores","הסרת כל הקוראים"))}</b><div class="bj-mail">${esc(t("No se puede deshacer.","It can't be undone.","Não dá para desfazer.","אי אפשר לבטל."))}</div>
+        <input type="text" class="bj-buscar" id="bjConfirmar" data-bj="f.confirmar" value="${esc(f.confirmar || "")}" placeholder="${esc(t("Escribí el nombre de la carpeta","Type the folder name","Escreva o nome da pasta","הקלידו את שם התיקייה"))}" autocomplete="off" dir="auto"></div>
+      <button type="button" class="bj-btn peligro" id="bjSacarTodos" data-action="bj-sacar-todos"${(f.confirmar || "").trim() === c.nombre.trim() && !bj.ocupado ? "" : " disabled"}>${esc(t("Sacar a todos","Remove all","Tirar todos","הסרת כולם"))}</button></div></div>
+    <div class="bj-fin"><button type="button" class="bj-btn claro" data-action="bj-volver">${esc(t("Cancelar","Cancel","Cancelar","ביטול"))}</button>
+      <button type="button" class="bj-btn" data-action="bj-carpeta-cambiar"${f.nombre.trim() && !bj.ocupado ? "" : " disabled"}>${esc(t("Guardar","Save","Salvar","שמירה"))}</button></div></div>`;
+}
+function bjVistaPaquete(){
+  const f = bj.form;
+  return `<button type="button" class="bj-volver" data-action="bj-volver">‹ ${esc(t("Volver a Brújula","Back to Brújula","Voltar à Brújula","חזרה ל-Brújula"))}</button>
+  <div class="bj-card bj-form"><h3>${esc(f.id ? t("Editar paquete","Edit package","Editar pacote","עריכת חבילה") : t("Nuevo paquete","New package","Novo pacote","חבילה חדשה"))}</h3>
+    <label class="bj-campo">${esc(t("Nombre","Name","Nome","שם"))}<input type="text" data-bj="f.nombre" value="${esc(f.nombre)}" autocomplete="off"></label>
+    <div class="bj-lista-c">${bjCarpetas().map(c => `<label class="bj-opcion"><input type="checkbox" data-action="bj-carpeta-marcar" data-id="${esc(c.id)}" ${f.carpetas.has(c.id) ? "checked" : ""}><span dir="auto">${esc(c.nombre)}</span></label>`).join("")}</div>
+    <div class="bj-fin">${f.id ? `<button type="button" class="bj-btn peligro-claro" data-action="bj-paquete-borrar"${bj.ocupado ? " disabled" : ""}>${esc(t("Borrar","Delete","Apagar","מחיקה"))}</button>` : ""}
+      <button type="button" class="bj-btn claro" data-action="bj-volver">${esc(t("Cancelar","Cancel","Cancelar","ביטול"))}</button>
+      <button type="button" class="bj-btn" data-action="bj-paquete-guardar"${f.nombre.trim() && !bj.ocupado ? "" : " disabled"}>${esc(t("Guardar","Save","Salvar","שמירה"))}</button></div></div>`;
+}
+
+function bjVistaPrincipal(){
+  return `${bjCabecera()}${bj.tab === "personas" ? bjVistaPersonas() : bjVistaCarpetas()}`;
+}
+function renderBrujulaSection(){
+  if(!isAdmin()) return `<div class="settings-card"><div class="setting-row"><div class="setting-sub">${esc(bjMensajeDeError("no-admin"))}</div></div></div>`;
+  if(!bj.cat){ bjCargar(); return `<div class="bj"><div class="bj-vacio">${esc(t("Cargando…","Loading…","Carregando…","טוען…"))}</div></div>`; }
+  // Al entrar, si lo último que se leyó es viejo, se vuelve a leer en silencio (y cada 15 minutos mientras se mira).
+  if(bj.datos && bj.datos.leido && Date.now() - Date.parse(bj.datos.leido) > 5 * 60 * 1000 && !bj.cargando) bjCargar();
+  const v = bj.vista;
+  const cuerpo = v === "persona" ? bjVistaPersona() : v === "invitar" ? bjVistaInvitar() : v === "cambiar" ? bjVistaCambiar() : v === "resultado" ? bjVistaResultado()
+    : v === "carpeta-nueva" ? bjVistaCarpetaNueva() : v === "carpeta-editar" ? bjVistaCarpetaEditar() : v === "paquete" ? bjVistaPaquete() : bjVistaPrincipal();
+  return `<div class="bj">${bj.errorCat ? `<div class="bj-aviso" role="status">${esc(bjMensajeDeError("base"))}</div>` : ""}${cuerpo}</div>`;
+}
+setInterval(() => { if(bjActiva() && bj.vista === "lista" && !document.hidden) bjCargar(); }, 15 * 60 * 1000);
+
+/* ---------- Lo que hace cada botón ---------- */
+// Elegir la planilla donde anotar a quien recibe estas carpetas: la que las tiene a todas marcadas (la más específica, o sea
+// la que tiene menos carpetas marcadas), y si ninguna, la primera.
+function bjPlanillaPara(ids){
+  const pl = bj.cat.planillas;
+  const marcadas = p => bjCarpetas().filter(c => c.planillas.includes(p.id)).length;
+  const aptas = pl.filter(p => ids.every(id => (bjCarpeta(id) || { planillas: [] }).planillas.includes(p.id)));
+  return (aptas.sort((a, b) => marcadas(a) - marcadas(b))[0] || pl[0] || {}).id || null;
+}
+// Da o quita acceso a una o más personas, de a una (la función las atiende de a una), y muestra lo que salió.
+async function bjEjecutar(tipo, personas, ids, { mail = false, anotar = true, usarFila = false } = {}){
+  if(bj.ocupado) return;
+  bj.ocupado = true; render();
+  const filas = [];
+  const ordenadas = [...ids].sort((a, b) => bjCarpetas().findIndex(c => c.id === a) - bjCarpetas().findIndex(c => c.id === b));
+  for(const p of personas){
+    const dato = bjDe(p.correo) || { planillas: [], permisos: {}, carpetas: {} };
+    try{
+      if(tipo === "dar"){
+        const fila = usarFila ? (dato.planillas.find(x => !x.enviado) || null) : null;
+        const planilla = !anotar ? null : fila ? fila.planilla : bjPlanillaPara(ordenadas);
+        const r = await store.brujula.dar({ persona: { correo: p.correo, nombre: p.nombre, idioma: p.idioma, comunidad: p.comunidad }, carpetas: ordenadas, mail, planilla, fila: fila ? fila.fila : undefined });
+        filas.push({ correo: p.correo, nombre: p.nombre, ...r });
+        const hechas = r.carpetas.filter(c => c.ok).map(c => bjNombreDe(c.id));
+        if(hechas.length) logAudit("brujula_dio", { targetEmail: p.correo, detail: hechas.join(", ").slice(0, 280) });
+      }else{
+        const quitables = ordenadas.filter(id => dato.carpetas[id]);
+        const r = await store.brujula.quitar({ correo: p.correo, carpetas: quitables, permisos: dato.permisos, filas: dato.planillas.map(x => ({ planilla: x.planilla, fila: x.fila })) });
+        filas.push({ correo: p.correo, nombre: p.nombre || dato.nombre, ...r });
+        const hechas = r.carpetas.filter(c => c.ok && !c.ya).map(c => bjNombreDe(c.id));
+        if(hechas.length) logAudit("brujula_quito", { targetEmail: p.correo, detail: hechas.join(", ").slice(0, 280) });
+      }
+    }catch(err){ filas.push({ correo: p.correo, nombre: p.nombre, carpetas: ordenadas.map(id => ({ id, ok: false, error: "google" })), error: err && err.codigo || "google" }); }
+  }
+  bj.ocupado = false; bj.resultado = { tipo, filas }; bj.vista = "resultado"; bj.sel.clear(); bj.form = {};
+  render();
+  bjCargar();
+}
+
+const BRUJULA_ACCIONES = {
+  "brujula-aviso": async el => { if(!isAdmin()) return; guardarCorreosConfig({ brujula: { on: el.dataset.key === "on" } }); },
+  "bj-tab": async el => { bj.tab = el.dataset.key === "carpetas" ? "carpetas" : "personas"; bj.vista = "lista"; render(); },
+  "bj-recargar": async () => { await bjCargar(); },
+  "bj-filtro": async el => { bj.filtro = el.dataset.key; bj.mas = 50; bj.sel.clear(); render(); },
+  "bj-ver-mas": async () => { bj.mas += 50; bjRepintarLista(); },
+  "bj-sel": async el => { const c = el.dataset.correo; if(el.checked) bj.sel.add(c); else bj.sel.delete(c); bjRepintarLista(); },
+  "bj-limpiar": async () => { bj.sel.clear(); render(); },
+  "bj-volver": async () => { bj.vista = "lista"; bj.form = {}; bj.resultado = null; render(); },
+  "bj-persona": async el => { bj.persona = el.dataset.correo; bj.vista = "persona"; render(); scrollToTop(); },
+  "bj-invitar-abrir": async () => { bj.form = {}; bj.vista = "invitar"; render(); scrollToTop(); },
+  "bj-modo": async el => { bjFormInvitar().modo = el.dataset.key; render(); },
+  "bj-idioma": async el => { bj.form.idioma = el.dataset.key; render(); },
+  "bj-mail": async () => { bj.form.mail = !bj.form.mail; render(); },
+  "bj-paquete-elegir": async el => {
+    const f = bj.form, id = el.dataset.id; f.paquete = id;
+    if(id !== "medida") f.carpetas = new Set(bj.cat.enPaquete.filter(x => x.paquete === id).map(x => x.carpeta));
+    render();
+  },
+  "bj-carpeta-marcar": async el => { const f = bj.form, id = el.dataset.id; if(el.checked) f.carpetas.add(id); else f.carpetas.delete(id); if(bj.vista === "invitar") f.paquete = "medida"; render(); },
+  "bj-invitar": async () => {
+    const f = bj.form;
+    const personas = f.modo === "una" ? [{ correo: f.correo.trim().toLowerCase(), nombre: f.nombre.trim(), idioma: f.idioma, comunidad: f.comunidad.trim() }] : bjLeerLista(f.lista, f.idioma);
+    await bjEjecutar("dar", personas, [...f.carpetas], { mail: f.mail });
+  },
+  "bj-dar-pendientes": async () => {
+    const pend = bjPendientes(), pq = bj.cat.paquetes[0];
+    const ids = pq ? bj.cat.enPaquete.filter(x => x.paquete === pq.id).map(x => x.carpeta) : bjActivas().map(c => c.id);
+    if(!ids.length) return;
+    const ok = await appConfirm(t("¿Darles acceso a {n} personas ({p}) y mandarles el mail de bienvenida?","Give {n} people access ({p}) and send them the welcome email?","Dar acesso a {n} pessoas ({p}) e enviar o e-mail de boas-vindas?","לתת גישה ל-{n} אנשים ({p}) ולשלוח להם את מייל ברוכים הבאים?", { n: pend.length, p: pq ? pq.name || pq.nombre : t("todas las carpetas","all folders","todas as pastas","כל התיקיות") }), { okLabel: t("Dar acceso","Give access","Dar acesso","מתן גישה") });
+    if(!ok) return;
+    await bjEjecutar("dar", pend.map(p => ({ correo: p.correo, nombre: p.nombre, idioma: p.idioma, comunidad: p.comunidad })), ids, { mail: true, usarFila: true });
+  },
+  "bj-cambiar": async el => {
+    const correos = [...bj.sel]; if(!correos.length) return;
+    bj.form = { modo: el.dataset.modo, correos, carpetas: new Set(), mail: false }; bj.vista = "cambiar"; render();
+  },
+  "bj-aplicar": async () => {
+    const f = bj.form, personas = f.correos.map(c => { const p = bjDe(c) || {}; return { correo: c, nombre: p.nombre, idioma: p.idioma, comunidad: p.comunidad }; });
+    await bjEjecutar(f.modo === "quitar" ? "quitar" : "dar", personas, [...f.carpetas], { mail: f.mail, anotar: false });
+  },
+  "bj-quitar-todo-varios": async () => {
+    const correos = [...bj.sel], n = correos.length;
+    const ok = await appConfirm(t("¿Quitarles todo el acceso a {n} personas? Dejan de ver las carpetas.","Remove all access from {n} people? They'll stop seeing the folders.","Tirar todo o acesso de {n} pessoas? Deixam de ver as pastas.","להסיר את כל הגישה מ-{n} אנשים? הם יפסיקו לראות את התיקיות.", { n }), { danger: true, okLabel: t("Quitar","Remove","Tirar","הסרה") });
+    if(!ok) return;
+    await bjEjecutar("quitar", correos.map(c => { const p = bjDe(c) || {}; return { correo: c, nombre: p.nombre }; }), bjCarpetas().map(c => c.id));
+  },
+  "bj-quitar-todo": async () => {
+    const p = bjDe(bj.persona); if(!p) return;
+    const ok = await appConfirm(t("¿Quitarle todo el acceso a {n}? Deja de ver las carpetas.","Remove all of {n}'s access? They'll stop seeing the folders.","Tirar todo o acesso de {n}? Deixa de ver as pastas.","להסיר את כל הגישה של {n}? הוא/היא יפסיק/תפסיק לראות את התיקיות.", { n: p.nombre || p.correo }), { danger: true, okLabel: t("Quitar","Remove","Tirar","הסרה") });
+    if(ok) await bjEjecutar("quitar", [{ correo: p.correo, nombre: p.nombre }], bjCarpetas().map(c => c.id));
+  },
+  "bj-quitar-una": async el => {
+    const p = bjDe(bj.persona); if(!p) return;
+    const ok = await appConfirm(t("¿Quitarle {c} a {n}?","Remove {c} from {n}?","Tirar {c} de {n}?","להסיר את {c} מ-{n}?", { c: bjNombreDe(el.dataset.id), n: p.nombre || p.correo }), { danger: true, okLabel: t("Quitar","Remove","Tirar","הסרה") });
+    if(ok) await bjEjecutar("quitar", [{ correo: p.correo, nombre: p.nombre }], [el.dataset.id]);
+  },
+  "bj-dar-una": async el => { const p = bjDe(bj.persona); if(p) await bjEjecutar("dar", [{ correo: p.correo, nombre: p.nombre, idioma: p.idioma, comunidad: p.comunidad }], [el.dataset.id], { mail: false, anotar: false }); },
+  "bj-reenviar": async () => {
+    const p = bjDe(bj.persona); if(!p) return;
+    const ids = bjCarpetas().filter(c => p.carpetas[c.id] === "reader" || p.carpetas[c.id] === "commenter").map(c => c.id);
+    await bjEjecutar("dar", [{ correo: p.correo, nombre: p.nombre, idioma: p.idioma, comunidad: p.comunidad }], ids, { mail: true, anotar: false });
+  },
+  // Carpetas
+  "bj-mover": async el => {
+    const cs = bjCarpetas(), i = cs.findIndex(c => c.id === el.dataset.id), j = i + Number(el.dataset.d);
+    if(i < 0 || j < 0 || j >= cs.length) return;
+    const lista = cs.map(c => c.id); [lista[i], lista[j]] = [lista[j], lista[i]];
+    try{ await store.brujula.ordenar(lista); await bjCargar(); }catch(err){ console.warn("No se pudo ordenar:", err && err.message); }
+  },
+  "bj-carpeta-nueva": async () => { bj.form = { linkCarpeta: (document.getElementById("bjLinkCarpeta") || {}).value || "", res: null, nombre: "", paquetes: new Set(), planillas: new Set(), activa: true }; bj.vista = "carpeta-nueva"; render(); if(bj.form.linkCarpeta) await BRUJULA_ACCIONES["bj-comprobar"](); },
+  "bj-comprobar": async () => {
+    const f = bj.form; if(bj.ocupado) return;
+    bj.ocupado = true; render();
+    try{ f.res = await store.brujula.comprobar(f.linkCarpeta || ""); if(f.res.caso === "ok") f.nombre = f.res.nombre; }
+    catch(err){ f.res = { caso: err && err.codigo || "google" }; }
+    bj.ocupado = false; render();
+  },
+  "bj-usar-destino": async () => { const f = bj.form; f.res = { caso: "ok", id: f.res.destino.id, nombre: f.res.destino.nombre }; f.nombre = f.res.nombre; render(); },
+  "bj-marca-paquete": async el => { const s = bj.form.paquetes, id = el.dataset.id; if(el.checked) s.add(id); else s.delete(id); },
+  "bj-marca-planilla": async el => { const s = bj.form.planillas, id = el.dataset.id; if(el.checked) s.add(id); else s.delete(id); },
+  "bj-activa": async () => { bj.form.activa = !bj.form.activa; render(); },
+  "bj-carpeta-guardar": async () => {
+    const f = bj.form; if(bj.ocupado || !f.res || f.res.caso !== "ok") return;
+    bj.ocupado = true; render();
+    try{
+      await store.brujula.carpetaNueva({ id: f.res.id, nombre: f.nombre.trim(), nombreDrive: f.res.nombre, orden: bjCarpetas().length + 1, activa: f.activa, planillas: [...f.planillas] });
+      for(const p of f.paquetes) await store.brujula.paqueteSumar(p, f.res.id);
+      bj.vista = "lista"; bj.tab = "carpetas"; bj.form = {};
+      await bjCargar();
+    }catch(err){ f.res = { caso: /duplicate|23505/.test((err && (err.message + err.code)) || "") ? "repetida" : "google" }; }
+    bj.ocupado = false; render();
+  },
+  "bj-carpeta-editar": async el => {
+    const c = bjCarpeta(el.dataset.id); if(!c) return;
+    bj.form = { id: c.id, nombre: c.nombre, activa: c.activa, planillas: new Set(c.planillas), paquetes: new Set(bj.cat.enPaquete.filter(x => x.carpeta === c.id).map(x => x.paquete)), confirmar: "" };
+    bj.vista = "carpeta-editar"; render(); scrollToTop();
+  },
+  "bj-carpeta-cambiar": async () => {
+    const f = bj.form; if(bj.ocupado) return;
+    bj.ocupado = true; render();
+    try{
+      await store.brujula.carpetaCambiar(f.id, { nombre: f.nombre.trim(), activa: f.activa, planillas: [...f.planillas] });
+      const antes = new Set(bj.cat.enPaquete.filter(x => x.carpeta === f.id).map(x => x.paquete));
+      for(const p of f.paquetes) if(!antes.has(p)) await store.brujula.paqueteSumar(p, f.id);
+      for(const p of antes) if(!f.paquetes.has(p)) await store.brujula.paqueteSacar(p, f.id);
+      bj.vista = "lista"; bj.tab = "carpetas"; bj.form = {};
+      await bjCargar();
+    }catch(err){ console.warn("No se pudo guardar la carpeta:", err && err.message); }
+    bj.ocupado = false; render();
+  },
+  "bj-carpeta-borrar": async () => {
+    const f = bj.form, c = bjCarpeta(f.id); if(!c) return;
+    const ok = await appConfirm(t("¿Dejar de gestionar «{n}»? En Drive no cambia nada.","Stop managing “{n}”? Nothing changes in Drive.","Deixar de gerenciar «{n}»? No Drive nada muda.","להפסיק לנהל את «{n}»? ב-Drive שום דבר לא משתנה.", { n: c.nombre }), { okLabel: t("Dejar de gestionar","Stop managing","Deixar de gerenciar","הפסקת ניהול") });
+    if(!ok) return;
+    try{ await store.brujula.carpetaBorrar(c.id); bj.vista = "lista"; bj.form = {}; await bjCargar(); }catch(err){ console.warn("No se pudo sacar la carpeta:", err && err.message); }
+    render();
+  },
+  "bj-sacar-todos": async () => {
+    const f = bj.form, c = bjCarpeta(f.id); if(!c || bj.ocupado) return;
+    bj.ocupado = true; render();
+    let r;
+    try{ r = await store.brujula.sacarATodos({ carpeta: c.id, confirmar: f.confirmar }); }catch(err){ r = { error: err && err.codigo || "google" }; }
+    bj.ocupado = false;
+    if(!r.error) logAudit("brujula_quito", { detail: `${c.nombre}: ${r.quitados}`.slice(0, 280) });
+    await appAlert(r.error ? bjMensajeDeError(r.error) : t("Listo: se quitó el acceso a {n} personas.","Done: access removed from {n} people.","Pronto: acesso removido de {n} pessoas.","בוצע: הוסרה הגישה מ-{n} אנשים.", { n: r.quitados }) + (r.heredados || r.errores ? ` ${t("No se pudo con {m}.","Couldn't do {m}.","Não foi possível com {m}.","לא הצלחנו עם {m}.", { m: (r.heredados || 0) + (r.errores || 0) })}` : ""));
+    f.confirmar = ""; render(); bjCargar();
+  },
+  // Paquetes y planillas
+  "bj-paquete-nuevo": async () => { bj.form = { id: null, nombre: "", carpetas: new Set() }; bj.vista = "paquete"; render(); },
+  "bj-paquete-editar": async el => {
+    const p = bj.cat.paquetes.find(x => x.id === el.dataset.id); if(!p) return;
+    bj.form = { id: p.id, nombre: p.nombre, carpetas: new Set(bj.cat.enPaquete.filter(x => x.paquete === p.id).map(x => x.carpeta)) }; bj.vista = "paquete"; render();
+  },
+  "bj-paquete-guardar": async () => {
+    const f = bj.form; if(bj.ocupado) return;
+    bj.ocupado = true; render();
+    try{ await store.brujula.paqueteGuardar({ id: f.id, nombre: f.nombre.trim(), orden: bj.cat.paquetes.length + 1, carpetas: [...f.carpetas] }); bj.vista = "lista"; bj.form = {}; await bjCargar(); }
+    catch(err){ console.warn("No se pudo guardar el paquete:", err && err.message); }
+    bj.ocupado = false; render();
+  },
+  "bj-paquete-borrar": async () => {
+    const f = bj.form;
+    const ok = await appConfirm(t("¿Borrar el paquete «{n}»? Las carpetas quedan como están.","Delete the package “{n}”? The folders stay as they are.","Apagar o pacote «{n}»? As pastas ficam como estão.","למחוק את החבילה «{n}»? התיקיות נשארות כפי שהן.", { n: f.nombre }), { danger: true, okLabel: t("Borrar","Delete","Apagar","מחיקה") });
+    if(!ok) return;
+    try{ await store.brujula.paqueteBorrar(f.id); bj.vista = "lista"; bj.form = {}; await bjCargar(); }catch(err){ console.warn("No se pudo borrar el paquete:", err && err.message); }
+    render();
+  },
+  "bj-planilla-nueva": async () => {
+    if(bj.ocupado) return;
+    bj.ocupado = true; bj.planillaMsg = ""; render();
+    try{
+      const r = await store.brujula.comprobarPlanilla(bj.planillaLink);
+      if(r.caso === "ok"){ await store.brujula.planillaNueva({ id: r.id, nombre: r.nombre, orden: bj.cat.planillas.length + 1 }); bj.planillaLink = ""; await bjCargar(); }
+      else bj.planillaMsg = ({ sinpermiso: t("Toldot no puede escribir en esa planilla. Compartila como Editor con la cuenta de Toldot.","Toldot can't write to that spreadsheet. Share it as Editor with Toldot's account.","O Toldot não pode escrever nessa planilha. Compartilhe como Editor com a conta do Toldot.","לתולדות אין הרשאת כתיבה בגיליון. שתפו כעורך/ת עם החשבון של תולדות."), noplanilla: t("Ese link no es de una planilla.","That link isn't a spreadsheet.","Esse link não é de uma planilha.","הקישור הזה אינו של גיליון."), link: t("Eso no es un link de Drive.","That isn't a Drive link.","Isso não é um link do Drive.","זה לא קישור של Drive.") })[r.caso] || bjMensajeDeError(r.caso);
+    }catch(err){ bj.planillaMsg = /duplicate|23505/.test((err && (err.message + err.code)) || "") ? t("Esa planilla ya está.","That spreadsheet is already there.","Essa planilha já está.","הגיליון הזה כבר קיים.") : bjMensajeDeError(err && err.codigo); }
+    bj.ocupado = false; render();
+  },
+  "bj-planilla-borrar": async el => {
+    const p = bj.cat.planillas.find(x => x.id === el.dataset.id); if(!p) return;
+    const ok = await appConfirm(t("¿Dejar de usar la planilla «{n}»? No se borra nada de la planilla.","Stop using the spreadsheet “{n}”? Nothing is deleted from it.","Deixar de usar a planilha «{n}»? Nada é apagado da planilha.","להפסיק להשתמש בגיליון «{n}»? שום דבר לא נמחק ממנו.", { n: p.nombre }), { okLabel: t("Dejar de usar","Stop using","Deixar de usar","הפסקת שימוש") });
+    if(!ok) return;
+    try{ await store.brujula.planillaBorrar(p.id); await bjCargar(); }catch(err){ console.warn("No se pudo sacar la planilla:", err && err.message); }
+    render();
+  },
+};
+// Lo que se escribe en los campos: se guarda sin volver a dibujar (así no se pierde el cursor).
+document.addEventListener("input", e => {
+  const el = e.target, k = el && el.dataset && el.dataset.bj;
+  if(!k) return;
+  if(k === "buscar"){ bj.buscar = el.value; bj.mas = 50; bjRepintarLista(); return; }
+  if(k === "planillaLink"){ bj.planillaLink = el.value; return; }
+  if(k === "linkCarpeta"){ bj.form.linkCarpeta = el.value; return; }
+  if(k.startsWith("f.")){
+    bj.form[k.slice(2)] = el.value;
+    // Los botones que dependen de lo escrito se prenden o se apagan en el lugar.
+    if(k === "f.confirmar"){ const c = bjCarpeta(bj.form.id), b = document.getElementById("bjSacarTodos"); if(b && c) b.disabled = bj.ocupado || el.value.trim() !== c.nombre.trim(); return; }
+    if(bj.vista === "invitar"){ clearTimeout(bj._t); bj._t = setTimeout(() => { const a = document.activeElement, id = a && a.dataset && a.dataset.bj, pos = a && a.selectionStart; render(); const n = id && document.querySelector(`[data-bj="${id}"]`); if(n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(_){} } }, 300); }
+  }
+});
+
+/* ======================================================================
    LA FICHA DE UN LUGAR (Países → un país → una ciudad), 6/10/2026
 
    Antes, entrar a una ciudad llevaba al Inicio con un filtro y se perdía
@@ -34113,7 +34867,7 @@ document.addEventListener("click", async e=>{
     getDraftFor(scope, ownerId).scopes.splice(idx,1); render();
     return;
   }
-  const handler = CLICK_ACTIONS[action] || AGENDA_ACCIONES[action] || GASTOS_ACCIONES[action];
+  const handler = CLICK_ACTIONS[action] || AGENDA_ACCIONES[action] || GASTOS_ACCIONES[action] || BRUJULA_ACCIONES[action];
   if (handler) await handler(el, e, action, postId);
 });
 

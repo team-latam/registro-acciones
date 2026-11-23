@@ -135,6 +135,16 @@ select lab.comprobar('si se borra la carpeta, sale de los paquetes (y el paquete
 select lab.comprobar('…quedó el paquete y sin carpetas',
   $q$select (select count(*) from public.brujula_paquetes)::text || '/' || (select count(*) from public.brujula_paquete_carpetas)::text$q$, '1/0');
 
+-- ---------- El registro de actividad ----------
+select lab.comprobar('un admin anota en el registro de actividad que le dio acceso a alguien',
+  $q$select lab.hacer(lab.como('benny@team-latam.com'), $x$insert into public.audit_log(id, type, actor_email, actor_name, target_email, detail, device) values ('bj1', 'brujula_dio', 'benny@team-latam.com', 'Benny', 'elena@example.org', 'Brújula Cloud, CARE', 'Chrome · Mac') returning type$x$)$q$, 'brujula_dio');
+select lab.comprobar('…y que se lo sacó',
+  $q$select lab.hacer(lab.como('otra.admin@x.com'), $x$insert into public.audit_log(id, type, actor_email, actor_name, target_email, detail, device) values ('bj2', 'brujula_quito', 'otra.admin@x.com', 'Otra', 'elena@example.org', 'CARE', 'Chrome · Mac') returning type$x$)$q$, 'brujula_quito');
+select lab.comprobar('una integrante no puede anotar eso (no es admin)',
+  $q$select lab.hacer(lab.como('ana@x.com'), $x$insert into public.audit_log(id, type, actor_email, actor_name, target_email, detail, device) values ('bj3', 'brujula_dio', 'ana@x.com', 'Ana', 'elena@example.org', 'CARE', 'Chrome · Mac') returning type$x$)$q$, 'error: new row violates row-level security policy for table "audit_log"');
+select lab.comprobar('un tipo que no existe sigue sin entrar',
+  $q$select lab.hacer(lab.como('benny@team-latam.com'), $x$insert into public.audit_log(id, type, actor_email, actor_name, target_email, detail, device) values ('bj4', 'brujula_borro_todo', 'benny@team-latam.com', 'Benny', null, null, 'x') returning type$x$)$q$, 'error: new row for relation "audit_log" violates check constraint "audit_tipo"');
+
 -- ---------- Nada se publica sin querer ----------
 select lab.comprobar('las cuatro tablas tienen la seguridad por filas prendida',
   $q$select count(*)::text from pg_class c join pg_namespace n on n.oid = c.relnamespace

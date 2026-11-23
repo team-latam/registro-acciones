@@ -52,6 +52,7 @@ INDEX=/tmp/roto.html ./herramientas/pruebas/correr.sh
 | `workflows_test.mjs` | los workflows de GitHub, no la app: acciones fijadas por huella y en versiones vigentes, permisos, tiempo máximo, llaves solo desde main, nada que escribe una persona pegado en un `run:`. `WORKFLOWS=/otra/carpeta` la corre contra una copia. |
 | `lector_test.mjs` | el lector de comprobantes de Gastos leyendo tickets de verdad (dibujados en la prueba). La app se sirve por http, como en el sitio: desde un archivo local el navegador no deja crear el trabajador donde corre el lector. |
 | `gastos_pdf_test.mjs` | los PDF de entrega de Gastos armados de verdad (con pdf-lib, servida por http al lado de la página como en el sitio) y vueltos a leer: páginas, sellos, idiomas, el comprobante que no se puede leer y el resumen por mes. |
+| `brujula_test.mjs` | Administración › Brújula (docs/brujula/): la lista y la cuadrícula de quién tiene qué, los filtros, invitar (una persona o una lista), dar y quitar acceso, los pendientes de la planilla, el catálogo de carpetas por link (agregar, editar, ordenar, desactivar, dejar de gestionar), paquetes y planillas, y qué pasa cuando Google no contesta. La función `brujula` es de mentira; en los cuatro idiomas y en el celular. |
 | `miniatura_test.mjs` | la miniatura de una foto, armada en un Chromium de verdad: un canvas no existe fuera del navegador, y `sb_test.mjs` usa una de mentira. |
 
 ## Para correrlas

@@ -110,6 +110,7 @@ grant insert (id, nombre, orden) on public.brujula_planillas to authenticated;
 grant update (nombre, orden) on public.brujula_planillas to authenticated;
 grant insert (id, nombre, nombre_drive, orden, activa, planillas) on public.brujula_carpetas to authenticated;
 grant update (nombre, nombre_drive, orden, activa, planillas) on public.brujula_carpetas to authenticated;
-grant insert (nombre, orden) on public.brujula_paquetes to authenticated;
+-- La app pone el `id` (un uuid) para poder sumarle carpetas al paquete sin esperar a que vuelva la fila.
+grant insert (id, nombre, orden) on public.brujula_paquetes to authenticated;
 grant update (nombre, orden) on public.brujula_paquetes to authenticated;
-grant insert (paquete, carpeta) on public.brujula_paquete_carpetas to authenticated;
+grant insert (id, paquete, carpeta) on public.brujula_paquete_carpetas to authenticated;

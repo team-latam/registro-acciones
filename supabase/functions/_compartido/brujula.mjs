@@ -146,7 +146,7 @@ async function permisosDe(traer, token, id){
 const limpio = (v, max = 200) => String(v ?? "").replace(/[​-‏⁠﻿]/g, "").trim().slice(0, max);
 // Las filas de una planilla «Users»: nombre, correo, comunidad, idioma, «Enviado» y, si el Script falló, el error.
 // Sin nombre de pestaña: es la primera, se llame como se llame.
-async function filasDe(traer, token, id){
+export async function filasDe(traer, token, id){
   const r = await google(traer, token, `${SHEETS}${encodeURIComponent(id)}/values/${encodeURIComponent(`A2:H${MAX_FILAS}`)}?majorDimension=ROWS`);
   if(noSeVe(r)) return { error: "sinpermiso" };
   if(r.estado !== 200) return { error: "google" };

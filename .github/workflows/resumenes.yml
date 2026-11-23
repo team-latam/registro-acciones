@@ -50,6 +50,7 @@ jobs:
           node supabase/avisos/pruebas/vencimientos.mjs
           node supabase/avisos/pruebas/lugares.mjs
           node supabase/avisos/pruebas/informe.mjs
+          node supabase/avisos/pruebas/brujula.mjs
           node supabase/avisos/pruebas/ejemplos.mjs
           node supabase/functions/_pruebas/avisos.mjs
 
@@ -124,3 +125,15 @@ jobs:
         run: |
           set -o pipefail
           node supabase/avisos/informe.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+      # Brújula (23/11/2026): si un admin prendió el aviso en Administración › Correos (viene apagado), un
+      # correo cuando hay personas cargadas en una planilla que todavía no recibieron acceso. Solo lee la
+      # planilla (permiso de solo lectura); sin la llave de Brújula no hace nada.
+      - name: Avisar de las personas que esperan acceso a Brújula
+        if: steps.revisar.outputs.hay == 'si' && !cancelled()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GOOGLE_CUENTA_BRUJULA: ${{ secrets.GOOGLE_CUENTA_BRUJULA }}
+        run: |
+          set -o pipefail
+          node supabase/avisos/brujula.mjs | tee -a "$GITHUB_STEP_SUMMARY"

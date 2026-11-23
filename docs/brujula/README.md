@@ -1,13 +1,14 @@
 # Brújula en Toldot — el módulo nuevo (en construcción)
 
-> **Estado (23/11/2026):** **etapa 1 en construcción**, en la rama. Hay una **maqueta navegable** (página privada del
-> usuario, con datos inventados: <https://claude.ai/artifact/4YmAhH8p97ghuKU7EHYe1b>), ajustada con lo que dijo el
-> usuario. **Hecho:** la base (`supabase/30-brujula.sql`, 44 comprobaciones en `supabase/pruebas/68-brujula.sql`), las
-> copias de seguridad con las tablas nuevas, y la función `brujula` que lee Drive y las planillas
-> (`supabase/functions/_compartido/brujula.mjs`, 65 comprobaciones). **Falta:** la pantalla en Administración, la
-> parte de Google del usuario (`supabase/functions/LEEME.md`) y mostrarle capturas antes de ir a `main`. Como con Gastos:
-> **cada parte va a `main` recién con el OK explícito del usuario, con capturas** (al llegar a `main`, el SQL nuevo se aplica solo
-> a la base real). Es una excepción a la regla general de «pushear a `main` de una» de `CLAUDE.md`.
+> **Estado (23/11/2026):** las **tres etapas están construidas, en la rama** (y el usuario pidió subirlas juntas al final,
+> a `main`). Hay una maqueta navegable (página privada del usuario, con datos inventados:
+> <https://claude.ai/artifact/4YmAhH8p97ghuKU7EHYe1b>) de la que salió el diseño. **Hecho:** la base
+> (`supabase/30-brujula.sql`, 48 comprobaciones), las copias de seguridad con las tablas nuevas, la función `brujula`
+> (lee, da y quita acceso, comprueba links y escribe en las planillas: `supabase/functions/_compartido/brujula.mjs`, 111
+> comprobaciones), el mail de bienvenida en cuatro idiomas, la pantalla (Administración › Brújula, `brujula_test.mjs`, 84
+> comprobaciones) y el aviso por correo de pendientes (`supabase/avisos/brujula.mjs`, 28). **Falta, y es del usuario:** la
+> parte de Google (`supabase/functions/LEEME.md`; hasta entonces la pantalla dice «Todavía no está conectado Google») y que
+> alguien que lea hebreo mire el mail. Subir a `main` aplica el SQL a la base real y publica la función.
 
 **Qué es.** «Brújula» es la biblioteca de material de la organización: carpetas de Google Drive que se comparten, en
 modo lectura, con unas 450 personas de las comunidades. Hoy se les da acceso con dos planillas de Google y un
@@ -115,7 +116,7 @@ texto innecesario** que explique cómo funciona algo o diga lo que ya se entiend
 Otras secciones de Administración sí llevan un párrafo y «¿Cómo funciona?»; no se tocaron. Se pueden revisar aparte si el
 usuario lo pide.
 
-## Etapas
+## Etapas (todas construidas; ver el estado arriba)
 
 1. **Conexión y lectura:** catálogo de carpetas y planillas, la lista unificada (Drive + planillas) y los pendientes.
    No cambia nada en Drive ni en las planillas.
@@ -155,6 +156,17 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
 - **El texto hebreo del mail** lo revisa una persona que lea hebreo antes de que salga a alguien real (ok).
 - **Los «¿Cómo funciona?» de las otras secciones de Administración: por ahora no se tocan.**
 - «Primero hagamos esto» se tomó como el **visto bueno para empezar la etapa 1** (en la rama; a `main` solo con su OK y capturas).
+
+## Lo que pasó al construirlo (para tener presente)
+
+- **Un acceso heredado no se ve de antemano:** Drive no dice, en «Mi unidad», si un permiso viene de una carpeta madre.
+  Toldot lo descubre al intentar quitarlo y lo explica («Le llega por otra carpeta: hay que sacarlo en Drive»).
+- **Lo que se anota en el registro de actividad:** `brujula_dio` y `brujula_quito` (03-validacion.sql), con quién lo hizo, a quién y
+  de qué carpetas.
+- **El aviso por correo a los admin** (viene apagado) lo corre el workflow horario de siempre («Resúmenes por correo»); se prende
+  en Administración › Correos (`correos.brujula = { on }`).
+- **Una prueba que dependía de la fecha** (`gastos_analisis_test`, un evento «dentro de 40 días» que desde fines de noviembre
+  cae en 2027) se arregló de paso.
 
 ## Pendiente
 

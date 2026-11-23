@@ -69,6 +69,15 @@ salen a quienes Administración › Correos habilita. Lo que dijo «no por
 ahora» y el recorrido de un viaje en el mapa siguen en ese documento. Si
 pide «las propuestas», arrancar de ahí.
 
+## Brújula (23/11/2026)
+
+Administración › Brújula: invitar, dar y quitar acceso a las carpetas de Drive, y editar el catálogo de carpetas por link
+(`docs/brujula/README.md`). Hasta que el usuario haga **la parte de Google** (prender las APIs de Drive y Sheets, crear la cuenta de
+servicio de Brújula, cargar su llave como `GOOGLE_CUENTA_BRUJULA` y compartirle las carpetas y las dos planillas como Editor; pasos en
+`supabase/functions/LEEME.md`), la pantalla dice «Todavía no está conectado Google». Falta además que alguien que lea hebreo revise el
+mail de bienvenida, y el aviso por correo de pendientes viene **apagado** (Administración › Correos). Lo de «Hebreo» en los menús de
+las planillas y en los Scripts de los lunes se dejó para después.
+
 ## El video de presentación
 
 En inglés, ~74 s, celular y compu; el usuario aprobó la v5 como final el
