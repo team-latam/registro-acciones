@@ -108,5 +108,10 @@
     "que": "Texto visible escrito directo, sin t()",
     "contiene": "organización te debe",
     "porque": "Un condicional escrito en dos renglones: cada rama pasa por t() con sus cuatro idiomas; la herramienta ve solo el primero. Revisado el 20/11/2026."
+  },
+  {
+    "que": "Atributo placeholder escrito directo, sin t()",
+    "contiene": "Ana Pérez, ana@ejemplo.org",
+    "porque": "Es el ejemplo del formato «nombre, correo» de Brújula › Invitar › Pegar una lista: un nombre propio y un correo van igual en los cuatro idiomas. Revisado el 23/11/2026."
   }
 ]

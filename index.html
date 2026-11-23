@@ -3312,6 +3312,8 @@
   .fl-lectura li{ display:flex; gap:10px; font-size:14px; line-height:1.45; color:var(--ink); }
   .fl-lectura li b{ font-weight:800; }
   .fl-lectura .ic{ flex:none; width:22px; text-align:center; }
+  /* Un nombre de proyecto sin espacios (o muy largo) se corta en vez de empujar la página (auditoría, 23/11/2026). */
+  .fl-lectura li > span:not(.ic){ min-width:0; overflow-wrap:anywhere; }
   .fl-lectura li.alerta{ color:#9a4a00; }
   html[data-theme="dark"] .fl-lectura li.alerta{ color:#f0b46a; }
   .fl-stats{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
@@ -30693,7 +30695,6 @@ const bj = {
   sel: new Set(), persona: null, form: {}, resultado: null, ocupado: false,
   planillaLink: "", planillaMsg: "",
 };
-const BJ_TOPE_CARPETAS = 40;
 const bjActiva = () => state.view === "preferencias" && state.preferenciasSection === "brujula";
 const bjCarpetas = () => (bj.cat ? bj.cat.carpetas : []);
 const bjActivas = () => bjCarpetas().filter(c => c.activa);

@@ -33,7 +33,7 @@ ocupa todo el ancho), no del botón.
 **Una palabra larga estira la página.** Un nombre larguísimo, una ciudad
 escrita a mano, un link pegado: un chip, un botón con un nombre o una
 lista no lo cortan y empujan todo de costado (chips de lugar y de
-proyecto, participantes, «Lugares», el nombre en la ficha). *Por qué:*
+proyecto, participantes, «Lugares», el nombre en la ficha, la «Lectura rápida» del país el 23/11/2026). *Por qué:*
 `white-space:nowrap` o un elemento flexible sin `min-width:0`. *Se
 detecta:* `datos` (palabras de 60 letras sin espacios). *Regla:* todo lo
 que muestra texto escrito por alguien lleva `max-width:100%; min-width:0;

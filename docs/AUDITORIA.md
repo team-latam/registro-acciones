@@ -319,3 +319,30 @@ el laboratorio.
 - **Para mirar cuando el equipo crezca (no es de hoy):** cada persona abre 18 canales de
   tiempo real; el plan gratis de Supabase tiene un tope de conexiones que no pude consultar desde
   acá. Conviene mirarlo en el panel cuando el equipo pase de unas pocas decenas.
+
+---
+
+## Agregado: Brújula (23/11/2026) — código V
+
+Auditoría **de lo nuevo** (`RAPIDO=1`) sobre lo que se sumó con Administración › Brújula (`8586b2a`). Las herramientas, en
+verde: **5.269 comprobaciones de la app**, **1.363 de la base**, Calendar y copias; pantallas en 1280, 390 y 390 en hebreo
+sin recortes. Revisado a mano, porque el cambio toca la base, una función de Supabase, workflows y datos de personas:
+
+| Código | Qué | Qué se hizo |
+|---|---|---|
+| ~~V1~~ | **Una línea de «Lectura rápida» de la ficha de un país empujaba toda la página de costado** si el proyecto tenía un nombre largo sin espacios (en el celular, también en hebreo). No es de Brújula: la encontró `datos` y ya estaba antes (se verificó contra el `index.html` de antes). | Arreglado: ese texto se achica y corta. Prueba nueva `ficha_palabra_larga_test.mjs` (en rojo contra el código anterior, 3 de 12). |
+| ~~V2~~ | Código muerto: `BJ_TOPE_CARPETAS`, una constante de Brújula que nadie usaba. | Borrada. |
+| ~~V3~~ | Falso positivo: el ejemplo «Ana Pérez, ana@ejemplo.org» de «Pegar una lista» salía como texto sin `t()`. Un nombre propio y un correo van igual en los cuatro idiomas. | Anotado en `conocidos.json`. |
+
+Lo que se miró a mano y está bien:
+
+- **Quién puede:** las cuatro tablas y la función `brujula` son solo del admin (la base lo decide con la sesión de quien llama;
+  la función no confía en lo que mande la pantalla: las carpetas tienen que estar en el catálogo y cada permiso se comprueba
+  contra Drive antes de borrarlo; un editor nunca se saca).
+- **Interpolaciones nuevas en el HTML sin `esc()`:** todas son números, textos fijos traducidos o HTML ya escapado al armarse.
+- **Privacidad:** Toldot no guarda en la base los nombres ni los correos de las planillas (se leen de Google cada vez). Lo único
+  que queda de una persona de afuera es su correo en el **registro de actividad** (`brujula_dio`, `brujula_quito`), que lee solo
+  un admin, para saber a quién se le dio o se le quitó. El mail de bienvenida sale por Resend y no se guarda.
+- **Recorrido de bienvenida:** Brújula es de admins; ya está cubierto por `TOUR_SIN_PASO.admin` (el recorrido es para todo el equipo).
+- **Peso:** lo que se publica, achicado, pasó de 515 a **532 KB comprimidos** (el límite es 600): Brújula sumó unos 17 KB.
+  Queda poco margen: lo próximo grande conviene medirlo antes.
