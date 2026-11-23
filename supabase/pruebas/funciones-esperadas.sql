@@ -20,6 +20,7 @@ insert into esperadas values
   ('esta_aprobado()',                       true, true),   -- security definer: ¿está en el equipo?
   ('es_admin_fijo()',                       true, true),
   ('es_admin_rol()',                        true, true),
+  ('puede_gestionar_brujula()',             true, true),   -- Brújula (30-brujula.sql, 23/11/2026): admin fijo o de rol; solo un sí o un no sobre quien llama
   ('es_finanzas()',                         true, true),   -- Finanzas (19/11/2026): solo devuelve si quien llama tiene ese rol
   ('es_gestor_gastos()',                    true, true),   -- admin fijo, admin por rol o Finanzas: solo un sí o un no
   ('puede_escribir()',                      true, true),

@@ -40,6 +40,9 @@ export const TABLAS = {
   // Los gastos y la cuenta corriente (27-gastos.sql, 15/11/2026). Los
   // comprobantes van con los demás archivos del bucket (gastos/…).
   gastos_rendiciones: "id", gastos: "id", gastos_comentarios: "id", gastos_movimientos: "id", gastos_cambios: "id",
+  // Brújula (30-brujula.sql, 23/11/2026): el catálogo de carpetas y planillas y los paquetes. No lleva quién tiene acceso:
+  // eso vive en Drive. Los padres antes que lo que depende de ellos.
+  brujula_planillas: "id", brujula_carpetas: "id", brujula_paquetes: "id", brujula_paquete_carpetas: "id",
 };
 // Las que a propósito NO van en la copia: anotaciones de qué correo ya
 // salió (17-avisos-por-correo.sql), que solo lee la llave de servicio.

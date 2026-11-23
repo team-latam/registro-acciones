@@ -1,5 +1,5 @@
 # ============================================================
-# Funciones de Supabase: publicar `calendario` y `avisar`
+# Funciones de Supabase: publicar `calendario`, `avisar` y `brujula`
 # ============================================================
 # `calendario`: la app lee el Google Calendar del equipo por acá, con la
 # cuenta de servicio de la app; así el calendario no tiene que ser público
@@ -14,7 +14,7 @@
 # Necesita dos secretos de GitHub:
 #   SUPABASE_ACCESS_TOKEN       para publicar en el proyecto
 #   GOOGLE_CUENTA_DE_SERVICIO   el JSON de la llave de la cuenta de servicio
-# Y dos opcionales:
+# Y tres opcionales:
 #   RESEND_API_KEY              para mandar los correos de `avisar`; sin él,
 #                               la función contesta «sin-configurar» y la
 #                               pantalla de espera no promete ningún aviso.
@@ -23,6 +23,10 @@
 #                               se carga como LLAVE_DE_SERVICIO (Supabase no
 #                               deja nombres que empiecen con SUPABASE_). Sin
 #                               ella, usa la que Supabase le da sola.
+#   GOOGLE_CUENTA_BRUJULA       el JSON de la llave de la cuenta de servicio de Brújula
+#                               (docs/brujula/README.md): la función `brujula` lee
+#                               Drive y las planillas con ella; sin ella contesta
+#                               «sin-configurar» y la pantalla de Brújula lo dice.
 # Sin los dos primeros avisa qué falta y termina en verde.
 # ============================================================
 name: Funciones de Supabase
@@ -59,6 +63,7 @@ jobs:
         run: |
           node supabase/sync-calendar/pruebas/cuenta-de-servicio.mjs
           node supabase/functions/_pruebas/avisos.mjs
+          node supabase/functions/_pruebas/brujula.mjs
 
   publicar:
     name: Publicar en Supabase
@@ -115,6 +120,23 @@ jobs:
             try { const c = leerCuenta(process.env.CUENTA); console.log("✓ La llave es de la cuenta " + c.correo); }
             catch (e) { console.log("✗ " + e.message); process.exit(1); }'
 
+      - name: Revisar la llave de Brújula (si está)
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          BRUJULA: ${{ secrets.GOOGLE_CUENTA_BRUJULA }}
+        # Igual que la de arriba: si se pegó otra cosa, que lo diga con palabras y sin
+        # imprimir la llave. Todavía sin la llave de Brújula no pasa nada: la función
+        # se publica igual y contesta «sin-configurar».
+        run: |
+          if [ -z "$BRUJULA" ]; then
+            echo "· Sin GOOGLE_CUENTA_BRUJULA: la pantalla de Brújula todavía no puede leer Drive" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node --input-type=module -e '
+            import { leerCuenta } from "./supabase/functions/_compartido/google.mjs";
+            try { const c = leerCuenta(process.env.BRUJULA); console.log("✓ La llave de Brújula es de la cuenta " + c.correo); }
+            catch (e) { console.log("✗ " + e.message); process.exit(1); }'
+
       - name: Publicar la función y sus secretos
         if: steps.revisar.outputs.hay == 'si'
         env:
@@ -122,6 +144,7 @@ jobs:
           CUENTA: ${{ secrets.GOOGLE_CUENTA_DE_SERVICIO }}
           RESEND: ${{ secrets.RESEND_API_KEY }}
           LLAVE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BRUJULA: ${{ secrets.GOOGLE_CUENTA_BRUJULA }}
         run: |
           set -euo pipefail
           # Qué proyecto y qué calendario salen de index.html, como en el
@@ -147,8 +170,14 @@ jobs:
             npx --yes supabase@2.120.0 secrets set --project-ref "$PROYECTO" "LLAVE_DE_SERVICIO=$LLAVE" > /dev/null
             echo "✓ Llave de servicio cargada para «avisar»"
           fi
+          if [ -n "$BRUJULA" ]; then
+            COMPACTO_B=$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(process.env.BRUJULA)))')
+            echo "::add-mask::$COMPACTO_B"
+            npx --yes supabase@2.120.0 secrets set --project-ref "$PROYECTO" "GOOGLE_CUENTA_BRUJULA=$COMPACTO_B" > /dev/null
+            echo "✓ Llave de Brújula cargada"
+          fi
           echo "✓ Secretos de las funciones cargados"
-          for f in calendario avisar; do
+          for f in calendario avisar brujula; do
             npx --yes supabase@2.120.0 functions deploy "$f" --project-ref "$PROYECTO" --no-verify-jwt --use-api
           done
           echo "PROYECTO=$PROYECTO" >> "$GITHUB_ENV"
@@ -159,7 +188,7 @@ jobs:
         # la que contesta es esta función, publicada, y que no atiende a
         # cualquiera. Unos segundos de espera por si tarda en arrancar.
         run: |
-          for f in calendario avisar; do
+          for f in calendario avisar brujula; do
             ok=no
             for i in 1 2 3 4 5 6; do
               cuerpo=$(curl -sS --max-time 20 -X POST "https://$PROYECTO.supabase.co/functions/v1/$f" -H 'Content-Type: application/json' -d '{}' || true)

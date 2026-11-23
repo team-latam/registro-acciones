@@ -13,3 +13,7 @@ verify_jwt = false
 # Igual que `calendario`: la sesión la controla la base (pedir_aviso_al_admin()).
 [functions.avisar]
 verify_jwt = false
+
+# Igual: la sesión la controla la base (puede_gestionar_brujula(): solo un admin).
+[functions.brujula]
+verify_jwt = false

@@ -254,3 +254,36 @@ quiere, cuándo y de qué. Los diseños de los correos están en
   si faltan o no son válidos.
 - Las respuestas a un aviso siguen yendo a `benny@team-latam.com`
   (`reply_to`): el usuario eligió dejarlo así.
+
+---
+
+# La función `brujula`: leer Drive y las planillas (23/11/2026)
+
+Brújula en Toldot (`docs/brujula/README.md`): la pantalla Administración › Brújula le pide a esta función
+(`brujula/index.ts`, la lógica en `_compartido/brujula.mjs`, sus pruebas en `_pruebas/brujula.mjs`) dos cosas, con la
+sesión de quien la usa y **solo si es admin** (`puede_gestionar_brujula()`, `supabase/30-brujula.sql`): comprobar un link
+de Drive y leer quién tiene cada carpeta del catálogo y qué hay cargado en las planillas.
+
+- **Hoy solo lee.** Pide a Google permisos de solo lectura (Drive y Sheets). Compartir, quitar y escribir en las
+  planillas vienen en las etapas siguientes, y ahí se le suma lo que haga falta.
+- **Las carpetas salen del catálogo** (`brujula_carpetas`, con la sesión de quien llama), nunca de lo que mande el
+  navegador: la cuenta de servicio no se puede usar para mirar cualquier cosa de Drive.
+- Quién tiene acceso a qué **no se guarda** en la base: se lee de Drive cada vez (también lo cambian las planillas y el
+  Script de los lunes).
+- La publica el mismo workflow «Funciones de Supabase». Sin el secreto `GOOGLE_CUENTA_BRUJULA` se publica igual y la
+  función contesta «sin-configurar».
+
+## Lo que tiene que hacer el usuario, una vez
+
+> ⚠️ La llave de la cuenta de servicio es como una contraseña. **No se pega en el chat** (tampoco con Claude), ni en un
+> mail, ni en una captura: va directo del panel donde nace al de GitHub.
+
+1. En Google Cloud, con el mismo proyecto de siempre (**40280679854**, que no se borra): **APIs y servicios →
+   Biblioteca** y habilitar **Google Drive API** y **Google Sheets API**.
+2. Crear una cuenta de servicio **nueva, solo para Brújula** (`registro-brujula`, sin roles) y bajar su llave en JSON,
+   igual que la del Calendar. Es mejor que reusar la del Calendar: si una llave se filtra, no queda expuesto lo otro.
+3. Guardar la llave en GitHub como el secreto **`GOOGLE_CUENTA_BRUJULA`** (Name y Secret, como los otros), y borrar el `.json`.
+4. Compartir con el correo de esa cuenta, como **Editor**, cada carpeta de Brújula y las dos planillas «Users». (Para leer
+   alcanzaría con menos, pero las etapas siguientes necesitan Editor y así no se repite.)
+5. Actions → **Funciones de Supabase** → Run workflow: tiene que decir «✓ La llave de Brújula es de la cuenta …» y
+   «✓ «brujula» contesta y pide sesión».

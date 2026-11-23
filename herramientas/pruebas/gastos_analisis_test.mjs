@@ -45,6 +45,11 @@ const datos = ({ soloEsteAnio } = {}) => {
   pref.value = { ...pref.value, gastos: { prendido: true } };
   // La Agenda del año que viene: sin participantes de más, para que cada actividad cuente una persona.
   b.posts.filter(p => ["p4", "p14"].includes(p.id)).forEach(p => { p.participants = []; });
+  // Un evento de los datos de mentira cae «dentro de 40 días» (app_de_mentira.mjs): desde fines de noviembre eso ya es
+  // el año que viene y se colaba en el presupuesto, que tiene que armarse solo con p4 y p14 (23/11/2026: la prueba
+  // dependía de la fecha en que se corría). Se lo trae de vuelta a diciembre de este año.
+  b.posts.filter(p => !["p4", "p14"].includes(p.id) && String(p.start_date || "").startsWith(String(Y + 1)))
+    .forEach(p => { p.date = p.start_date = p.end_date = `${Y}-12-20`; });
   const rs = [
     r({ id: "r_u", autor: BENNY, post_id: "p9" }), r({ id: "r_u2", autor: ANA, post_id: "p9" }), r({ id: "r_m", autor: LUCIA, post_id: "p10" }),
     r({ id: "r_rut", autor: DIEGO, rutina_mes: `${Y}-02-01` }),

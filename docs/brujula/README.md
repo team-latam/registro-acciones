@@ -1,9 +1,12 @@
-# Brújula en Toldot — el módulo nuevo (en diseño)
+# Brújula en Toldot — el módulo nuevo (en construcción)
 
-> **Estado (23/11/2026):** en **diseño**. No hay código todavía. Hay una **maqueta navegable** (página privada del
-> usuario, 6 pantallas con datos inventados: <https://claude.ai/artifact/4YmAhH8p97ghuKU7EHYe1b>) que se fue
-> ajustando con lo que dijo el usuario; falta su OK de que es lo que tiene en mente. Como con Gastos: **cada parte
-> va a `main` recién con el OK explícito del usuario, con capturas** (al llegar a `main`, el SQL nuevo se aplica solo
+> **Estado (23/11/2026):** **etapa 1 en construcción**, en la rama. Hay una **maqueta navegable** (página privada del
+> usuario, con datos inventados: <https://claude.ai/artifact/4YmAhH8p97ghuKU7EHYe1b>), ajustada con lo que dijo el
+> usuario. **Hecho:** la base (`supabase/30-brujula.sql`, 44 comprobaciones en `supabase/pruebas/68-brujula.sql`), las
+> copias de seguridad con las tablas nuevas, y la función `brujula` que lee Drive y las planillas
+> (`supabase/functions/_compartido/brujula.mjs`, 65 comprobaciones). **Falta:** la pantalla en Administración, la
+> parte de Google del usuario (`supabase/functions/LEEME.md`) y mostrarle capturas antes de ir a `main`. Como con Gastos:
+> **cada parte va a `main` recién con el OK explícito del usuario, con capturas** (al llegar a `main`, el SQL nuevo se aplica solo
 > a la base real). Es una excepción a la regla general de «pushear a `main` de una» de `CLAUDE.md`.
 
 **Qué es.** «Brújula» es la biblioteca de material de la organización: carpetas de Google Drive que se comparten, en
@@ -144,8 +147,17 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
 3. Compartir con esa cuenta, como **Editor**, las carpetas del catálogo y las dos planillas.
 4. (Si se elige) agregar «Hebreo» a los menús de «Language» y actualizar los Scripts.
 
-## Pendiente de respuesta del usuario
+## Respuestas del 23/11/2026 (después de la maqueta)
 
-- Si la maqueta es lo que tiene en mente: la **cuadrícula** de personas × carpetas, qué le falta a «gestionar» (por
-  ejemplo, cambiar idioma o comunidad, archivar a alguien) y el mail (qué dice, si va prendido por defecto).
-- El **aviso por correo** al admin por pendientes nuevos (viene apagado) y cómo seguir con el **hebreo** en los Scripts.
+- **Las carpetas en portugués no se suman** al catálogo (hoy no las recibe nadie de afuera y así sigue).
+- **Aviso por correo al admin** cuando aparezcan pendientes nuevos en una planilla: **sí, y apagado por defecto.**
+- **«Hebreo» en las planillas y en los Scripts: sí, pero después** («vamos de a poco»): primero el módulo de Toldot.
+- **El texto hebreo del mail** lo revisa una persona que lea hebreo antes de que salga a alguien real (ok).
+- **Los «¿Cómo funciona?» de las otras secciones de Administración: por ahora no se tocan.**
+- «Primero hagamos esto» se tomó como el **visto bueno para empezar la etapa 1** (en la rama; a `main` solo con su OK y capturas).
+
+## Pendiente
+
+- Empezar con el usuario la parte de Google (APIs, cuenta de servicio, compartir carpetas y planillas): se hace de a un paso.
+- Que alguien que lea hebreo mire el mail antes de la etapa 2.
+- «Hebreo» en los menús de las planillas y en los Scripts (después del módulo).

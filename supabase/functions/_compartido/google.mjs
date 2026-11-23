@@ -57,12 +57,16 @@ async function firmar(pem, datos){
 // una hora. Se guarda hasta un minuto antes de que venza: la función de
 // Supabase atiende muchos pedidos seguidos con el mismo.
 const guardados = new Map();
-export async function permisoDeGoogle(cuenta, { fetch: traer = fetch, ahora = Date.now() } = {}){
-  const g = guardados.get(cuenta.correo);
+// `alcance`: qué se le pide a Google. Sin decir nada, solo leer calendarios (lo que usan la función
+// `calendario` y el trabajo nocturno); la función `brujula` pide el suyo (leer Drive y planillas).
+// Cada alcance guarda su propio permiso.
+export async function permisoDeGoogle(cuenta, { fetch: traer = fetch, ahora = Date.now(), alcance = ALCANCE } = {}){
+  const clave = `${cuenta.correo}|${alcance}`;
+  const g = guardados.get(clave);
   if(g && g.vence - 60_000 > ahora) return g.token;
   const iat = Math.floor(ahora / 1000);
   const encabezado = texto64(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const datos = texto64(JSON.stringify({ iss: cuenta.correo, scope: ALCANCE, aud: cuenta.tokenUri, iat, exp: iat + 3600 }));
+  const datos = texto64(JSON.stringify({ iss: cuenta.correo, scope: alcance, aud: cuenta.tokenUri, iat, exp: iat + 3600 }));
   const firmado = `${encabezado}.${datos}`;
   const assertion = `${firmado}.${await firmar(cuenta.llave, firmado)}`;
   const res = await traer(cuenta.tokenUri, {
@@ -74,7 +78,7 @@ export async function permisoDeGoogle(cuenta, { fetch: traer = fetch, ahora = Da
   // Sin el detalle de Google: puede repetir el correo de la cuenta, y el
   // registro del trabajo nocturno es público.
   if(!res.ok || !cuerpo.access_token) throw new Error(`Google no dio permiso a la cuenta de servicio (${res.status}${cuerpo.error ? ": " + cuerpo.error : ""}).`);
-  guardados.set(cuenta.correo, { token: cuerpo.access_token, vence: ahora + (Number(cuerpo.expires_in) || 3600) * 1000 });
+  guardados.set(clave, { token: cuerpo.access_token, vence: ahora + (Number(cuerpo.expires_in) || 3600) * 1000 });
   return cuerpo.access_token;
 }
 export const olvidarPermisos = () => guardados.clear();
