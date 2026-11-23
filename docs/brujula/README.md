@@ -1,0 +1,113 @@
+# Brújula en Toldot — el módulo nuevo (en diseño)
+
+> **Estado (23/11/2026):** en **diseño**. No hay código todavía. Hay una **maqueta navegable** (página privada del
+> usuario, 6 pantallas con datos inventados: <https://claude.ai/artifact/4YmAhH8p97ghuKU7EHYe1b>) que se fue
+> ajustando con lo que dijo el usuario; falta su OK de que es lo que tiene en mente. Como con Gastos: **cada parte
+> va a `main` recién con el OK explícito del usuario, con capturas** (al llegar a `main`, el SQL nuevo se aplica solo
+> a la base real). Es una excepción a la regla general de «pushear a `main` de una» de `CLAUDE.md`.
+
+**Qué es.** «Brújula» es la biblioteca de material de la organización: carpetas de Google Drive que se comparten, en
+modo lectura, con unas 450 personas de las comunidades. Hoy se les da acceso con dos planillas de Google y un
+Google Apps Script (abajo). El usuario quiere **una pantalla en Toldot** para invitar, elegir a qué carpetas, agregar
+carpetas y **quitar** accesos (total o parcial), sin tocar las planillas.
+
+**Sin datos sensibles.** Las planillas «Users» tienen nombres y correos de personas de afuera: **no van a este repo,
+que es público**. Tampoco los ID de las carpetas ni de las planillas, ni la cuenta de Gmail dueña. Las pruebas usan
+gente inventada (`@example.org`).
+
+## Cómo funciona hoy (revisado el 23/11/2026)
+
+- **Drive.** Una carpeta raíz «Brújula Cloud» de una cuenta de Gmail de la organización. Adentro: la carpeta de
+  **entrada** (lo que reciben todos, con accesos directos a las otras), «Hadraja · Enseñanza», «Habtaja · Seguridad»,
+  «CARE», «Material de Congresos y Seminarios» y «Newsletter» (viven en «Administrador › Spanish»), una carpeta
+  «Brújula Cloud · CARE» aparte, y las carpetas **en portugués** (de otra cuenta de Gmail), que hoy solo tiene el
+  equipo. Hay carpetas viejas por rol (Instructores, Mefakdim y Kabatim, Roshim de Áreas) sin tocar desde 2023-24, y
+  un *Manual de usuario* con cuatro niveles (Administrador, 1 RM/Kabatim, 2 instructores/mefakdim, 3 CARE/protectores)
+  que **ningún Script aplica**.
+- **Dos planillas «Users»**: la grande y la de CARE (una copia de la grande). Columnas: Nombre, Correo, Comunidad
+  (lista estricta de la hoja oculta `Hoja3`), Language (Español/Inglés/Portugués, lista estricta), Enviado, Responsable.
+- **El Script** (Apps Script atado a cada planilla): por cada fila sin «Enviado», da **lectura** en 6 carpetas (la
+  grande) o 2 (la de CARE), **sin invitación de Drive**, y manda un **mail de bienvenida** propio (`MailApp`) en
+  español, inglés o portugués: **el idioma solo cambia el texto del mail**, no las carpetas. Después escribe
+  «Enviado» o el error. El de la grande corre **solo los lunes a las 00:41 (Argentina)**; el de CARE **se corre a mano**.
+- **Lo que se vio de flojo** (para tener presente, no para arreglar acá): reescribe la columna F entera en cada
+  corrida (borra «Responsable»); trabaja sobre la pestaña abierta (la de CARE tiene una vacía); lee solo los
+  primeros 100 accesos de cada carpeta (`Permissions.list` sin paginar); pega el nombre en el HTML sin escapar;
+  quien edita la planilla puede cambiar el código, que corre con los permisos de la cuenta dueña; **los accesos solo
+  se suman** (no hay forma de sacar); los errores quedan escritos en una columna y nadie los ve; lo que reciben
+  todos es lo mismo (CARE incluido).
+
+## Lo que decidió el usuario (23/11/2026)
+
+1. **Herramienta complementaria.** Las planillas y sus Scripts **siguen funcionando**; no se apagan en lo inmediato.
+2. **Solo los admins** de Toldot la usan: **Administración › Equipo › Brújula**, entre Personas y Registro de actividad.
+3. **Qué hace:** invitar eligiendo a qué carpetas (con «paquetes» como «Todo Brújula» y «Solo CARE», o carpetas
+   sueltas), agregarle carpetas a alguien, **quitar acceso total o parcial**, y ver de un vistazo quién tiene qué
+   (una cuadrícula personas × carpetas). Las carpetas se agregan pegando su link.
+4. **Drive es la fuente de verdad.** Como las planillas también dan accesos, Toldot **lee Drive en vivo** y **no guarda
+   una copia** de «quién tiene qué». Guarda solo: el catálogo de carpetas y planillas, y el historial de lo que se hizo
+   desde Toldot.
+5. **Leer las planillas** cada 15 minutos (y cada vez que se abre Brújula): las personas **cargadas que todavía no
+   tienen acceso** (el Script corre los lunes), las filas con error y el idioma y la comunidad de cada persona. No es
+   instantáneo: un trabajo programado de GitHub puede demorar unos minutos.
+6. **Escribir en las planillas** (pedido del usuario, importante): una **fila nueva** por cada persona invitada desde
+   Toldot, **ya marcada «Enviado»** (el Script se saltea las filas con «Enviado», así no se repite el mail ni el
+   acceso); «Enviado» al darle acceso a un pendiente; una **nota** al quitar un acceso. **Solo filas nuevas y dos
+   columnas nuevas al final** («Desde» y «Nota de Toldot»): no toca lo escrito ni «Responsable» (el Script la borra).
+   Qué planilla: «Todo Brújula» → la grande; «Solo CARE» → la de CARE; «A medida» → la de CARE si todo lo elegido es de
+   CARE, y si no la grande. La lista de comunidades se toma de la hoja oculta, para que coincida.
+7. **Los pendientes de la planilla: opción A.** Toldot los **muestra** y **un admin aprieta «Dar acceso ahora»**
+   (comparte, manda el mail y marca «Enviado»). **Nunca da acceso solo** a lo que aparezca en una planilla (la editan
+   unas diez personas). Un aviso por correo al admin cuando aparezcan pendientes nuevos: posible, **apagado por
+   defecto** (a decidir).
+8. **El mail de bienvenida sale de Toldot** (Resend), no de Drive, con el botón **directo a la carpeta** (sin
+   acortador) y en **cuatro idiomas: español, inglés, portugués y hebreo** (este de derecha a izquierda, con la
+   maquinaria de `supabase/functions/_compartido/correos.mjs`). **«Brújula» queda en letras latinas** dentro del
+   texto hebreo (decidido el 23/11). El texto hebreo de la maqueta **falta que lo lea una persona que sepa hebreo**.
+   Antes de invitar, Toldot mira Drive: si la persona ya tiene carpetas, lo dice y **no manda otro mail**.
+9. **Cómo habla con Google:** una **cuenta de servicio nueva, solo para Brújula** (secreto `GOOGLE_CUENTA_BRUJULA`),
+   distinta de la del Calendar (si una llave se filtra, no queda expuesto lo otro); **Editor** en las carpetas y en las
+   dos planillas; APIs de **Drive** y **Sheets** prendidas en el proyecto de Google Cloud de siempre (**no se borra**).
+   La función de Supabase decide con la sesión de quien llama (`es_admin…`), igual que `calendario`; las carpetas
+   las toma **del catálogo**, nunca de lo que mande el navegador.
+10. **Límites de Drive que Toldot tiene que mostrar y no esconder:** solo gestiona **lectores** (a los editores no los
+    toca); un acceso **heredado** de una carpeta madre no se puede quitar desde la hija (se avisa); algunas
+    organizaciones no dejan compartir con externos (se explica con palabras claras).
+
+## Etapas
+
+1. **Conexión y lectura:** catálogo de carpetas y planillas, la lista unificada (Drive + planillas) y los pendientes.
+   No cambia nada en Drive ni en las planillas.
+2. **Invitar y dar acceso:** invitar con paquetes o carpetas sueltas, agregar carpetas, «Dar acceso ahora» a los
+   pendientes, el mail en cuatro idiomas y la escritura en las planillas.
+3. **Quitar y mantener al día:** quitar total o parcial, acciones en grupo, la nota en la planilla, la lectura cada 15
+   minutos y los avisos.
+
+Con cada etapa: pruebas contra una **Drive y unas planillas de mentira** (como las de `supabase/sync-calendar/pruebas/`
+y `supabase/functions/_pruebas/`); las **tablas nuevas se suman a `TABLAS` de `supabase/respaldo/respaldar.mjs`**
+(para que entren en la copia de seguridad); el **recorrido de bienvenida** (`tourSteps()`) o `TOUR_SIN_PASO` se
+revisa en la misma tanda; todo texto va en los cuatro idiomas.
+
+## Hebreo en las planillas (falta decidir cómo)
+
+Los menús de «Language» de las dos planillas aceptan solo Español, Inglés y Portugués, y el Script no conoce el
+hebreo: una fila con «Hebreo» procesada un lunes sale **en español**. Dos caminos, que se pueden hacer los dos:
+darle acceso desde Toldot («Dar acceso ahora», donde el hebreo ya funciona) y/o **actualizar los dos Scripts** (se
+le pasa al usuario cada código **entero**, en un bloque, con una línea de qué cambió). Agregar «Hebreo» a los menús
+lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (es un cambio en su planilla).
+
+## Lo que tiene que hacer el usuario, en Google (una vez; los pasos van con capturas cuando se llegue)
+
+> Las llaves **no se pegan en el chat**: van del panel donde nacen al de GitHub (`supabase/functions/LEEME.md`
+> tiene el mismo procedimiento para la cuenta del Calendar).
+
+1. Prender las APIs de **Drive** y de **Sheets** en el proyecto de Google Cloud.
+2. Crear la cuenta de servicio de Brújula y su llave; cargarla en GitHub como `GOOGLE_CUENTA_BRUJULA`.
+3. Compartir con esa cuenta, como **Editor**, las carpetas del catálogo y las dos planillas.
+4. (Si se elige) agregar «Hebreo» a los menús de «Language» y actualizar los Scripts.
+
+## Pendiente de respuesta del usuario
+
+- Si la maqueta es lo que tiene en mente: la **cuadrícula** de personas × carpetas, qué le falta a «gestionar» (por
+  ejemplo, cambiar idioma o comunidad, archivar a alguien) y el mail (qué dice, si va prendido por defecto).
+- El **aviso por correo** al admin por pendientes nuevos (viene apagado) y cómo seguir con el **hebreo** en los Scripts.

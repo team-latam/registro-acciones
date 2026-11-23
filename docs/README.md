@@ -15,4 +15,5 @@ junto con el código.
 | [`QUE-GUARDAR.md`](./QUE-GUARDAR.md) | Qué tener a mano (cuentas, llaves, copias) para reconstruir todo si hiciera falta. |
 | [`RESTAURAR.md`](./RESTAURAR.md) | Cómo volver atrás con una copia de seguridad. |
 | [`rendicion-gastos/`](./rendicion-gastos/) | **El módulo de gastos y rendiciones, en construcción** (desde el 15/11/2026): todo lo que decidió el usuario, las etapas y en qué parte va. Nada de esto se publica sin su OK. |
+| [`brujula/`](./brujula/) | **Brújula en Toldot, en diseño** (desde el 23/11/2026): invitar a las carpetas de Drive, elegir a cuáles y quitar accesos desde Administración, junto a las planillas de Google que siguen andando. Todo lo decidido y las etapas. Nada se publica sin el OK del usuario. |
 | [`DOMINIO.md`](./DOMINIO.md) | El plan, no ejecutado, de mudar el sitio a un dominio propio si `*.github.io` vuelve a bloquearse. |
