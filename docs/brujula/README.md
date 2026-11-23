@@ -73,6 +73,24 @@ gente inventada (`@example.org`).
 10. **Límites de Drive que Toldot tiene que mostrar y no esconder:** solo gestiona **lectores** (a los editores no los
     toca); un acceso **heredado** de una carpeta madre no se puede quitar desde la hija (se avisa); algunas
     organizaciones no dejan compartir con externos (se explica con palabras claras).
+11. **El catálogo de carpetas se edita desde Toldot, siempre a partir de un link de Drive** (pedido del usuario, el
+    23/11/2026: hoy son siete carpetas, pero Brújula puede cambiar, con más, menos u otras). Se puede:
+    - **Agregar** pegando el link. Toldot comprueba con Drive que sea una carpeta de «Mi unidad» y que pueda gestionarla;
+      si el link es un **acceso directo** (la entrada de Brújula está hecha de accesos directos) propone la carpeta
+      de verdad; si no está compartida con la cuenta de Toldot, explica cómo hacerlo; si es un documento, lo dice.
+    - **Editar**: nombre propio en Toldot (el de Drive no se toca), descripción, idioma, orden, **paquetes** a los que
+      pertenece y **en qué planilla** se anota a quien la reciba (la regla de la planilla: si todas las carpetas
+      elegidas están marcadas para la de CARE, va a la de CARE; si no, a la grande).
+    - **Desactivar**: no se ofrece al invitar ni se da a nadie nuevo; quien ya la tiene la conserva y se le puede quitar.
+    - **Dejar de gestionar**: sale del catálogo; **en Drive no cambia nada**.
+    - Aparte, **«sacar a todos los lectores»**: acción peligrosa, pide escribir el nombre de la carpeta, no toca a los
+      editores y no se deshace desde Toldot.
+    - Las **unidades compartidas** todavía no (tienen otro modelo de permisos).
+
+    **Consecuencia a tener presente:** el Script de los lunes tiene su lista de carpetas **fija**. Una carpeta nueva
+    del catálogo **no la da el Script**, solo Toldot (invitar y «Dar acceso ahora»); para que el Script también la dé
+    hay que actualizarlo. Por eso, con carpetas distintas a las de hoy, conviene dar acceso desde Toldot.
+    En la base, el catálogo son tablas editables (carpetas y paquetes), no código: el ID de Drive sale del link.
 
 ## Etapas
 
