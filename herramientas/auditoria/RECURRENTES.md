@@ -118,6 +118,12 @@ servidor» actúan cuando hay sesión de una persona. *Se detecta:*
 **Un texto sin sus cuatro idiomas, o con un {marcador} de menos.** *Se
 detecta:* `textos`. *Regla:* todo texto visible por `t(es, en, pt, he)`.
 
+**Un rótulo chico «de mayúsculas» se ve mal en hebreo** (24/11/2026, menú de Administración; docs/AUDITORIA.md, V4,
+sin arreglar todavía). *Por qué:* los rótulos de grupo y de tarjeta están pensados para el alfabeto latino (11 px,
+negrita fuerte, `letter-spacing`, `uppercase`); en hebreo no existen las mayúsculas, separar las letras estorba y 11 px es
+muy poco. *Se detecta:* a mano, con una captura en hebreo (todavía no hay herramienta). *Regla (a aplicar):* en hebreo, esos
+rótulos van sin `letter-spacing`, con el tamaño y el peso que pida el alfabeto, y una prueba que lo mida.
+
 ## Seguridad y privacidad
 
 **Lo escrito por alguien que entra al HTML sin escapar.** *Se detecta:*
