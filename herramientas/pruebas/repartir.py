@@ -8,10 +8,14 @@ El reparto mira cuánto tarda cada prueba (pesos.txt: «archivo segundos») y va
 parte que menos lleva (así ninguna parte se lleva todo lo lento). Una prueba nueva, que todavía no está en pesos.txt, pesa
 lo de una mediana (PESO_NUEVO). Es determinista: con la misma lista y los mismos pesos, siempre el mismo reparto.
 Los pesos se renuevan de vez en cuando con medir_tiempos.sh.
+
+Con «rapido» en vez de i/n (RAPIDO=1 en correr.sh) imprime solo las pruebas livianas (las de PESO_RAPIDO segundos o menos):
+una pasada de ~1 minuto antes de cada commit; la suite completa corre en GitHub, en la rama, y tiene que estar en verde antes de main.
 """
 import os, sys
 
 PESO_NUEVO = 10.0
+PESO_RAPIDO = 6.0
 
 def leer_pesos(ruta):
     pesos = {}
@@ -38,6 +42,12 @@ def repartir(archivos, n, pesos):
     return [sorted(p) for p in partes]
 
 def main(argv):
+    if len(argv) >= 3 and argv[1] == "rapido":
+        pesos = leer_pesos(os.path.join(os.path.dirname(os.path.abspath(__file__)), "pesos.txt"))
+        for f in sorted(argv[2:]):
+            if pesos.get(f, PESO_NUEVO) <= PESO_RAPIDO:
+                print(f)
+        return 0
     if len(argv) < 3 or "/" not in argv[1]:
         print("Uso: repartir.py i/n archivo...", file=sys.stderr); return 2
     try:

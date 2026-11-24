@@ -17,6 +17,7 @@
 # viejo (alcanza con correr ESA, no todas):
 #   INDEX=/ruta/a/otra/copia/index.html ./herramientas/pruebas/correr.sh nueva
 #
+# RAPIDO=1 corre solo las pruebas livianas (~1 minuto; ver repartir.py).
 # SHARD=2/4 corre solo la parte 2 de 4 (las partes salen de repartir.py, parejas según pesos.txt): así GitHub las corre en
 # cuatro trabajos a la vez. Sin SHARD, todas.
 #
@@ -72,6 +73,14 @@ if [ "$#" -gt 0 ]; then
   done
 else
   for f in *_test.mjs; do [ -f "$f" ] && pruebas+=("$f"); done
+fi
+# RAPIDO=1: solo las pruebas livianas (las de ~6 segundos o menos, según pesos.txt): una pasada de ~1 minuto, para mirar rápido
+# antes de cada commit (con las pruebas de lo que se toca). La suite completa la corre GitHub en la rama, y antes de pasar a main
+# tiene que estar en verde (CLAUDE.md, «Verificación antes de cada commit»).
+if [ "${RAPIDO:-}" = "1" ] && [ "${#pruebas[@]}" -gt 0 ]; then
+  rapidas=$(python3 repartir.py rapido "${pruebas[@]}")
+  pruebas=(); while IFS= read -r f; do [ -n "$f" ] && pruebas+=("$f"); done <<< "$rapidas"
+  echo "Pasada rápida: ${#pruebas[@]} pruebas livianas."
 fi
 # Una parte de las pruebas, para que GitHub las corra en varios trabajos a la vez (SHARD=i/n; ver repartir.py).
 if [ -n "${SHARD:-}" ] && [ "${#pruebas[@]}" -gt 0 ]; then

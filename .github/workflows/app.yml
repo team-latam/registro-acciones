@@ -8,14 +8,15 @@ name: Pruebas de la app
 on:
   # En main estas mismas pruebas las corre «Publicar el sitio» (pages.yml)
   # antes de publicar: si corrieran también acá, cada push a main las
-  # haría dos veces. Tampoco en las ramas de las sesiones de Claude
-  # (claude/…): el mismo commit llega a main minutos después y se prueba
-  # ahí, y la sesión ya las corrió antes de empujar; eran 20 minutos de
-  # más por cada tanda (24/10/2026, docs/AUDITORIA.md, S10). Para correrlas
-  # igual en una rama: Actions → «Pruebas de la app» → Run workflow. En
-  # cualquier otra rama, y en un pull request, siguen corriendo solas.
+  # haría dos veces. En las ramas de las sesiones de Claude (claude/…) SÍ
+  # corren solas, desde el 24/11/2026: antes se ignoraban porque eran 20
+  # minutos de más por tanda (S10) y la sesión ya las había corrido; ahora son
+  # ~2,5 minutos (cuatro trabajos a la vez), y reemplazan a la corrida completa
+  # en la máquina de la sesión (decisión del usuario, 24/11/2026, opción B: allá
+  # alcanza con la pasada rápida): antes de pasar a main, esta corrida tiene que
+  # estar en verde para ese commit.
   push:
-    branches-ignore: [main, 'claude/**']
+    branches-ignore: [main]
     paths:
       - "index.html"
       - "supabase/**"              # y sb_test, el adaptador de Supabase

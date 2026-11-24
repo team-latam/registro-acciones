@@ -36,6 +36,14 @@ for(const mal of ["0/4", "5/4", "x", "2/0", "2/", "/4", "a/b", "1"]){
 // Cada archivo de pesos.txt existe (un peso de una prueba borrada ensucia el reparto) y toda prueba tiene el suyo.
 eq("pesos.txt no nombra pruebas que ya no existen", Object.keys(pesos).filter(f => !todas.includes(f)), []);
 eq("pesos.txt tiene a todas las pruebas (si falta alguna, correr medir_tiempos.sh)", todas.filter(f => !(f in pesos)), []);
+// La pasada rápida (RAPIDO=1): solo lo liviano, que es bastante, y nunca lo pesado.
+{
+  const r = repartir("rapido", todas), l = lista(r);
+  eq("rápido: hay bastantes pruebas livianas (más de 30) y son menos que todas", [l.length > 30, l.length < todas.length], [true, true]);
+  eq("rápido: todas pesan 6 s o menos según pesos.txt", l.every(f => (pesos[f] ?? 10) <= 6), true);
+  eq("rápido: no incluye a las pesadas (brujula, gastos, app_dom, recortes)", ["brujula_test.mjs", "gastos_test.mjs", "app_dom_test.mjs", "recortes_test.mjs"].filter(f => l.includes(f)), []);
+  eq("rápido: una prueba nueva (sin peso) se considera mediana y no entra", lista(repartir("rapido", [...todas, "nueva_test.mjs"])).includes("nueva_test.mjs"), false);
+}
 // El corredor de verdad: la parte 1/4 corre solo sus archivos y se lo dice (con un nombre que no existe, no corre nada).
 const r = spawnSync("bash", ["-c", "SHARD=9/4 ./correr.sh acceso_aviso 2>&1 | tail -2"], { cwd: aqui, encoding: "utf-8" });
 eq("el corredor con una parte inválida se cae con un mensaje (no da el visto bueno)", /no es una parte válida/.test(r.stdout), true);

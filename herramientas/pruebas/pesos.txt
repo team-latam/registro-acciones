@@ -74,6 +74,7 @@ gastos_test.mjs 78
 grupos_test.mjs 5
 hebreo_espejo_test.mjs 7
 hebreo_signos_test.mjs 5
+hebreo_titulos_test.mjs 45
 hol_test.mjs 1
 indice_test.mjs 1
 informe_mensual_test.mjs 8

@@ -62,6 +62,10 @@ INDEX=/tmp/roto.html ./herramientas/pruebas/correr.sh
   (`pesos.txt`), y `reparto_test.mjs` comprueba que las cuatro partes juntas sean exactamente todas (si el reparto perdiera
   un archivo, ese archivo dejaría de probarse sin que nadie lo note). Una prueba nueva que no está en `pesos.txt` pesa lo de
   una mediana y se reparte igual; cuando se sumen varias grandes, `./herramientas/pruebas/medir_tiempos.sh` renueva los pesos.
+- **Dos pasadas (decisión del usuario, 24/11/2026).** `RAPIDO=1 ./herramientas/pruebas/correr.sh` corre solo las pruebas livianas
+  (las de 6 segundos o menos según `pesos.txt`; ~100 archivos, ~1 minuto) y sirve antes de cada commit, junto con las de lo que
+  se toca (por nombre). La suite completa la corre GitHub sola en la rama (`claude/…`) apenas se la empuja; antes de pasar a
+  `main` tiene que estar en verde (ver CLAUDE.md).
 - **Más rápido sin perder nada (24/11/2026).** Más de la mitad del tiempo de la suite era *dormir*. Ahora `entrar()` en
   `app_de_mentira.mjs` hace que **todo `p.waitForTimeout(ms)`** (hasta 1,5 s) sea una espera inteligente: se corta apenas la
   página no tiene nada en marcha (temporizadores de hasta 2 s, pedidos, animaciones que terminan, cambios en el DOM) y nunca

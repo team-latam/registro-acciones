@@ -120,20 +120,33 @@ pegar algo en una consola: **entero** (nunca un fragmento), **en el chat, en
 un bloque de código** (no adjunto), y después **una línea** con qué es nuevo
 respecto de lo último que pegó.
 
-## Verificación antes de cada commit
+## Verificación antes de cada commit: dos pasadas
+
+Hasta el 24/11/2026 (D12, 24/10) la suite entera corría en la máquina de la sesión
+antes de cada commit. **El 24/11/2026 el usuario eligió la opción B** (con las pruebas
+ya ágiles: ≈6 min en la máquina y ≈2,5 min en GitHub, que las corre en cuatro partes
+a la vez):
 
 ```
-./herramientas/pruebas/correr.sh
+RAPIDO=1 ./herramientas/pruebas/correr.sh     # ~1 minuto: las ~100 pruebas livianas
+./herramientas/pruebas/correr.sh brujula tour  # las de lo que se está tocando, por nombre
 ```
 
-Corre **todas** las pruebas de `index.html` (más de 5.000 comprobaciones; la
-carga de la página y la app entera contra un Supabase de mentira), de a
-cuatro, en unos 6 minutos, y muestra solo lo que falla y el total (el
-detalle queda en `herramientas/pruebas/salida/ultima.txt`; `DETALLE=1` lo
-muestra). **Tiene que terminar en verde antes de cada commit que toque la
-app**: todas, siempre (lo decidió el usuario el 24/10/2026, D12). GitHub las
-vuelve a correr antes de publicar y un push en rojo no se publica, pero
-`main` queda roto hasta el próximo push.
+1. **Antes de cada commit que toque la app: la pasada rápida y las pruebas de lo que
+   se tocó**, en verde. (Una prueba nueva tiene que fallar contra el código roto: ver
+   abajo.)
+2. **La suite completa la corre GitHub sola, en la rama, apenas se la empuja**
+   («Pruebas de la app», 4 partes, ~2,5 min). **Antes de pasar a `main` tiene que estar
+   en verde para ESE commit** (se mira en Actions o con las herramientas de GitHub);
+   si está en rojo, no se pasa a `main`. `./herramientas/pruebas/correr.sh` (todas,
+   ~6 min; muestra solo lo que falla y el total, el detalle queda en
+   `herramientas/pruebas/salida/ultima.txt`, `DETALLE=1` lo muestra) sigue sirviendo
+   cuando no hay GitHub a mano, o antes de un cambio grande (varias vistas, algo del
+   esquema de la base, las pruebas mismas o los workflows).
+
+En `main`, GitHub las vuelve a correr antes de publicar y un push en rojo no se
+publica, pero `main` queda roto hasta el próximo push: por eso se espera el verde de
+la rama antes de empujar.
 
 - Las pruebas sacan el código del `index.html` real en cada corrida, nunca
   de una copia (ver `herramientas/pruebas/README.md`).

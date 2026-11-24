@@ -5312,6 +5312,56 @@
        elemento en línea agranda el área que se toca sin mover ni una línea de texto. */
     .post-quien [data-action="show-user-profile"]{ padding-block:5px; }
   }
+
+  /* ===== Hebreo: los rótulos chicos (24/11/2026, docs/AUDITORIA.md, V4) =====
+     Los rótulos de grupo y de tarjeta se pensaron para el alfabeto latino: 11 px, negrita fuerte (800), letras separadas y
+     MAYÚSCULAS. En hebreo no hay mayúsculas, separar las letras estorba la lectura y 11 px en negrita se empasta. Acá, solo en
+     hebreo: ninguna letra separada ni mayúsculas en ningún lado, y los rótulos de menos de 12 px suben a 12,5 px en negrita
+     común (700). Un rótulo nuevo de ese estilo se suma a la lista de abajo (lo avisa hebreo_titulos_test.mjs). */
+  html[lang="he"] *, html[lang="he"] *::before, html[lang="he"] *::after{ letter-spacing:normal !important; text-transform:none !important; }
+  html[lang="he"] .gs-group,
+  html[lang="he"] .user-menu .um-role,
+  html[lang="he"] .admin-grupo,
+  html[lang="he"] .gxe-et,
+  html[lang="he"] .gxe-k,
+  html[lang="he"] .gxe-tabla th,
+  html[lang="he"] .sel-grupo,
+  html[lang="he"] .ach-sort,
+  html[lang="he"] .audit-day,
+  html[lang="he"] .lp-cuidado,
+  html[lang="he"] .lp-field > label,
+  html[lang="he"] .lp-kv small,
+  html[lang="he"] .settings-card-title,
+  html[lang="he"] .bell-section,
+  html[lang="he"] .fp-opts h3,
+  html[lang="he"] .fs-box h4,
+  html[lang="he"] .fs-90,
+  html[lang="he"] .pl-name-head,
+  html[lang="he"] .recur-lbl,
+  html[lang="he"] .occ-pop-head,
+  html[lang="he"] .occ-today-sep,
+  html[lang="he"] .rs-h,
+  html[lang="he"] .fl-card h3,
+  html[lang="he"] .fl-card .fl-tit,
+  html[lang="he"] .fl-stat small,
+  html[lang="he"] .fl-mes,
+  html[lang="he"] .fl-proy > small,
+  html[lang="he"] .mentions-menu-title,
+  html[lang="he"] .mi-nuevo,
+  html[lang="he"] .ag-ciudad button,
+  html[lang="he"] .ag-ciudad span,
+  html[lang="he"] .ag-ficha section h3,
+  html[lang="he"] .ag-tabla th,
+  html[lang="he"] .rep-menu span,
+  html[lang="he"] .rep-mes-dos h5,
+  html[lang="he"] .rep-filtros-tit,
+  html[lang="he"] .cal-en-curso-rotulo,
+  html[lang="he"] .up-posts-title{ font-size:12.5px; font-weight:700; }
+  /* El menú de Administración: el rótulo de cada grupo casi del tamaño de sus ítems y el título sin negrita fuerte. */
+  html[lang="he"] .admin-menu .admin-grupo{ font-size:13px; }
+  html[lang="he"] .admin-titulo{ font-size:18px; font-weight:700; }
+  /* Las etiquetas chicas (días de la semana, estados, avisos) en negrita común: en hebreo, a 11 px, el 800 se empasta. */
+  html[lang="he"] :is(.dow, .ad-dow, .year-dows span, .cal-head, .hoy, .pl-months span, .fl-hito-estado, .rs-ok, .ag-estado, .gx-chip){ font-weight:700; }
 </style>
 </head>
 <body>
