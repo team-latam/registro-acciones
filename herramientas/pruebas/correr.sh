@@ -17,6 +17,9 @@
 # viejo (alcanza con correr ESA, no todas):
 #   INDEX=/ruta/a/otra/copia/index.html ./herramientas/pruebas/correr.sh nueva
 #
+# SHARD=2/4 corre solo la parte 2 de 4 (las partes salen de repartir.py, parejas según pesos.txt): así GitHub las corre en
+# cuatro trabajos a la vez. Sin SHARD, todas.
+#
 # Varias a la vez (24/10/2026, docs/AUDITORIA.md, S10): las pruebas no
 # comparten nada (ni puertos ni archivos), así que corren de a
 # PARALELO=N (de fábrica, tantas como procesadores, hasta 4). Las que
@@ -69,6 +72,12 @@ if [ "$#" -gt 0 ]; then
   done
 else
   for f in *_test.mjs; do [ -f "$f" ] && pruebas+=("$f"); done
+fi
+# Una parte de las pruebas, para que GitHub las corra en varios trabajos a la vez (SHARD=i/n; ver repartir.py).
+if [ -n "${SHARD:-}" ] && [ "${#pruebas[@]}" -gt 0 ]; then
+  repartidas=$(python3 repartir.py "$SHARD" "${pruebas[@]}") || { echo "✗ SHARD=$SHARD no es una parte válida (se escribe i/n, por ejemplo 2/4)."; exit 1; }
+  pruebas=(); while IFS= read -r f; do [ -n "$f" ] && pruebas+=("$f"); done <<< "$repartidas"
+  echo "Parte $SHARD de las pruebas: ${#pruebas[@]} archivos."
 fi
 # Un portero que no encuentra a quién revisar y dice "pasen todos" es peor
 # que ninguno: si el patrón deja de encontrar archivos, esto tiene que

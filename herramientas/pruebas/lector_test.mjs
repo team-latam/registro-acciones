@@ -85,7 +85,7 @@ async function captura(lineas){
 const CAPTURA = await captura(["&lt; Detalle del viaje", "UYU$ 480.00", "Tarifa del viaje UYU$ 400.00", "Cargo de reserva UYU$ 80.00", "Historial de pagos", "4321 UYU$ 480.00", `${ayer}, 11:36`]);
 
 const tabla = (p, n) => p.evaluate(n => window.__sb.tablas[n] || [], n);
-const hasta = async (p, f, a, veces = 400) => { for(let i = 0; i < veces; i++){ if(await p.evaluate(f, a).catch(() => false)) return true; await p.waitForTimeout(150); } return false; };
+const hasta = async (p, f, a, veces = 400) => { const fin = Date.now() + veces * 150; while(Date.now() < fin){ if(await p.evaluate(f, a).catch(() => false)) return true; await p.waitForTimeout(150); } return false; };
 const elegir = async (p, sel, files) => { const [ch] = await Promise.all([p.waitForEvent("filechooser"), p.click(sel)]); await ch.setFiles(files); };
 
 const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA });

@@ -32,14 +32,21 @@ permissions:
 
 jobs:
   pruebas:
-    name: Correr todas
+    # En cuatro trabajos a la vez (24/11/2026): corriendo de a uno tardaban ~10 minutos; repartidas (herramientas/pruebas/
+    # repartir.py, parejas según pesos.txt) tarda cada parte ~3. `reparto_test.mjs` comprueba que las cuatro partes juntas sean
+    # EXACTAMENTE todas las pruebas. fail-fast apagado: si una parte falla, se ven también las otras, no solo la primera.
+    name: Correr (parte ${{ matrix.parte }} de ${{ strategy.job-total }})
+    strategy:
+      fail-fast: false
+      matrix:
+        parte: [1, 2, 3, 4]
     # ubuntu-24.04 y no «latest»: el 19/10/2026 GitHub mueve ubuntu-latest a
     # Ubuntu 26 (actions/runner-images#14748) y cambiar de sistema se decide y
     # se prueba, como subir una acción (docs/AUDITORIA.md, R5).
     runs-on: ubuntu-24.04
-    # Pruebas ~7 min de a cuatro (eran ~20 de a una, 24/10/2026) + Playwright
+    # Cada parte: ~3 min de pruebas (eran ~20 de a una, 24/10/2026; ~10 de a cuatro antes del 24/11) + Playwright
     # (lo normal, 30 s; lo peor, su tope de 20).
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -68,6 +75,15 @@ jobs:
         timeout-minutes: 20
         run: |
           npm ci
+          # Primero solo el navegador, sin apt (segundos): la imagen de GitHub casi siempre ya trae las librerías del
+          # sistema. El 24/11/2026 el intento con `--with-deps` se quedó 5 minutos colgado en apt hasta su tope de 6 y el
+          # reintento terminó en 11 segundos. Si el navegador arranca, no se toca apt; si no, sigue todo como antes.
+          if npx playwright install chromium \
+             && node -e "require('playwright').chromium.launch().then(b => b.close()).then(() => process.exit(0), e => { console.error(String(e).split('\n')[0]); process.exit(1); })"; then
+            echo "✓ El navegador arranca sin tocar apt."
+            exit 0
+          fi
+          echo "::notice::El navegador no arrancó solo: se instalan también las librerías del sistema (apt)."
           printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "3";\n' \
             | sudo tee /etc/apt/apt.conf.d/99-tiempos >/dev/null
           # En GitHub sí hay que bajar el navegador (en el sandbox de
@@ -80,4 +96,6 @@ jobs:
           exit 1
 
       - name: Las pruebas
+        env:
+          SHARD: ${{ matrix.parte }}/${{ strategy.job-total }}
         run: ./herramientas/pruebas/correr.sh

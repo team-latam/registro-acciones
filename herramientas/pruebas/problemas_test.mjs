@@ -27,7 +27,7 @@ const datos = (extra = {}) => {
   return Object.assign(base, extra);
 };
 const filas = p => p.evaluate(() => window.__sb.tablas.problemas || []);
-const hasta = async (p, f, ...a) => { for(let i = 0; i < 40; i++){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
+const hasta = async (p, f, ...a) => { const fin = Date.now() + 4000; while(Date.now() < fin){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
 const abrirMenu = async p => { await p.click('[data-action="toggle-user-menu"]'); await p.waitForSelector(".user-menu"); };
 
 const b = await abrirNavegador();

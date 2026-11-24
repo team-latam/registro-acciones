@@ -247,14 +247,41 @@ export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion
   }, [base, sinSesion ? null : { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || "", !!dark, falla || ""]);
   if(cpu && cpu > 1){ const cdp = await p.context().newCDPSession(p); await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpu }); }
   if(iniciar) await p.addInitScript(iniciar);
-  // Esperar a que la página quede quieta (sin cambios durante 250 ms y con la app dibujada) en vez de dormir 1,2 s a ciegas:
-  // la app está lista a los ~0,6 s. Con el procesador frenado (`cpu`) o sin sesión se mantiene la espera fija de siempre, y
-  // PAUSA_FIJA=1 la devuelve para todo (por si una prueba nueva depende de ese tiempo).
+  // Esperas inteligentes (24/11/2026). Dormir a ciegas era más de la mitad del tiempo de toda la suite: las pruebas esperan
+  // «un rato» para que la app termine de dibujar. Ahora la página lleva la cuenta de lo que la app tiene en marcha (temporizadores
+  // de hasta 2 s, pedidos, animaciones que terminan y cambios en la página) y cada espera se corta apenas no hay nada, sin pasarse
+  // nunca de lo que dormía antes. Con el procesador frenado (`cpu`) o sin sesión se mantiene la espera fija de siempre, y
+  // PAUSA_FIJA=1 la devuelve para todo (por si una prueba nueva depende del tiempo).
   const quieta = !cpu && !sinSesion && !process.env.PAUSA_FIJA;
-  if(quieta) await p.addInitScript(() => { window.__ultMut = performance.now(); new MutationObserver(() => { window.__ultMut = performance.now(); }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true }); });
+  if(quieta){
+    await p.addInitScript(() => {
+      if(window.__q) return;
+      const q = window.__q = { timers: new Set(), fetches: 0, mut: performance.now() };
+      const st = window.setTimeout, ct = window.clearTimeout;
+      window.setTimeout = function(fn, ms, ...a){
+        if(typeof fn !== "function" || (Number(ms) || 0) > 2000) return st.call(this, fn, ms, ...a);
+        const id = st.call(this, function(...x){ q.timers.delete(id); return fn.apply(this, x); }, ms, ...a);
+        q.timers.add(id); return id;
+      };
+      window.clearTimeout = function(id){ q.timers.delete(id); return ct.call(this, id); };
+      const f = window.fetch;
+      window.fetch = function(...a){ q.fetches++; const r = f.apply(this, a); const fin = () => { q.fetches--; q.mut = performance.now(); }; r.then(fin, fin); return r; };
+      new MutationObserver(() => { q.mut = performance.now(); }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+    });
+    const fija = p.waitForTimeout.bind(p);
+    p.dormir = fija;                                  // dormir de verdad (para lo que mide tiempo real, como esperar a que un desplazamiento se detenga)
+    p.waitForTimeout = async ms => {
+      if(!(ms <= 1500)) return fija(ms);              // una espera larga espera algo largo: se respeta
+      try{
+        await p.waitForFunction(([quieto]) => { const q = window.__q; if(!q) return true;
+          const animando = document.getAnimations().some(a => a.playState === "running" && Number.isFinite(a.effect && a.effect.getComputedTiming().endTime));
+          return q.timers.size === 0 && q.fetches === 0 && !animando && performance.now() - q.mut >= quieto; }, [Math.min(60, ms)], { timeout: ms, polling: 25 });
+      }catch(e){ /* se acabó el tiempo de siempre: se sigue */ }
+    };
+  }
   await p.goto((pagina || PAGINA) + query);
-  if(quieta) await p.waitForFunction(() => document.querySelector("#viewRoot") && document.querySelector("#viewRoot").children.length > 0 && performance.now() - window.__ultMut > 250, null, { timeout: 15000, polling: 50 });
-  else await p.waitForTimeout(1200);
+  if(quieta) await p.waitForFunction(() => document.querySelector("#viewRoot") && document.querySelector("#viewRoot").children.length > 0, null, { timeout: 15000, polling: 25 }), await p.waitForTimeout(400);
+  else { p.dormir = ms => p.waitForTimeout(ms); await p.waitForTimeout(1200); }
   return { p, errores };
 }
 

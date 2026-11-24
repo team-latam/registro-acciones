@@ -27,7 +27,7 @@ const datos = () => {
   pasos[0].t = LARGO; pasos[1].t = CORTO; pasos.push({ id: "x4", t: MEDIO, estado: "pendiente" });
   return base;
 };
-const hasta = async (p, f, ...a) => { for(let i = 0; i < 40; i++){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
+const hasta = async (p, f, ...a) => { const fin = Date.now() + 4000; while(Date.now() < fin){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
 const tarjeta = '.post[data-post-id="p1"]';
 const estado = (p, sel) => p.evaluate(sel => [...document.querySelectorAll(sel + " .rs-pasos li")].map(li => { const b = li.querySelector(".rs-mas-paso"), t = li.querySelector(".t");
   return { boton: b && !b.hidden ? b.textContent.trim() : null, cortado: t.scrollHeight > t.clientHeight + 1, entero: t.classList.contains("entero"), expandido: b ? b.getAttribute("aria-expanded") : null }; }), sel);

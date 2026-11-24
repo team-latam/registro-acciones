@@ -16,7 +16,7 @@ import { abrirNavegador, entrar, ADMIN, PERS, BASE, irAdmin } from "./app_de_men
 
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
-const hasta = async (p, f, ...a) => { for(let i = 0; i < 50; i++){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
+const hasta = async (p, f, ...a) => { const fin = Date.now() + 5000; while(Date.now() < fin){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
 const textos = (p, sel) => p.$$eval(sel, l => l.map(e => e.textContent.replace(/\s+/g, " ").trim()));
 const pestanas = p => p.$$eval("#tabs button[data-view]", l => l.filter(b => !b.hidden && b.offsetParent).map(b => b.dataset.view));
 const irGastos = async p => { await p.click('#tabs button[data-view="gastos"]'); await p.waitForSelector(".gastos-view"); await p.waitForTimeout(200); };

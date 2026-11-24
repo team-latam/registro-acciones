@@ -33,7 +33,7 @@ async function aArgentina(p){
 const lados = p => p.$$eval(".fl-lado > .fl-card", l => l.map(c => (c.querySelector(".fl-pliegue") || { dataset: {} }).dataset.que || null));
 const visible = (p, sel) => p.$$eval(sel, l => l.length > 0 && l.every(e => !!e.offsetParent && getComputedStyle(e).display !== "none"));
 const resumen = (p, k) => p.$eval(`.fl-pliegue[data-que="${k}"] .r`, e => e.textContent.trim()).catch(() => null);
-const quieto = async p => { let a = -1; for(let i = 0; i < 20; i++){ const y = await p.evaluate(() => scrollY); if(y === a) return; a = y; await p.waitForTimeout(120); } };
+const quieto = async p => { let a = -1; for(let i = 0; i < 20; i++){ const y = await p.evaluate(() => scrollY); if(y === a) return; a = y; await p.dormir(120); } };
 const abiertas = p => p.$$eval(".fl-lado > .fl-plegable.abierta", l => l.map(c => (c.querySelector(".fl-pliegue") || { dataset: {} }).dataset.que || null));
 
 const b = await abrirNavegador();

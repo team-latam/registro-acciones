@@ -32,7 +32,7 @@ const datos = (editar = x => x) => {
   return base;
 };
 const paso = (p, i = 0) => p.evaluate(i => window.__sb.tablas.posts.find(x => x.id === "p1").resumen.partes[0].pasos[i], i);
-const hasta = async (p, f, ...a) => { for(let i = 0; i < 40; i++){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
+const hasta = async (p, f, ...a) => { const fin = Date.now() + 4000; while(Date.now() < fin){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
 // Abrir el selector de fechas: primero el botón a la vista y quieto, porque un scroll cierra el selector.
 const abrirFecha = async (p, sel) => { await p.$eval(sel, e => e.scrollIntoView({ block: "center" })); await p.waitForTimeout(350); await p.click(sel); await p.waitForSelector(".date-pop:not([hidden]) .dp-date-input"); };
 // «+ Responsable» abre una ventanita con buscador y lista (13/10/2026): se abre, se toca a alguien (o «Quitar responsable»).

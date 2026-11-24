@@ -128,7 +128,7 @@ respecto de lo último que pegó.
 
 Corre **todas** las pruebas de `index.html` (más de 5.000 comprobaciones; la
 carga de la página y la app entera contra un Supabase de mentira), de a
-cuatro, en unos 10 minutos, y muestra solo lo que falla y el total (el
+cuatro, en unos 6 minutos, y muestra solo lo que falla y el total (el
 detalle queda en `herramientas/pruebas/salida/ultima.txt`; `DETALLE=1` lo
 muestra). **Tiene que terminar en verde antes de cada commit que toque la
 app**: todas, siempre (lo decidió el usuario el 24/10/2026, D12). GitHub las

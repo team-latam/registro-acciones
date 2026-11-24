@@ -38,7 +38,7 @@ const datos = (gastos, extra = {}) => {
   return Object.assign(base, extra);
 };
 const tabla = (p, n) => p.evaluate(n => window.__sb.tablas[n] || [], n);
-const hasta = async (p, f, ...a) => { for(let i = 0; i < 50; i++){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
+const hasta = async (p, f, ...a) => { const fin = Date.now() + 5000; while(Date.now() < fin){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
 const abrirMenu = async p => { await p.click('[data-action="toggle-user-menu"]'); await p.waitForSelector(".user-menu"); };
 // Gastos, en el menú de arriba, entre Proyectos y Reportes (19/11).
 // (En el celular, en «Más», entre Proyectos y Reportes.)

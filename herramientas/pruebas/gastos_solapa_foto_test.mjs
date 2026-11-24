@@ -29,7 +29,7 @@ const datos = gastos => {
   pref.value = { ...pref.value, gastos };
   return base;
 };
-const hasta = async (p, f, ...a) => { for(let i = 0; i < 60; i++){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
+const hasta = async (p, f, ...a) => { const fin = Date.now() + 6000; while(Date.now() < fin){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
 // Las solapas que se ven de verdad, en orden.
 const pestanas = p => p.$$eval("#tabs button[data-view]", l => l.filter(b => !b.hidden && b.offsetParent).map(b => b.dataset.view));
 const recordada = p => p.evaluate(() => { try{ return JSON.parse(localStorage.getItem("ra_gastos_solapa") || "null"); }catch(e){ return "roto"; } });

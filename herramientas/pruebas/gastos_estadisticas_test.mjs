@@ -17,7 +17,7 @@ import { abrirNavegador, entrar, ADMIN, PERS, BASE } from "./app_de_mentira.mjs"
 
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
-const hasta = async (p, f, ...a) => { for(let i = 0; i < 50; i++){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
+const hasta = async (p, f, ...a) => { const fin = Date.now() + 5000; while(Date.now() < fin){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
 const textos = (p, sel) => p.$$eval(sel, l => l.map(e => e.textContent.replace(/\s+/g, " ").trim()));
 const irEstadisticas = async p => {
   if(await p.evaluate(() => { const b = document.querySelector('#tabs button[data-view="gastos"]'); return !!(b && b.offsetParent); })) await p.click('#tabs button[data-view="gastos"]');

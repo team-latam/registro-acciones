@@ -57,7 +57,19 @@ INDEX=/tmp/roto.html ./herramientas/pruebas/correr.sh
 
 ## Para correrlas
 
-- **En GitHub** no hay nada que hacer: `.github/workflows/app.yml`.
+- **En GitHub** no hay nada que hacer: `.github/workflows/app.yml`. Corre las pruebas **en cuatro trabajos a la vez**
+  (`SHARD=i/4`; ~3 minutos cada uno): `repartir.py` las reparte en partes parejas según lo que tarda cada una
+  (`pesos.txt`), y `reparto_test.mjs` comprueba que las cuatro partes juntas sean exactamente todas (si el reparto perdiera
+  un archivo, ese archivo dejaría de probarse sin que nadie lo note). Una prueba nueva que no está en `pesos.txt` pesa lo de
+  una mediana y se reparte igual; cuando se sumen varias grandes, `./herramientas/pruebas/medir_tiempos.sh` renueva los pesos.
+- **Más rápido sin perder nada (24/11/2026).** Más de la mitad del tiempo de la suite era *dormir*. Ahora `entrar()` en
+  `app_de_mentira.mjs` hace que **todo `p.waitForTimeout(ms)`** (hasta 1,5 s) sea una espera inteligente: se corta apenas la
+  página no tiene nada en marcha (temporizadores de hasta 2 s, pedidos, animaciones que terminan, cambios en el DOM) y nunca
+  espera más de lo que pedía. Con `PAUSA_FIJA=1` las esperas vuelven a ser fijas (para investigar una prueba rara). Dos reglas
+  para escribir pruebas: **(1)** una espera que cuenta vueltas (`for(i<50){…waitForTimeout(100)}`) ya no equivale a tiempo:
+  tiene que medir tiempo real (`const fin = Date.now() + 5000; while(Date.now() < fin){…}`); y **(2)** lo que depende de que
+  pase tiempo de verdad (esperar a que un desplazamiento se detenga) usa `p.dormir(ms)`, que duerme de verdad. Con el
+  procesador frenado (`cpu`) o sin sesión, las esperas siguen siendo fijas.
 - **En el sandbox de Claude Code** el corredor se arregla solo: Playwright
   y Chromium ya están instalados. No correr `playwright install` ahí.
 - **En otra máquina:** `cd herramientas/pruebas && npm ci && npx playwright install chromium`.
