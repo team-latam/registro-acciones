@@ -35,6 +35,15 @@ while((m = re.exec(js))){
   const donde = `index.html:${linea}`;
   if(a.length < 4){ out.push(hallazgo("idiomas", "medio", "Texto con menos de cuatro idiomas", donde, a[0])); continue; }
   [["inglés", en], ["portugués", pt], ["hebreo", he]].forEach(([n, v]) => { if(v === "") out.push(hallazgo("idiomas", "medio", `Texto sin ${n}`, donde, es)); });
+  // «{n} personas» sin una rama para 1: con uno sale «1 personas» (auditoría del 24/11/2026: Brújula). En el código la forma
+  // es `n === 1 ? t(singular…) : t(plural…)`; acá se mira que, en la misma línea, haya alguna comparación con 1 (o un `<= 1`,
+  // `> 1`). Candidatos: se verifica a mano (a veces n nunca es 1: «{n} de {m}», o el texto ya trae su propio singular).
+  if(es && /^\s*\{n\} [a-záéíóúñ]+(s|es)\b/i.test(es) && !/\{n\}[^"]*\{[a-z]\}/.test(es)){
+    const l0 = js.lastIndexOf("\n", abre) + 1, l1 = js.indexOf("\n", abre), renglon = js.slice(l0, l1 < 0 ? undefined : l1);
+    let desdeL = l0; for(let k = 0; k < 3; k++) desdeL = js.lastIndexOf("\n", desdeL - 2) + 1;   // los tres renglones de arriba: el `n === 1 ? t(singular) :` suele quedar ahí
+    const alrededor = js.slice(desdeL, l1 < 0 ? undefined : l1);
+    if(!/(===?|!==?|<=?|>=?)\s*1\b|\b1\s*(===?|!==?)|t\(\s*["'`](1|Una?|אחד|אחת)\b|\bn\(/.test(alrededor)) out.push(hallazgo("idiomas", "bajo", "Texto con cantidad sin singular («{n} …s» sin rama para 1)", donde, es));
+  }
   const esFormato = /^[admy\/. -]+$/i.test(es || "");   // "dd/mm/aaaa": igual en hebreo
   if(es && he !== null && !/[\u0590-\u05FF]/.test(he) && /[a-záéíóúñ]{3,}/i.test(es) && !NOMBRES.test(es) && !esFormato)
     out.push(hallazgo("idiomas", "bajo", "El hebreo no está en hebreo", donde, `${es} → ${he}`));

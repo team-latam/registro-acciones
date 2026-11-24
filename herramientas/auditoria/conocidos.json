@@ -113,5 +113,25 @@
     "que": "Atributo placeholder escrito directo, sin t()",
     "contiene": "Ana Pérez, ana@ejemplo.org",
     "porque": "Es el ejemplo del formato «nombre, correo» de Brújula › Invitar › Pegar una lista: un nombre propio y un correo van igual en los cuatro idiomas. Revisado el 23/11/2026."
+  },
+  {
+    "que": "Texto con cantidad sin singular («{n} …s» sin rama para 1)",
+    "contiene": "{n} eventos de Calendar no se pudieron aplicar",
+    "porque": "La rama de uno está unos renglones más arriba (`failed === 1 ? t(…)`): la herramienta mira solo tres. Revisado el 24/11/2026."
+  },
+  {
+    "que": "Texto con cantidad sin singular («{n} …s» sin rama para 1)",
+    "contiene": "{n} más",
+    "porque": "«{n} más» (Ver más): suma el número a «más», no cuenta cosas. Revisado el 24/11/2026."
+  },
+  {
+    "que": "Texto con cantidad sin singular («{n} …s» sin rama para 1)",
+    "contiene": "{n} meses",
+    "porque": "Los plazos de «Lugares sin actividad» son 3, 6 y 12 meses (PLAZOS_DE_LUGARES): nunca 1. Revisado el 24/11/2026."
+  },
+  {
+    "que": "Texto con cantidad sin singular («{n} …s» sin rama para 1)",
+    "contiene": "{n} días",
+    "porque": "La vista de «N días» del Calendario va de 2 a 7 (customDaysCount): nunca 1. Revisado el 24/11/2026."
   }
 ]

@@ -106,7 +106,7 @@ const recortar = tel => tel.replace(/^(\D*\d+\D+\(?\d+\)?)[\s\S]*$/, "$1 …");
 // Los inventados de las pruebas y la demo llevan un grupo 555 o 5555.
 const INVENTADO = /(^|\D)9?5{3,4}/;
 const archivos = execSync("git ls-files", { cwd: RAIZ, encoding: "utf8" }).split("\n").filter(f => f && !/\.(png|jpg|gz|zip|docx?|xlsx?|pdf)$/.test(f));
-const CORREO_OK = /ciudad@gmail\.com|@adentro\.com|^atacante@|@(x\.com|example\.(com|org)|ejemplo\.|users\.noreply\.github\.com|noreply\.|anthropic\.com|group\.calendar\.google\.com|group\.v\.calendar\.google\.com|dominio\.com|pedro\.com|github\.com|y\.com|proyecto\.iam\.gserviceaccount\.com|resend\.dev)|^benny@team-latam\.com$|^-?info@team-latam\.com$|^(nueva|otra|ana|diego|lucia|moshe|juan|obs|nombre|name|nome|largo|veneno|pide|nadie)@/i;
+const CORREO_OK = /ciudad@gmail\.com|@adentro\.com|^atacante@|@(x\.com|([a-z0-9-]+\.)*example\.(com|org|net)|ejemplo\.|users\.noreply\.github\.com|noreply\.|anthropic\.com|group\.calendar\.google\.com|group\.v\.calendar\.google\.com|dominio\.com|pedro\.com|github\.com|y\.com|proyecto\.iam\.gserviceaccount\.com|resend\.dev)|^benny@team-latam\.com$|^-?info@team-latam\.com$|^(nueva|otra|ana|diego|lucia|moshe|juan|obs|nombre|name|nome|largo|veneno|pide|nadie)@/i;
 // Números que no son de nadie: las coordenadas de un dibujo (el trazo de un
 // SVG, «M11 13C20 13 26 16…») se parecen a un teléfono. Un .svg no tiene
 // datos de personas, y una línea con <path, viewBox o svg+xml es un dibujo
