@@ -267,7 +267,7 @@ const cerrar = c => ({ filas: c.filas.map(f => ({ ...f, estado: "cerrada" })) })
   eq("el nombre y sus etiquetas van en la misma línea", await p.$$eval(".bj-fila:not(.bj-cab)", l => l.every(f => Math.abs(f.querySelector(".bj-nombre").getBoundingClientRect().top - f.querySelector(".bj-chips").getBoundingClientRect().top) < 12)), true);
   eq("los títulos de las columnas están centrados en vertical (el ícono y el nombre juntos, a mitad de la cabecera)",
      await p.evaluate(() => { const cab = document.querySelector(".bj-cab").getBoundingClientRect(), mitad = cab.top + cab.height / 2;
-       return [...document.querySelectorAll(".bj-cab .bj-c-cab")].every(c => { const a = c.querySelector(".bj-c-ic").getBoundingClientRect(), b = c.querySelector(".bj-c-n").getBoundingClientRect(); return Math.abs((a.top + b.bottom) / 2 - mitad) <= 4; }); }), true);
+       return [...document.querySelectorAll(".bj-cab .bj-c-cab")].every(c => { const a = c.querySelector(".bj-c-ic").getBoundingClientRect(), b = c.querySelector(".bj-c-n").getBoundingClientRect(), arriba = a.height ? a.top : b.top; return Math.abs((arriba + b.bottom) / 2 - mitad) <= 4; }); }), true);   // sin ícono (carpeta sin emoji) cuenta solo el nombre
   eq("en escritorio la tabla entra sin barra de desplazamiento", await p.$eval(".bj-tabla", e => e.scrollWidth <= e.clientWidth + 1), true);
   await p.setViewportSize({ width: 1100, height: 760 }); await p.waitForTimeout(300);
   eq("en una ventana más angosta (1100) también entra: se va el círculo con las iniciales y el correo sigue en una línea",
@@ -411,7 +411,7 @@ const cerrar = c => ({ filas: c.filas.map(f => ({ ...f, estado: "cerrada" })) })
   };
   const { p, pedidos } = await abrir({ guion });
   await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
-  eq("las carpetas, en su orden, con cuántas personas y la desactivada marcada", await textos(p, ".bj-carp .bj-carp-t").then(l => l.slice(0, 3)), ["Brújula Cloud 4 personas", "CARE 1 personas", "Archivo 2025 0 personas"]);
+  eq("las carpetas, en su orden, con cuántas personas y la desactivada marcada", await textos(p, ".bj-carp .bj-carp-t").then(l => l.slice(0, 3)), ["Brújula Cloud 4 personas", "CARE 1 persona", "Archivo 2025 0 personas"]);
   eq("una etiqueta solo donde algo pide atención (la desactivada y la que Toldot no ve)", await p.$$eval(".bj-carp .bj-tag", l => l.map(e => e.innerText)), ["Desactivada"]);
   eq("los paquetes con sus carpetas y las planillas con sus pendientes", [await textos(p, ".bj-paq"), await textos(p, ".bj-seccion .bj-carp-t").then(l => l.slice(-2))], [["Todo Brújula Editar Brújula Cloud CARE"], ["Users grande 3 filas · 2 pendientes", "Users CARE 0 filas · 0 pendientes"]]);
 
@@ -530,6 +530,57 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
   // Alguien que no es admin no ve la sección ni puede llamarla.
   const { p } = await entrar(b, PERS[1].email, PERS[1].name, { base: base() });
   eq("un integrante común no tiene Administración ni Brújula", [await p.$$eval('[data-action="goto-view"][data-view="admin"], .admin-menu', l => l.length)], [0]);
+  await p.close();
+}
+
+/* ---------- Con exactamente uno: «1 persona», «1 carpeta», «1 fila · 1 pendiente» (auditoría del 24/11/2026) ----------
+   La pantalla decía «CARE · 1 personas» (la prueba de arriba lo daba por bueno), «1 carpetas» y «1 filas · 1 pendientes». */
+{
+  const una = () => ({ ...LEIDO(), planillas: [{ id: PL1, nombre: "Users grande", orden: 1, estado: "ok", filas: 1, pendientes: 1 }, { id: PL2, nombre: "Users CARE", orden: 2, estado: "ok", filas: 0, pendientes: 0 }],
+    personas: LEIDO().personas.filter(x => x.correo !== "joaquin@example.org") });   // un solo pendiente: hannah
+  const conPaqueteChico = () => { const x = base(); x.brujula_paquetes.push({ id: "paq-uno", nombre: "Solo Cloud", orden: 2 }); x.brujula_paquete_carpetas.push({ id: "pc9", paquete: "paq-uno", carpeta: C1 }); return x; };
+  const guion = { dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), mail: "enviado", planilla: "actualizada" }) };
+  const { p, pedidos } = await abrir({ datos: una, baseFn: conPaqueteChico, guion });
+  await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  eq("una carpeta con una sola persona: «1 persona»", await textos(p, ".bj-carp .bj-carp-t").then(l => l.slice(0, 2)), ["Brújula Cloud 4 personas", "CARE 1 persona"]);
+  eq("una planilla con una fila y un pendiente: «1 fila · 1 pendiente»", await textos(p, ".bj-seccion .bj-carp-t").then(l => l.slice(-2)), ["Users grande 1 fila · 1 pendiente", "Users CARE 0 filas · 0 pendientes"]);
+  await clic(p, '[data-action="bj-tab"][data-key="personas"]');
+  await clic(p, '[data-action="bj-filtro"][data-key="pend"]');
+  await clic(p, '[data-action="bj-dar-pendientes"]');
+  const msg = (await textos(p, "#confirmMessage")).join(" ");
+  eq("dar a un solo pendiente: «¿Darle acceso a 1 persona …?», no «1 personas»", [msg.includes("1 persona ("), msg.includes("1 personas")], [true, false]);
+  await p.click("#confirmCancel").catch(() => {}); await p.waitForTimeout(300);
+  await clic(p, '[data-action="bj-invitar-abrir"]');
+  eq("un paquete con una sola carpeta: «1 carpeta»", await p.$$eval(".bj-radio", l => l.map(e => e.innerText.replace(/\s+/g, " ").trim())), ["Todo Brújula 2 carpetas", "Solo Cloud 1 carpeta", "A medida Elegir carpetas"]);
+  await p.fill('[data-bj="f.correo"]', "camila@example.org"); await p.waitForTimeout(450);
+  eq("quien ya tiene una sola carpeta: «Ya tiene 1 carpeta.»", await textos(p, ".bj-nota"), ["Ya tiene 1 carpeta."]);
+  await p.close();
+}
+{
+  // En hebreo, lo mismo: «אדם אחד» / «תיקייה אחת» (no «1 אנשים»).
+  const { p } = await abrir({ lang: "he", datos: () => ({ ...LEIDO(), personas: LEIDO().personas }) });
+  await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  eq("hebreo: una carpeta con una sola persona dice «אדם אחד»", await textos(p, ".bj-carp .bj-carp-t").then(l => l[1]), "CARE אדם אחד");
+  await p.close();
+}
+
+/* ---------- Títulos de las columnas: a la altura de «Persona» (24/11/2026; el usuario pidió «alineación vertical media») ---------- */
+{
+  for(const [ancho, nom] of [[1280, "compu"], [1000, "angosto"]]){
+    const { p } = await abrir({ viewport: { width: ancho, height: 800 } });
+    const m = await p.evaluate(() => { const cab = document.querySelector(".bj-fila.bj-cab"), r = cab.getBoundingClientRect();
+      const centro = e => Math.round((e.getBoundingClientRect().top + e.getBoundingClientRect().bottom) / 2 - r.top);
+      const hojas = [...cab.querySelectorAll("*")].filter(e => !e.children.length && e.innerText && e.innerText.trim() && e.offsetParent);
+      return { alto: Math.round(r.height), persona: centro(hojas.find(e => /Persona/.test(e.innerText))), carpetas: hojas.filter(e => !/Persona/.test(e.innerText)).map(centro) }; });
+    eq(`${nom}: los títulos de las carpetas quedan centrados en la fila, a la altura de «Persona» (±3 px)`, [m.carpetas.length >= 2, m.carpetas.every(c => Math.abs(c - m.persona) <= 3), Math.abs(m.persona - m.alto / 2) <= 3], [true, true, true]);
+    await p.close();
+  }
+}
+
+/* ---------- Google sin conectar: un solo aviso (24/11/2026) ---------- */
+{
+  const { p } = await abrir({ estado: 503 });
+  eq("sin conectar Google: la frase aparece una sola vez (el aviso arriba, con «Reintentar»; la lista no la repite)", (await textos(p, "#viewRoot")).join(" ").split("Todavía no está conectado Google.").length - 1, 1);
   await p.close();
 }
 

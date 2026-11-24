@@ -79,20 +79,23 @@ const elegir = async (p, libro) => { const [fc] = await Promise.all([p.waitForEv
   eq("al elegir el tipo que faltaba, esa fila entra; queda dudosa solo la sin fecha", [tiles2[1], tiles2[2]], ["Para cargar 5", "Dudosas 1"]);
   eq("la sigla «ORG» se propone como tarjeta de la organización; lo vacío no es una sigla, no aparece", await p.$$eval('select[data-gimp="pago"]', l => l.map(s => [s.dataset.k, s.value])), [["org", "organizacion"]]);
   eq("dos rendiciones: la rutina de septiembre y el viaje, con enlace propuesto a la Agenda", await textos(p, ".gx-imp-rend .gx-imp-cab b"), ["Rutina de septiembre de 2026", "Visita a Montevideo"]);
-  eq("…con sus totales por moneda", await textos(p, ".gx-imp-rend .gx-imp-cab span"), ["1 gastos · USD 25.00", "4 gastos · USD 465.50"]);
+  eq("…con sus totales por moneda", await textos(p, ".gx-imp-rend .gx-imp-cab span"), ["1 gasto · USD 25.00", "4 gastos · USD 465.50"]);
+  eq("«Ver los N gastos»: con uno solo, «Ver el gasto»", await textos(p, ".gx-imp-rend .gx-imp-det summary"), ["Ver el gasto", "Ver los 4 gastos"]);
   eq("…y el enlace elegido es la actividad de esa fecha", await p.$eval('select[data-gimp="rend"][data-c="postId"]', s => s.value), "p9");
   eq("septiembre cuenta en la cuenta corriente (corre desde el 1/8): no están marcadas como históricas", await p.$$eval('input[data-c="historica"]', l => l.map(i => i.checked)), [false, false]);
   for(let i = 0; i < 2; i++){ await p.locator('input[data-c="historica"]').nth(i).check(); await p.waitForTimeout(150); }
   eq("el admin las marca como históricas", await p.$$eval('input[data-c="historica"]', l => l.map(i => i.checked)), [true, true]);
   eq("la suma de lo que se carga, por moneda, para comparar con la planilla", (await textos(p, ".gx-imp-suma"))[0].startsWith("Suma de lo que se va a cargar: USD 490.50"), true);
   eq("el botón dice cuántos gastos se importan", await textos(p, '[data-action="gastos-imp-importar"]'), ["Importar 5 gastos"]);
-  await p.click('[data-action="gastos-imp-importar"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
+  await p.click('[data-action="gastos-imp-importar"]'); await p.waitForSelector("#confirmOverlay:not([hidden])");
+  eq("al importar pregunta con las cuentas en palabras", (await textos(p, "#confirmMessage"))[0].startsWith("¿Importar 5 gastos en 2 rendiciones y 0 movimientos de plata?"), true);
+  await p.click("#confirmOk");
   await hasta(p, () => window.__sb.rpc.some(r => r[0] === "gastos_importar"));
   eq("se llama a la base una vez, con las dos rendiciones y sus gastos", await p.evaluate(() => window.__sb.rpc.filter(r => r[0] === "gastos_importar").map(r => [r[1].p_rendiciones.length, r[1].p_rendiciones.reduce((n, x) => n + x.gastos.length, 0)])), [[2, 5]]);
   eq("quedan en la base: aprobadas, a nombre del admin, históricas y con el lote", await hasta(p, () => window.__sb.tablas.gastos_rendiciones.length === 2), true);
   eq("…con lo que corresponde", await p.evaluate(() => window.__sb.tablas.gastos_rendiciones.map(r => [r.estado, r.autor, r.historica, !!r.lote_id, r.post_id]).sort().map(String)), [["aprobada", "benny@team-latam.com", true, true, ""].toString(), ["aprobada", "benny@team-latam.com", true, true, "p9"].toString()].sort());
   eq("la cena en pesos mexicanos quedó en MXN y rendida en dólares", await p.evaluate(() => window.__sb.tablas.gastos.filter(g => g.moneda === "MXN").map(g => [g.monto, g.rendido_moneda, g.rendido_monto])), [[2834, "USD", 45.5]]);
-  eq("aviso de que se cargó", (await textos(p, ".gx-imp .admin-ok"))[0].startsWith("✅ Listo: se cargaron 2 rendiciones con 5 gastos"), true);
+  eq("aviso de que se cargó", (await textos(p, ".gx-imp .admin-ok"))[0].startsWith("✅ Listo. Se cargó: 2 rendiciones, 5 gastos y"), true);
   eq("aparece la tanda, para poder deshacerla", await textos(p, ".gx-imp-tanda span"), ["2 rendiciones, 5 gastos"]);
   // Lo histórico no inventa deuda
   await irSeccion(p, "cuenta");
@@ -114,11 +117,11 @@ const elegir = async (p, libro) => { const [fc] = await Promise.all([p.waitForEv
   await elegir(p, true);
   eq("el libro se suma a lo ya leído: siguen las rendiciones", await textos(p, ".gx-imp-rend .gx-imp-cab b"), ["Rutina de septiembre de 2026", "Visita a Montevideo"]);
   eq("lo recibido se lista; lo gastado no (solo sirve para comparar)", await textos(p, ".gx-imp-mov"), ["Recibido · 15 de oct de 2026 · Fondos de pruebaUSD 20.00"]);
-  eq("el salario no se importa y se avisa, sin mostrar nada de él", await textos(p, ".gx-imp .gx-suave").then(l => l.filter(x => x.includes("salario"))), ["🔒 1 filas de salario: no se leen ni se importan."]);
+  eq("el salario no se importa y se avisa, sin mostrar nada de él", await textos(p, ".gx-imp .gx-suave").then(l => l.filter(x => x.includes("salario"))), ["🔒 1 fila de salario: no se lee ni se importa."]);
   eq("…ni el monto ni la descripción del salario aparecen en la pantalla", await p.evaluate(() => /4321|Sueldo/.test(document.querySelector(".gx-imp").innerText)), false);
   eq("contra el libro: lo gastado de bolsillo (70.50) menos lo recibido (20) da lo mismo que el libro: coincide", await textos(p, ".gx-imp-conc .gx-imp-cab"), ["USD✅ coincide con el libro"]);
   eq("…con el saldo a favor", (await textos(p, ".gx-imp-conc .gx-imp-cuenta b")), ["USD 50.50", "USD 50.50"]);
-  eq("el botón suma los movimientos", await textos(p, '[data-action="gastos-imp-importar"]'), ["Importar 5 gastos y 1 movimientos"]);
+  eq("el botón suma los movimientos", await textos(p, '[data-action="gastos-imp-importar"]'), ["Importar 5 gastos y 1 movimiento de plata"]);
   await p.click('[data-action="gastos-imp-importar"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
   eq("en la base: un movimiento recibido, confirmado, de quien importó", await hasta(p, () => window.__sb.tablas.gastos_movimientos.length === 1), true);
   eq("…con lo que corresponde, y sin nada del salario", await p.evaluate(() => [JSON.stringify(window.__sb.tablas.gastos_movimientos.map(m => [m.tipo, m.estado, m.persona, m.moneda, m.monto, m.descripcion])), JSON.stringify(window.__sb.rpc).includes("4321")]),
@@ -126,7 +129,7 @@ const elegir = async (p, libro) => { const [fc] = await Promise.all([p.waitForEv
   await irSeccion(p, "cuenta");
   eq("la cuenta corriente del admin da lo mismo que el libro: a su favor USD 50.50", await p.$$eval(".gx-cuenta-mon .gx-saldo", l => l.map(e => e.textContent.trim())), ["50.50"]);
   await irSeccion(p, "importar");
-  eq("la tanda lista cuántas rendiciones, gastos y movimientos trae", await textos(p, ".gx-imp-tanda span"), ["2 rendiciones, 5 gastos · 1 movimientos de plata"]);
+  eq("la tanda lista cuántas rendiciones, gastos y movimientos trae", await textos(p, ".gx-imp-tanda span"), ["2 rendiciones, 5 gastos · 1 movimiento de plata"]);
   await p.click('[data-action="gastos-imp-deshacer"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
   eq("deshacer saca también el movimiento", await hasta(p, () => window.__sb.tablas.gastos_movimientos.length === 0 && window.__sb.tablas.gastos.length === 0), true);
   eq("sin errores de página", errores, []);

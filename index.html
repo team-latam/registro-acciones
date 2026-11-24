@@ -647,6 +647,7 @@
   /* El título de una columna, en horizontal: el ícono de la carpeta (el emoji de su nombre) arriba y el nombre debajo, centrado y
      partido solo entre palabras. Las columnas se reparten el ancho que sobra (la de «Persona» no se lo queda todo). */
   .bj-c-cab{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:0 2px; line-height:1.25; }
+  .bj-c-ic:empty{ display:none; }   /* una carpeta sin ícono: sin el renglón vacío que bajaba el nombre (auditoría del 24/11/2026) */
   .bj-c-n{ min-width:0; max-width:100%; font-size:12px; text-wrap:balance; overflow-wrap:break-word; }
   .bj-c-ic{ flex:none; height:20px; font-size:16px; line-height:20px; }
   .bj-puntos{ display:none; gap:3px; }
@@ -26179,7 +26180,7 @@ function renderGastosImportar(){
   const boton = `<button type="button" class="btn-primary" data-action="gastos-imp-archivo">📂 ${I ? t("Elegir otra planilla","Choose another spreadsheet","Escolher outra planilha","בחירת גיליון אחר") : t("Elegir la planilla (Excel)","Choose the spreadsheet (Excel)","Escolher a planilha (Excel)","בחירת הגיליון (Excel)")}</button>`;
   const tandas = impTandas();
   const htmlTandas = tandas.length ? `<h3 class="admin-h3">${t("Tandas ya importadas","Batches already imported","Lotes já importados","קבוצות שכבר יובאו")}</h3>
-    <div class="gx-lista">${tandas.map(x => `<div class="gx-tarjeta gx-imp-tanda"><span>${esc(t("{r} rendiciones, {g} gastos","{r} reports, {g} expenses","{r} prestações, {g} despesas","{r} דוחות, {g} הוצאות",{ r: x.rendiciones, g: x.gastos }))}${x.movimientos ? esc(" · " + t("{m} movimientos de plata","{m} money movements","{m} movimentos de dinheiro","{m} תנועות כסף",{ m: x.movimientos })) : ""}</span>
+    <div class="gx-lista">${tandas.map(x => `<div class="gx-tarjeta gx-imp-tanda"><span>${esc(gxNRendiciones(x.rendiciones) + ", " + gxNGastos(x.gastos))}${x.movimientos ? esc(" · " + gxNMovimientos(x.movimientos)) : ""}</span>
       <button type="button" class="btn-secondary" data-action="gastos-imp-deshacer" data-lote="${esc(x.id)}"${gastosOcupado ? " disabled" : ""}>↩️ ${t("Deshacer esta tanda","Undo this batch","Desfazer este lote","ביטול הקבוצה")}</button></div>`).join("")}</div>` : "";
   if(!I) return `<div class="gx-imp"><p>${t("Se carga la planilla «Rendición de gastos» (el Excel, una solapa por mes) y, si querés, el libro de movimientos de plata (lo recibido y devuelto, para la cuenta corriente). Antes de guardar nada ves lo que se entendió, y lo dudoso queda aparte.","You load the “Rendición de gastos” spreadsheet (the Excel, one tab per month) and, if you want, the money-movements ledger (received and returned, for the running balance). Before anything is saved you see what was understood, and doubtful rows are kept apart.","Você carrega a planilha «Rendición de gastos» (o Excel, uma aba por mês) e, se quiser, o livro de movimentos de dinheiro (recebido e devolvido, para a conta corrente). Antes de salvar algo você vê o que foi entendido, e o duvidoso fica à parte.","טוענים את הגיליון «Rendición de gastos» (האקסל, לשונית לכל חודש) ואם רוצים גם את ספר תנועות הכסף (מה שהתקבל והוחזר, לחשבון השוטף). לפני שמירה רואים מה הובן, והמפוקפק נשאר בנפרד.")}</p>
     <p>${boton}</p>${htmlTandas}</div>`;
@@ -26200,10 +26201,10 @@ function renderGastosImportar(){
       <option value="organizacion"${I.mapaPago[k] === "organizacion" ? " selected" : ""}>${esc(t("Tarjeta de la organización","Organization card","Cartão da organização","כרטיס הארגון"))}</option></select></label>`).join("")}</div>` : "";
   const posts = [...state.posts].filter(p => p.activityType !== "rutina").sort((a, b) => String(b.startDate || b.date || "").localeCompare(String(a.startDate || a.date || "")));
   const tarjeta = r => `<div class="gx-tarjeta gx-imp-rend${r.excluida ? " gx-imp-fuera" : ""}">
-      <div class="gx-imp-cab"><b>${esc(impTituloDe(r))}</b><span>${esc(t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות",{ n: r.gastos.length }))} · ${Object.entries(r.totales).map(([m, n]) => esc(fmtMonto(m, n))).join(" · ")}</span></div>
+      <div class="gx-imp-cab"><b>${esc(impTituloDe(r))}</b><span>${esc(gxNGastos(r.gastos.length))} · ${Object.entries(r.totales).map(([m, n]) => esc(fmtMonto(m, n))).join(" · ")}</span></div>
       <p class="gx-imp-fechas">${r.rutinaMes ? "" : `📅 ${esc(fmtDate(r.desde))}${r.hasta !== r.desde ? " – " + esc(fmtDate(r.hasta)) : ""}`}${r.libroNombre ? ` · ${esc(t("En tu libro: «{n}»","In your ledger: “{n}”","No seu livro: «{n}»","בספר שלך: «{n}»",{ n: r.libroNombre }))}` : ""}</p>
       ${!r.rutinaMes && !r.postId && r.sugerida && getPostById(r.sugerida) ? `<p class="gx-imp-sug">⚠️ ${esc(t("Solo por las fechas se parece a «{a}» ({f}), pero el nombre no coincide: revisalo antes de usarla.","By dates alone it resembles “{a}” ({f}), but the name doesn't match: check before using it.","Só pelas datas se parece com «{a}» ({f}), mas o nome não coincide: confira antes de usá-la.","לפי תאריכים בלבד דומה ל«{a}» ({f}), אבל השם לא תואם: בדקו לפני שתשתמשו.",{ a: getPostById(r.sugerida).title || "", f: fmtDate(getPostById(r.sugerida).startDate || getPostById(r.sugerida).date) }))} <button type="button" class="gx-link" data-action="gastos-imp-usar" data-k="${esc(r.clave)}" data-id="${esc(r.sugerida)}">${t("Usar esta","Use this one","Usar esta","להשתמש בזו")}</button></p>` : ""}
-      <details class="gx-imp-det"><summary>${esc(t("Ver los {n} gastos","See the {n} expenses","Ver as {n} despesas","הצגת {n} ההוצאות",{ n: r.gastos.length }))}</summary>
+      <details class="gx-imp-det"><summary>${esc(r.gastos.length === 1 ? t("Ver el gasto","See the expense","Ver a despesa","הצגת ההוצאה") : t("Ver los {n} gastos","See the {n} expenses","Ver as {n} despesas","הצגת {n} ההוצאות",{ n: r.gastos.length }))}</summary>
         <table class="gx-imp-tabla"><tbody>${r.gastos.map(g => `<tr><td>${esc(fmtDate(g.fecha))}</td><td>${esc(g.concepto)}</td><td>${esc(nombreTipoGasto(g.tipo))}</td><td class="gx-imp-m">${esc(fmtMonto(g.moneda, g.monto))}${g.rendido_monto != null && g.rendido_moneda !== g.moneda ? "<br><small>" + esc(fmtMonto(g.rendido_moneda, g.rendido_monto)) + "</small>" : ""}</td></tr>`).join("")}</tbody></table></details>
       <div class="gx-imp-ctl">
         ${r.rutinaMes ? "" : `<label>${t("Actividad de la Agenda","Agenda activity","Atividade da Agenda","פעילות ביומן")}<select data-gimp="rend" data-k="${esc(r.clave)}" data-c="postId">
@@ -26219,7 +26220,7 @@ function renderGastosImportar(){
     ${I.archivoMov ? `<p class="gx-suave">${esc(I.archivoMov)}</p>` : ""}
     ${I.movs.nuevos.length || I.movs.repetidos.length || I.movs.dudosos.length ? `<div class="gx-lista">${[...I.movs.nuevos.map(x => [x, ""]), ...I.movs.repetidos.map(x => [x, "rep"]), ...I.movs.dudosos.map(x => [x, "duda"])].map(([x, k]) =>
       `<div class="gx-tarjeta gx-imp-mov${k ? " gx-imp-fuera" : ""}"><span><b>${esc(tipoDeMovimiento(x.tipo))}</b> · ${esc(x.fecha ? fmtDate(x.fecha) : "—")}${x.descripcion ? " · " + esc(x.descripcion) : ""}${k === "rep" ? " · " + esc(t("ya estaba cargado","already loaded","já estava carregado","כבר נטען")) : k === "duda" ? " · " + esc(x.dudas.map(impDuda).join("; ")) : ""}</span><b>${x.monto != null ? fmtM(x.moneda, x.monto) : ""}</b></div>`).join("")}</div>` : `<p class="gx-suave">${t("El libro no trae plata recibida ni devuelta.","The ledger has no money received or returned.","O livro não traz dinheiro recebido nem devolvido.","הספר לא כולל כסף שהתקבל או הוחזר.")}</p>`}
-    ${I.mov.salarios ? `<p class="gx-suave">🔒 ${esc(t("{n} filas de salario: no se leen ni se importan.","{n} salary rows: they are not read or imported.","{n} linhas de salário: não são lidas nem importadas.","{n} שורות שכר: לא נקראות ולא מיובאות.",{ n: I.mov.salarios }))}</p>` : ""}
+    ${I.mov.salarios ? `<p class="gx-suave">🔒 ${esc(I.mov.salarios === 1 ? t("1 fila de salario: no se lee ni se importa.","1 salary row: it is not read or imported.","1 linha de salário: não é lida nem importada.","שורת שכר אחת: לא נקראת ולא מיובאת.") : t("{n} filas de salario: no se leen ni se importan.","{n} salary rows: they are not read or imported.","{n} linhas de salário: não são lidas nem importadas.","{n} שורות שכר: לא נקראות ולא מיובאות.",{ n: I.mov.salarios }))}</p>` : ""}
     ${Object.keys(I.conc).length ? `<h3 class="admin-h3">${t("Contra el libro","Against the ledger","Contra o livro","מול הספר")}</h3>
       <div class="gx-lista">${Object.entries(I.conc).sort(([a], [b]) => a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b)).map(([m, c]) => {
         const ok = Math.abs(c.appSaldo - c.libroSaldo) < 0.005;
@@ -26227,7 +26228,7 @@ function renderGastosImportar(){
           <div class="gx-imp-cuenta"><span>${t("Libro","Ledger","Livro","ספר")}: ${t("gastado","spent","gasto","הוצאות")} ${fmtM(m, c.libroGastado)} · ${t("recibido","received","recebido","התקבל")} ${fmtM(m, c.libroRecibido)}${c.libroDevuelto ? " · " + t("devuelto","returned","devolvido","הוחזר") + " " + fmtM(m, c.libroDevuelto) : ""} → <b>${fmtM(m, c.libroSaldo)}</b></span>
           <span>${t("Lo que se carga","What will be loaded","O que será carregado","מה שייטען")}: ${t("gastado","spent","gasto","הוצאות")} ${fmtM(m, c.appGastado)} · ${t("recibido","received","recebido","התקבל")} ${fmtM(m, c.appRecibido)}${c.appDevuelto ? " · " + t("devuelto","returned","devolvido","הוחזר") + " " + fmtM(m, c.appDevuelto) : ""} → <b>${fmtM(m, c.appSaldo)}</b></span></div>
           <small class="gx-suave">${c.appSaldo > 0 ? t("A tu favor: la organización te debe.","In your favor: the organization owes you.","A seu favor: a organização te deve.","לטובתך: הארגון חייב לך.") : c.appSaldo < 0 ? t("En tu contra: le debés a la organización.","Against you: you owe the organization.","Contra você: você deve à organização.","נגדך: את/ה חייב/ת לארגון.") : t("Saldado.","Settled.","Quitado.","מאוזן.")}</small></div>`; }).join("")}</div>` : ""}` : "";
-  const hecho = I.hecho ? `<div class="admin-ok" role="status">✅ ${esc(t("Listo: se cargaron {r} rendiciones con {g} gastos y {m} movimientos de plata. Podés deshacer la tanda más abajo.","Done: {r} reports with {g} expenses and {m} money movements were loaded. You can undo the batch below.","Pronto: foram carregadas {r} prestações com {g} despesas e {m} movimentos de dinheiro. Você pode desfazer o lote abaixo.","בוצע: נטענו {r} דוחות עם {g} הוצאות ו-{m} תנועות כסף. אפשר לבטל את הקבוצה למטה.",{ r: I.hecho.rendiciones, g: I.hecho.gastos, m: I.hecho.movimientos || 0 }))}</div>` : "";
+  const hecho = I.hecho ? `<div class="admin-ok" role="status">✅ ${esc(t("Listo. Se cargó: {r}, {g} y {m}. Podés deshacer la tanda más abajo.","Done. Loaded: {r}, {g} and {m}. You can undo the batch below.","Pronto. Foi carregado: {r}, {g} e {m}. Você pode desfazer o lote abaixo.","בוצע. נטענו: {r}, {g} ו-{m}. אפשר לבטל את הקבוצה למטה.",{ r: gxNRendiciones(I.hecho.rendiciones), g: gxNGastos(I.hecho.gastos), m: gxNMovimientos(I.hecho.movimientos || 0) }))}</div>` : "";
   return `<div class="gx-imp">
     <p>${boton} <small>${esc(I.archivo)}</small></p>
     ${hecho}
@@ -26240,8 +26241,8 @@ function renderGastosImportar(){
     <h3 class="admin-h3">${t("Rendiciones que se van a crear","Reports that will be created","Prestações que serão criadas","דוחות שייווצרו")}</h3>
     <div class="gx-lista">${A.rends.map(tarjeta).join("") || `<p class="gx-suave">${t("Nada para cargar todavía.","Nothing to load yet.","Nada para carregar ainda.","אין מה לטעון עדיין.")}</p>`}</div>
     ${A.dudosas.length ? `<h3 class="admin-h3">${t("Para revisar (no se cargan)","To review (not loaded)","Para revisar (não são carregadas)","לבדיקה (לא נטענות)")}</h3><ul class="gx-imp-duda">${A.dudosas.map(filaDuda).join("")}</ul>` : ""}
-    ${A.repetidas.length ? `<p class="gx-suave">${esc(t("{n} filas ya estaban cargadas o repetidas en la planilla y se dejaron afuera.","{n} rows were already loaded or repeated in the spreadsheet and were left out.","{n} linhas já estavam carregadas ou repetidas na planilha e ficaram de fora.","{n} שורות כבר נטענו או חוזרות בגיליון והושארו בחוץ.",{ n: A.repetidas.length }))}</p>` : ""}
-    <p><button type="button" class="btn-primary" data-action="gastos-imp-importar"${(aCargar || nMov) && !gastosOcupado ? "" : " disabled"}>${esc(nMov ? t("Importar {n} gastos y {m} movimientos","Import {n} expenses and {m} movements","Importar {n} despesas e {m} movimentos","ייבוא {n} הוצאות ו-{m} תנועות",{ n: aCargar, m: nMov }) : t("Importar {n} gastos","Import {n} expenses","Importar {n} despesas","ייבוא {n} הוצאות",{ n: aCargar }))}</button>
+    ${A.repetidas.length ? `<p class="gx-suave">${esc(A.repetidas.length === 1 ? t("1 fila ya estaba cargada o repetida en la planilla y se dejó afuera.","1 row was already loaded or repeated in the spreadsheet and was left out.","1 linha já estava carregada ou repetida na planilha e ficou de fora.","שורה אחת כבר נטענה או חוזרת בגיליון והושארה בחוץ.") : t("{n} filas ya estaban cargadas o repetidas en la planilla y se dejaron afuera.","{n} rows were already loaded or repeated in the spreadsheet and were left out.","{n} linhas já estavam carregadas ou repetidas na planilha e ficaram de fora.","{n} שורות כבר נטענו או חוזרות בגיליון והושארו בחוץ.",{ n: A.repetidas.length }))}</p>` : ""}
+    <p><button type="button" class="btn-primary" data-action="gastos-imp-importar"${(aCargar || nMov) && !gastosOcupado ? "" : " disabled"}>${esc(nMov ? t("Importar {g} y {m}","Import {g} and {m}","Importar {g} e {m}","ייבוא {g} ו-{m}",{ g: gxNGastos(aCargar), m: gxNMovimientos(nMov) }) : t("Importar {g}","Import {g}","Importar {g}","ייבוא {g}",{ g: gxNGastos(aCargar) }))}</button>
       <button type="button" class="btn-secondary" data-action="gastos-imp-limpiar">${t("Descartar","Discard","Descartar","ביטול")}</button></p>
     ${htmlTandas}</div>`;
 }
@@ -26251,7 +26252,7 @@ async function impImportar(){
   const payload = impParaLaBase(I.arm.rends), n = payload.reduce((a, r) => a + r.gastos.length, 0);
   const movs = (I.movs ? I.movs.nuevos : []).map(x => ({ tipo: x.tipo, fecha: x.fecha, moneda: x.moneda, monto: x.monto, descripcion: x.descripcion }));
   if(!n && !movs.length) return;
-  if(!await appConfirm(t("¿Importar {n} gastos en {r} rendiciones y {m} movimientos de plata? Los gastos quedan aprobados y a tu nombre, y después podés deshacer la tanda entera.","Import {n} expenses in {r} reports and {m} money movements? The expenses are approved and in your name, and afterwards you can undo the whole batch.","Importar {n} despesas em {r} prestações e {m} movimentos de dinheiro? As despesas ficam aprovadas e no seu nome, e depois você pode desfazer o lote inteiro.","לייבא {n} הוצאות ב-{r} דוחות ו-{m} תנועות כסף? ההוצאות מאושרות ועל שמך, ואחר כך אפשר לבטל את כל הקבוצה.",{ n, r: payload.length, m: movs.length }), { okLabel: t("Importar","Import","Importar","ייבוא") })) return;
+  if(!await appConfirm(t("¿Importar {g} en {r} y {m}? Lo importado queda aprobado y a tu nombre, y después podés deshacer la tanda entera.","Import {g} in {r} and {m}? What is imported is approved and in your name, and afterwards you can undo the whole batch.","Importar {g} em {r} e {m}? O que for importado fica aprovado e no seu nome, e depois você pode desfazer o lote inteiro.","לייבא {g} ב-{r} ו-{m}? מה שמיובא מאושר ועל שמך, ואחר כך אפשר לבטל את כל הקבוצה.",{ g: gxNGastos(n), r: gxNRendiciones(payload.length), m: gxNMovimientos(movs.length) }), { okLabel: t("Importar","Import","Importar","ייבוא") })) return;
   gastosOcupado = true; render();
   try{ I.hecho = await store.gastos.importar(crypto.randomUUID(), payload, movs); I.filas = []; I.arm = { rends: [], dudosas: [], repetidas: [] }; I.mapaTipo = {}; I.mapaPago = {}; I.leidas = []; I.mov = null; I.movs = null; I.conc = {}; }
   catch(err){ console.error("No se pudo importar:", err); appAlert(t("No se pudo importar (no se cargó nada): {m}","Couldn't import (nothing was loaded): {m}","Não foi possível importar (nada foi carregado): {m}","הייבוא נכשל (לא נטען דבר): {m}",{ m: detalleDeError(err) })); }
@@ -26261,7 +26262,7 @@ async function impDeshacer(lote){
   if(gastosOcupado) return;
   const x = impTandas().find(y => y.id === lote);
   if(!x) return;
-  if(!await appConfirm(t("¿Deshacer esta tanda? Se borran sus {r} rendiciones y {g} gastos.","Undo this batch? Its {r} reports and {g} expenses are deleted.","Desfazer este lote? São apagadas suas {r} prestações e {g} despesas.","לבטל את הקבוצה? נמחקים {r} דוחות ו-{g} הוצאות.",{ r: x.rendiciones, g: x.gastos }), { okLabel: t("Deshacer","Undo","Desfazer","ביטול") })) return;
+  if(!await appConfirm(t("¿Deshacer esta tanda? Se borra: {r} y {g}.","Undo this batch? Deleted: {r} and {g}.","Desfazer este lote? Será apagado: {r} e {g}.","לבטל את הקבוצה? יימחקו: {r} ו-{g}.",{ r: gxNRendiciones(x.rendiciones), g: gxNGastos(x.gastos) }), { okLabel: t("Deshacer","Undo","Desfazer","ביטול") })) return;
   gastosOcupado = true; render();
   try{ await store.gastos.deshacerImportacion(lote); if(gastosImp) gastosImp.hecho = null; }
   catch(err){ console.error("No se pudo deshacer:", err); appAlert(t("No se pudo deshacer: {m}","Couldn't undo it: {m}","Não foi possível desfazer: {m}","הביטול נכשל: {m}",{ m: detalleDeError(err) })); }
@@ -29494,6 +29495,10 @@ const idiomasDelPdf = () => idiomasPdf || (idiomasPdf = idiomasDePdfGuardados())
 let gastosResumen = null;   // el resumen por mes: { desde, hasta, abierto }
 // El botón con flecha (lo eligió el usuario el 18/11): la flecha dice los idiomas —las siglas hasta dos; con más,
 // cuántos, así el botón no engorda— y abre un menú para marcarlos.
+// «1 gasto» / «3 gastos»… para la pantalla de Importar historial (auditoría del 24/11/2026: decía «1 gastos» y «1 movimientos»).
+const gxNGastos = n => n === 1 ? t("1 gasto","1 expense","1 despesa","הוצאה אחת") : t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות", { n });
+const gxNRendiciones = n => n === 1 ? t("1 rendición","1 report","1 prestação","דוח אחד") : t("{n} rendiciones","{n} reports","{n} prestações","{n} דוחות", { n });
+const gxNMovimientos = n => n === 1 ? t("1 movimiento de plata","1 money movement","1 movimento de dinheiro","תנועת כסף אחת") : t("{n} movimientos de plata","{n} money movements","{n} movimentos de dinheiro","{n} תנועות כסף", { n });
 let gastosPdfMenu = null;   // dónde está abierto el menú de idiomas: id de la rendición o "resumen"
 const etiquetaDeIdiomas = () => { const l = idiomasDelPdf(); return l.length <= 2 ? l.map(x => x.toUpperCase()).join(" · ") : t("{n} idiomas","{n} languages","{n} idiomas","{n} שפות",{ n: l.length }); };
 function botonPdf(para, texto){
@@ -30872,7 +30877,8 @@ function bjFila(p){
 }
 function bjHtmlLista(){
   const act = bjActivas(), todas = bjFiltradas(), lista = todas.slice(0, bj.mas);
-  if(!bjPersonas().length) return `<div class="bj-vacio">${esc(bj.error ? bjMensajeDeError(bj.error) : t("Todavía no hay nadie.","Nobody yet.","Ainda não há ninguém.","עדיין אין אף אחד."))}</div>`;
+  // Con un error ya hay un aviso arriba (con «Reintentar»): la lista no repite la misma frase.
+  if(!bjPersonas().length) return bj.error ? "" : `<div class="bj-vacio">${esc(t("Todavía no hay nadie.","Nobody yet.","Ainda não há ninguém.","עדיין אין אף אחד."))}</div>`;
   if(!todas.length) return `<div class="bj-vacio">${esc(t("Nadie coincide.","No matches.","Ninguém corresponde.","אין התאמות."))}</div>`;
   const marcadas = todas.filter(p => bj.sel.has(p.correo)).length;
   return `<div class="bj-tabla" role="table"><div class="bj-fila bj-cab" role="row" style="--bj-n:${act.length}">
@@ -30887,6 +30893,9 @@ function bjRepintarLista(){ const el = document.getElementById("bjLista"); if(el
 function bjMarcarTodas(){ const x = document.querySelector('#bjLista [data-action="bj-sel-todas"]'); if(x) x.indeterminate = x.dataset.parcial === "1"; }
 // El título de una columna: el ícono de la carpeta (el emoji de su nombre) arriba y el nombre en horizontal debajo (el nombre
 // completo, al apoyar el mouse).
+// Con uno no se dice «1 personas»: «1 persona», «1 carpeta» (auditoría del 24/11/2026; la prueba daba por bueno «CARE 1 personas»).
+const bjCuantasPersonas = n => n === 1 ? t("1 persona","1 person","1 pessoa","אדם אחד") : t("{n} personas","{n} people","{n} pessoas","{n} אנשים", { n });
+const bjCuantasCarpetas = n => n === 1 ? t("1 carpeta","1 folder","1 pasta","תיקייה אחת") : t("{n} carpetas","{n} folders","{n} pastas","{n} תיקיות", { n });
 function bjTituloColumna(c){
   const ic = (/\p{Extended_Pictographic}(?:[\uFE0F\u{1F3FB}-\u{1F3FF}]|\u200D\p{Extended_Pictographic})*/u.exec(c.nombre) || [""])[0];
   const txt = c.nombre.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, "").replace(/\s+/g, " ").trim() || c.nombre;
@@ -30932,7 +30941,7 @@ function bjVistaCarpetas(){
   const fila = (c, i) => {
     const d = dato(c.id), problema = d && d.estado !== "ok";
     return `<div class="bj-carp${c.activa ? "" : " off"}"><span class="bj-ic" aria-hidden="true">📁</span>
-      <div class="bj-carp-t"><div class="bj-carp-n" dir="auto">${esc(c.nombre)}</div><div class="bj-mail">${d ? esc(t("{n} personas","{n} people","{n} pessoas","{n} אנשים", { n: d.personas })) : ""}</div></div>
+      <div class="bj-carp-t"><div class="bj-carp-n" dir="auto">${esc(c.nombre)}</div><div class="bj-mail">${d ? esc(bjCuantasPersonas(d.personas)) : ""}</div></div>
       ${!c.activa ? `<span class="bj-tag sin">${esc(t("Desactivada","Off","Desativada","כבויה"))}</span>` : (problema ? `<span class="bj-tag parc">${esc(t("Falta permiso","Missing permission","Falta permissão","חסרה הרשאה"))}</span>` : "")}
       <span class="bj-flechas"><button type="button" class="bj-redondo" data-action="bj-mover" data-id="${esc(c.id)}" data-d="-1" aria-label="${esc(t("Subir {n}","Move {n} up","Subir {n}","הזזת {n} למעלה", { n: c.nombre }))}"${i === 0 ? " disabled" : ""}>↑</button>
         <button type="button" class="bj-redondo" data-action="bj-mover" data-id="${esc(c.id)}" data-d="1" aria-label="${esc(t("Bajar {n}","Move {n} down","Descer {n}","הזזת {n} למטה", { n: c.nombre }))}"${i === cs.length - 1 ? " disabled" : ""}>↓</button></span>
@@ -30947,7 +30956,7 @@ function bjVistaCarpetas(){
     <div class="bj-paquetes">${pq.length ? pq.map(p => `<div class="bj-paq"><div class="bj-paq-t"><b dir="auto">${esc(p.nombre)}</b><button type="button" class="bj-link" data-action="bj-paquete-editar" data-id="${esc(p.id)}">${esc(t("Editar","Edit","Editar","עריכה"))}</button></div>
       <div class="bj-chips">${nombres(bj.cat.enPaquete.filter(x => x.paquete === p.id).map(x => x.carpeta)).map(n => `<span class="bj-chip" dir="auto">${esc(n)}</span>`).join("")}</div></div>`).join("") : `<div class="bj-vacio">${esc(t("Sin paquetes.","No packages.","Sem pacotes.","אין חבילות."))}</div>`}</div></div>
   <div class="bj-card bj-seccion"><div class="bj-seccion-t"><h3>${esc(t("Planillas","Spreadsheets","Planilhas","גיליונות"))}</h3></div>
-    ${pl.map(p => { const d = (bj.datos && bj.datos.planillas || []).find(x => x.id === p.id); return `<div class="bj-carp"><span class="bj-ic" aria-hidden="true">▦</span><div class="bj-carp-t"><div class="bj-carp-n" dir="auto">${esc(p.nombre)}</div><div class="bj-mail">${d ? esc(t("{n} filas · {p} pendientes","{n} rows · {p} pending","{n} linhas · {p} pendentes","{n} שורות · {p} ממתינים", { n: d.filas, p: d.pendientes })) : ""}</div></div>
+    ${pl.map(p => { const d = (bj.datos && bj.datos.planillas || []).find(x => x.id === p.id); return `<div class="bj-carp"><span class="bj-ic" aria-hidden="true">▦</span><div class="bj-carp-t"><div class="bj-carp-n" dir="auto">${esc(p.nombre)}</div><div class="bj-mail">${d ? esc((d.filas === 1 ? t("1 fila","1 row","1 linha","שורה אחת") : t("{n} filas","{n} rows","{n} linhas","{n} שורות", { n: d.filas })) + " · " + (d.pendientes === 1 ? t("1 pendiente","1 pending","1 pendente","1 ממתין") : t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים", { n: d.pendientes }))) : ""}</div></div>
       ${d && d.estado !== "ok" ? `<span class="bj-tag parc">${esc(t("Falta permiso","Missing permission","Falta permissão","חסרה הרשאה"))}</span>` : ""}
       <button type="button" class="bj-btn claro" data-action="bj-planilla-borrar" data-id="${esc(p.id)}">${esc(t("Dejar de usar","Stop using","Deixar de usar","הפסקת שימוש"))}</button></div>`; }).join("")}
     <div class="bj-agregar"><label class="bj-buscar-w"><span class="bj-sr">${esc(t("Link de una planilla","Link to a spreadsheet","Link de uma planilha","קישור לגיליון"))}</span>
@@ -31092,9 +31101,9 @@ function bjVistaInvitar(){
       ${f.modo === "una" ? `<div class="bj-combo"><label>${esc(t("Comunidad","Community","Comunidade","קהילה"))}<input type="text" id="bjComunidad" role="combobox" aria-expanded="false" aria-controls="bjComunidadOpciones" aria-autocomplete="list" data-bj="f.comunidad" value="${esc(f.comunidad)}" autocomplete="off"></label>
         <div id="bjComunidadLista">${bjHtmlComunidades()}</div>
         <div class="bj-mail" id="bjComunidadAviso" role="status"${bjComunidadResuelta(f.comunidad) !== null || f.comOpen ? " hidden" : ""}>${esc(t("Elegí una opción de la lista.","Pick an option from the list.","Escolha uma opção da lista.","בחרו אפשרות מהרשימה."))}</div></div>` : ""}
-      ${yaN ? `<div class="bj-nota ancho">${esc(t("Ya tiene {n} carpetas.","Already has {n} folders.","Já tem {n} pastas.","כבר יש לו/ה {n} תיקיות.", { n: yaN }))}</div>` : ""}</fieldset>
+      ${yaN ? `<div class="bj-nota ancho">${esc(yaN === 1 ? t("Ya tiene 1 carpeta.","Already has 1 folder.","Já tem 1 pasta.","כבר יש לו/ה תיקייה אחת.") : t("Ya tiene {n} carpetas.","Already has {n} folders.","Já tem {n} pastas.","כבר יש לו/ה {n} תיקיות.", { n: yaN }))}</div>` : ""}</fieldset>
     <fieldset class="bj-campos"><legend>${esc(t("Carpetas","Folders","Pastas","תיקיות"))}</legend>
-      <div class="bj-radios" role="radiogroup">${pq.map(p => radio(p.id, p.nombre, t("{n} carpetas","{n} folders","{n} pastas","{n} תיקיות", { n: bj.cat.enPaquete.filter(x => x.paquete === p.id).length }))).join("")}${radio("medida", t("A medida","Custom","Sob medida","מותאם"), t("Elegir carpetas","Choose folders","Escolher pastas","בחירת תיקיות"))}</div>
+      <div class="bj-radios" role="radiogroup">${pq.map(p => radio(p.id, p.nombre, bjCuantasCarpetas(bj.cat.enPaquete.filter(x => x.paquete === p.id).length))).join("")}${radio("medida", t("A medida","Custom","Sob medida","מותאם"), t("Elegir carpetas","Choose folders","Escolher pastas","בחירת תיקיות"))}</div>
       <div class="bj-lista-c">${act.length ? act.map(c => `<label class="bj-opcion"><input type="checkbox" data-action="bj-carpeta-marcar" data-id="${esc(c.id)}" ${f.carpetas.has(c.id) ? "checked" : ""}><span dir="auto">${esc(c.nombre)}</span></label>`).join("") : `<div class="bj-vacio">${esc(t("Todavía no hay carpetas.","No folders yet.","Ainda não há pastas.","עדיין אין תיקיות."))}</div>`}</div></fieldset>
     <div class="bj-campo fila"><span>${esc(t("Mail de bienvenida","Welcome email","E-mail de boas-vindas","מייל ברוכים הבאים"))}</span><button type="button" role="switch" aria-checked="${f.mail}" class="bj-interruptor${f.mail ? " on" : ""}" data-action="bj-mail" aria-label="${esc(t("Mail de bienvenida","Welcome email","E-mail de boas-vindas","מייל ברוכים הבאים"))}"><i></i></button></div>
     <div class="bj-fin"><span class="bj-mail">${esc(n === 1 ? t("1 carpeta","1 folder","1 pasta","תיקייה אחת") : t("{n} carpetas","{n} folders","{n} pastas","{n} תיקיות", { n }))}${f.mail ? ` · ${esc(t("con mail","with email","com e-mail","עם מייל"))}` : ` · ${esc(t("sin mail","no email","sem e-mail","בלי מייל"))}`}</span>
@@ -31164,7 +31173,7 @@ function bjVistaCarpetaEditar(){
   const pq = bj.cat.paquetes, pl = bj.cat.planillas, d = (bj.datos && bj.datos.carpetas || []).find(x => x.id === c.id);
   return `<button type="button" class="bj-volver" data-action="bj-volver">‹ ${esc(t("Volver a Brújula","Back to Brújula","Voltar à Brújula","חזרה ל-Brújula"))}</button>
   <div class="bj-card bj-form"><h3>${esc(t("Editar carpeta","Edit folder","Editar pasta","עריכת תיקייה"))}</h3>
-    <div class="bj-mail">${d ? esc(t("{n} personas","{n} people","{n} pessoas","{n} אנשים", { n: d.personas })) : ""} · <a href="https://drive.google.com/drive/folders/${esc(c.id)}" target="_blank" rel="noopener noreferrer">${esc(t("Abrir en Drive","Open in Drive","Abrir no Drive","פתיחה ב-Drive"))}</a></div>
+    <div class="bj-mail">${d ? esc(bjCuantasPersonas(d.personas)) : ""} · <a href="https://drive.google.com/drive/folders/${esc(c.id)}" target="_blank" rel="noopener noreferrer">${esc(t("Abrir en Drive","Open in Drive","Abrir no Drive","פתיחה ב-Drive"))}</a></div>
     <label class="bj-campo">${esc(t("Nombre","Name","Nome","שם"))}<input type="text" data-bj="f.nombre" value="${esc(f.nombre)}" autocomplete="off"></label>
     <div class="bj-dos"><fieldset class="bj-campos"><legend>${esc(t("Paquetes","Packages","Pacotes","חבילות"))}</legend>${pq.map(p => `<label class="bj-opcion"><input type="checkbox" data-action="bj-marca-paquete" data-id="${esc(p.id)}" ${f.paquetes.has(p.id) ? "checked" : ""}><span dir="auto">${esc(p.nombre)}</span></label>`).join("") || `<span class="bj-mail">${esc(t("Sin paquetes.","No packages.","Sem pacotes.","אין חבילות."))}</span>`}</fieldset>
       <fieldset class="bj-campos"><legend>${esc(t("Planilla","Spreadsheet","Planilha","גיליון"))}</legend>${pl.map(p => `<label class="bj-opcion"><input type="checkbox" data-action="bj-marca-planilla" data-id="${esc(p.id)}" ${f.planillas.has(p.id) ? "checked" : ""}><span dir="auto">${esc(p.nombre)}</span></label>`).join("") || `<span class="bj-mail">${esc(t("Sin planillas.","No spreadsheets.","Sem planilhas.","אין גיליונות."))}</span>`}</fieldset></div>
@@ -31289,7 +31298,11 @@ const BRUJULA_ACCIONES = {
     const pend = bjPendientes(), pq = bj.cat.paquetes[0];
     const ids = pq ? bj.cat.enPaquete.filter(x => x.paquete === pq.id).map(x => x.carpeta) : bjActivas().map(c => c.id);
     if(!ids.length) return;
-    const ok = await appConfirm(t("¿Darles acceso a {n} personas ({p}) y mandarles el mail de bienvenida?","Give {n} people access ({p}) and send them the welcome email?","Dar acesso a {n} pessoas ({p}) e enviar o e-mail de boas-vindas?","לתת גישה ל-{n} אנשים ({p}) ולשלוח להם את מייל ברוכים הבאים?", { n: pend.length, p: pq ? pq.name || pq.nombre : t("todas las carpetas","all folders","todas as pastas","כל התיקיות") }), { okLabel: t("Dar acceso","Give access","Dar acesso","מתן גישה") });
+    const nombrePaquete = pq ? pq.name || pq.nombre : t("todas las carpetas","all folders","todas as pastas","כל התיקיות");
+    const ok = await appConfirm(pend.length === 1
+      ? t("¿Darle acceso a 1 persona ({p}) y mandarle el mail de bienvenida?","Give 1 person access ({p}) and send them the welcome email?","Dar acesso a 1 pessoa ({p}) e enviar o e-mail de boas-vindas?","לתת גישה לאדם אחד ({p}) ולשלוח לו/לה את מייל ברוכים הבאים?", { p: nombrePaquete })
+      : t("¿Darles acceso a {n} personas ({p}) y mandarles el mail de bienvenida?","Give {n} people access ({p}) and send them the welcome email?","Dar acesso a {n} pessoas ({p}) e enviar o e-mail de boas-vindas?","לתת גישה ל-{n} אנשים ({p}) ולשלוח להם את מייל ברוכים הבאים?", { n: pend.length, p: nombrePaquete }),
+      { okLabel: t("Dar acceso","Give access","Dar acesso","מתן גישה") });
     if(!ok) return;
     await bjEjecutar("dar", pend.map(p => ({ correo: p.correo, nombre: p.nombre, idioma: p.idioma, comunidad: p.comunidad })), ids, { mail: true, usarFila: true });
   },
@@ -31389,7 +31402,7 @@ const BRUJULA_ACCIONES = {
     try{ r = await store.brujula.sacarATodos({ carpeta: c.id, confirmar: f.confirmar }); }catch(err){ r = { error: err && err.codigo || "google" }; }
     bj.ocupado = false;
     if(!r.error) logAudit("brujula_quito", { detail: `${c.nombre}: ${r.quitados}`.slice(0, 280) });
-    await appAlert(r.error ? bjMensajeDeError(r.error) : t("Listo: se quitó el acceso a {n} personas.","Done: access removed from {n} people.","Pronto: acesso removido de {n} pessoas.","בוצע: הוסרה הגישה מ-{n} אנשים.", { n: r.quitados }) + (r.heredados || r.errores ? ` ${t("No se pudo con {m}.","Couldn't do {m}.","Não foi possível com {m}.","לא הצלחנו עם {m}.", { m: (r.heredados || 0) + (r.errores || 0) })}` : ""));
+    await appAlert(r.error ? bjMensajeDeError(r.error) : (r.quitados === 1 ? t("Listo: se quitó el acceso a 1 persona.","Done: access removed from 1 person.","Pronto: acesso removido de 1 pessoa.","בוצע: הוסרה הגישה מאדם אחד.") : t("Listo: se quitó el acceso a {n} personas.","Done: access removed from {n} people.","Pronto: acesso removido de {n} pessoas.","בוצע: הוסרה הגישה מ-{n} אנשים.", { n: r.quitados })) + (r.heredados || r.errores ? ` ${t("No se pudo con {m}.","Couldn't do {m}.","Não foi possível com {m}.","לא הצלחנו עם {m}.", { m: (r.heredados || 0) + (r.errores || 0) })}` : ""));
     f.confirmar = ""; render(); bjCargar();
   },
   // Paquetes y planillas
