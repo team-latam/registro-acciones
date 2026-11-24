@@ -66,6 +66,14 @@ INDEX=/tmp/roto.html ./herramientas/pruebas/correr.sh
   (las de 6 segundos o menos según `pesos.txt`; ~100 archivos, ~1 minuto) y sirve antes de cada commit, junto con las de lo que
   se toca (por nombre). La suite completa la corre GitHub sola en la rama (`claude/…`) apenas se la empuja; antes de pasar a
   `main` tiene que estar en verde (ver CLAUDE.md).
+- **Un solo recorrido para cinco revisiones (24/11/2026).** Cinco pruebas recorrían cada una **toda** la app (unas 60 pantallas
+  y ventanas): nada se corta, selectores, letra mínima, árbol de accesibilidad y hebreo (12 recorridos en total, ~250 s de
+  trabajo). Ahora `barrido.mjs` recorre **una vez por tamaño e idioma** y en cada parada corre las revisiones que corresponden
+  (las que solo miran, después recortes, y al final selectores, que abre y elige): `barrido_compu_test.mjs` (compu en español y en
+  hebreo, y la letra del CSS), `barrido_celular_test.mjs` (celular oscuro, más la Vista Año) y `barrido_variantes_test.mjs` (celular
+  chico y celular en hebreo): ~135 s de trabajo, casi la mitad, sin sacar ni una comprobación (cada rotura de prueba que detectaba
+  una de las cinco la sigue detectando). **Una revisión nueva de «todas las pantallas» se escribe como una fábrica más de
+  `barrido.mjs`** (`{ paso(p, parada), fin(eq) }`), no como otra prueba con su propio `recorrerApp`.
 - **Más rápido sin perder nada (24/11/2026).** Más de la mitad del tiempo de la suite era *dormir*. Ahora `entrar()` en
   `app_de_mentira.mjs` hace que **todo `p.waitForTimeout(ms)`** (hasta 1,5 s) sea una espera inteligente: se corta apenas la
   página no tiene nada en marcha (temporizadores de hasta 2 s, pedidos, animaciones que terminan, cambios en el DOM) y nunca
@@ -88,6 +96,6 @@ workflows.
 diga `INDEX`) contra el Supabase de mentira de `app_dom_test.mjs`, con
 datos parecidos a los reales, en el tamaño y el idioma que se pida; recorre
 todas las pantallas (`recorrerApp`) y mide lo que queda cortado
-(`revisarRecortes`). La usan `recortes_test.mjs` y las herramientas de
+(`revisarRecortes`). La usan los `barrido_*_test.mjs` y las herramientas de
 `herramientas/auditoria/`. Una pantalla o ventana nueva se suma a `recorrerApp`: así la
 revisan las dos.

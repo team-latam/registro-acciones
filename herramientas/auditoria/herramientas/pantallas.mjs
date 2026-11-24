@@ -4,7 +4,7 @@
    La app entera (con los datos de siempre) en cinco tamaños, los cuatro
    idiomas y el modo oscuro, y en cada vista:
    - lo que queda cortado, se sale de la pantalla o corre la página de
-     costado (la misma medición que herramientas/pruebas/recortes_test.mjs, pero en
+     costado (la misma medición que herramientas/pruebas/barrido.mjs (recortes), pero en
      todas las combinaciones, que en cada corrida de las pruebas no entran);
    - texto roto en pantalla ("undefined", "NaN", "{n}" sin reemplazar...);
    - errores de la página.

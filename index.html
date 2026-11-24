@@ -283,7 +283,7 @@
      hacia arriba sola. En Safari, Firefox y el iPhone queda la del
      sistema, que anda igual. Cómo se ve CERRADO lo sigue decidiendo cada
      lugar (la píldora de Preferencias, el borde fino de Reportes…): acá
-     solo lo que todos comparten. herramientas/pruebas/selectores_test.mjs abre cada
+     solo lo que todos comparten. herramientas/pruebas/barrido.mjs (selectores) abre cada
      uno, en compu y en celular, y comprueba que entre en la pantalla. */
   @supports (appearance: base-select){
     select, ::picker(select){ appearance:base-select; }
@@ -2210,7 +2210,7 @@
   @keyframes fpDeCostado{ from{ opacity:.25; transform:translateX(calc(28px * var(--fp-dir, 1))); } to{ opacity:1; transform:none; } }
   @media (max-width:640px){
     /* Solo el html: en el body lo volvía una caja que recorta (el anillo
-       del enlace «Saltar al contenido» quedaba cortado, recortes_test). */
+       del enlace «Saltar al contenido» quedaba cortado, barrido: recortes). */
     html.fp-abierto{ overflow:hidden; }
     .fp-velo{ display:block; position:fixed; inset:0; z-index:94; background:rgba(8,42,44,.42); }
     html[data-theme="dark"] .fp-velo{ background:rgba(0,0,0,.55); }
@@ -5317,7 +5317,7 @@
      Los rótulos de grupo y de tarjeta se pensaron para el alfabeto latino: 11 px, negrita fuerte (800), letras separadas y
      MAYÚSCULAS. En hebreo no hay mayúsculas, separar las letras estorba la lectura y 11 px en negrita se empasta. Acá, solo en
      hebreo: ninguna letra separada ni mayúsculas en ningún lado, y los rótulos de menos de 12 px suben a 12,5 px en negrita
-     común (700). Un rótulo nuevo de ese estilo se suma a la lista de abajo (lo avisa hebreo_titulos_test.mjs). */
+     común (700). Un rótulo nuevo de ese estilo se suma a la lista de abajo (lo avisa barrido_compu_test.mjs, la parte de hebreo). */
   html[lang="he"] *, html[lang="he"] *::before, html[lang="he"] *::after{ letter-spacing:normal !important; text-transform:none !important; }
   html[lang="he"] .gs-group,
   html[lang="he"] .user-menu .um-role,

@@ -15,13 +15,15 @@ agenda_ventanas_test.mjs 10
 agenda_volver_foco_test.mjs 4
 anio_test.mjs 1
 app_dom_test.mjs 117
-arbol_accesibilidad_test.mjs 35
 atras_test.mjs 5
 auditoria_test.mjs 58
 auditoria_textos_test.mjs 1
 aviso_admin_test.mjs 6
 aviso_celular_test.mjs 6
 barra_test.mjs 8
+barrido_celular_test.mjs 40
+barrido_compu_test.mjs 52
+barrido_variantes_test.mjs 42
 borradores_test.mjs 8
 brujula_test.mjs 42
 buscador_celular_test.mjs 12
@@ -74,7 +76,6 @@ gastos_test.mjs 78
 grupos_test.mjs 5
 hebreo_espejo_test.mjs 7
 hebreo_signos_test.mjs 5
-hebreo_titulos_test.mjs 45
 hol_test.mjs 1
 indice_test.mjs 1
 informe_mensual_test.mjs 8
@@ -84,7 +85,6 @@ jszip_integridad_test.mjs 1
 lector_integridad_test.mjs 3
 lector_test.mjs 7
 lector_texto_test.mjs 1
-letra_minima_test.mjs 34
 login_google_test.mjs 4
 lugar_test.mjs 1
 lugares_serie_test.mjs 1
@@ -110,7 +110,6 @@ proximos_que_viene_test.mjs 4
 proximos_tarjeta_test.mjs 9
 puerta_test.mjs 1
 rechazadas_test.mjs 1
-recortes_test.mjs 76
 recur_test.mjs 1
 rendimiento_celular_test.mjs 4
 reparto_test.mjs 3
@@ -129,7 +128,6 @@ reportes_test.mjs 1
 resumen_test.mjs 1
 rutinas_veces_test.mjs 3
 sb_test.mjs 1
-selectores_test.mjs 63
 sesion_test.mjs 1
 sheetjs_integridad_test.mjs 1
 singular_plural_test.mjs 16

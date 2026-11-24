@@ -227,7 +227,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   dólar siempre) y abajo todas, con su nombre; escribir busca por código o nombre, Enter o tocarla elige, Escape deja
   la que había, y salir con Tab después de buscar toma la resaltada. «Va en», «Llevar los marcados a» y «La cuenta
   de», en la compu, con un buscador arriba; en una pantalla táctil, el selector del teléfono. Lo prueban
-  `gastos_test.mjs` y `selectores_test.mjs`.
+  `gastos_test.mjs` y los `barrido_*_test.mjs` (la parte de selectores).
 - [x] **Lo aprobado, más claro y borrable; el comprobante de la cuenta corriente** (publicado el 17/11 con el OK
   del usuario; lo pidió ese día mirando un gasto aprobado):
   - Un gasto que ya no se corrige (mandado, aprobado o de otra persona) se ve como texto: el monto grande, cada

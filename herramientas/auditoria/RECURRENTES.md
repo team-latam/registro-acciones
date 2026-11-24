@@ -12,7 +12,7 @@ foco de un campo o un botón que va de punta a punta queda cortado (el
 cuadro de comentarios del formulario, las pestañas, el mes del
 Calendario). *Por qué:* el anillo se dibujaba por fuera del borde y toda
 zona con `overflow` recorta. *Se detecta:* `pantallas`, y
-`herramientas/pruebas/recortes_test.mjs` en cada corrida. *Regla:* el anillo va hacia
+`herramientas/pruebas/barrido_*_test.mjs` (la revisión de recortes) en cada corrida. *Regla:* el anillo va hacia
 adentro (`outline-offset:-2px`); los enlaces de texto, afuera.
 
 **Un desplegable que se sale de la pantalla.** El menú ⋯ de una tarjeta,
@@ -121,7 +121,7 @@ detecta:* `textos`. *Regla:* todo texto visible por `t(es, en, pt, he)`.
 **Un rótulo chico «de mayúsculas» se ve mal en hebreo** (24/11/2026, menú de Administración; docs/AUDITORIA.md, V4,
 arreglado ese mismo día). *Por qué:* los rótulos de grupo y de tarjeta están pensados para el alfabeto latino (11 px,
 negrita fuerte, `letter-spacing`, `uppercase`); en hebreo no existen las mayúsculas, separar las letras estorba y 11 px es
-muy poco. *Se detecta:* `herramientas/pruebas/hebreo_titulos_test.mjs` (recorre toda la app en hebreo). *Regla:* en hebreo, esos
+muy poco. *Se detecta:* `herramientas/pruebas/barrido_compu_test.mjs` y `barrido_variantes_test.mjs` (recorren toda la app en hebreo). *Regla:* en hebreo, esos
 rótulos van sin `letter-spacing` ni mayúsculas, a 12,5 px o más y en negrita común (700); un rótulo nuevo de ese estilo se suma
 a la lista «Hebreo» del CSS de `index.html`.
 
@@ -499,7 +499,7 @@ alto en un renglón que se parte).
 (10 px dentro de un texto de 12). *Regla:* el texto que se lee, 12 px o más;
 etiquetas en mayúsculas, píldoras y números dentro de un círculo o una celda,
 11; los dibujos hechos con letra y lo impreso, aparte. *Se detecta:*
-`letra_minima_test` lee el CSS y mide el texto en cada pantalla.
+`barrido_compu_test` lee el CSS y los `barrido_*` miden el texto en cada pantalla.
 
 **Lo que existe solo en la compu.** El buscador general se escondía con 900 px
 o menos (`display:none`, «ahí sigue el buscador del Feed») y en el teléfono no
@@ -568,7 +568,7 @@ espera el paso «buscar» y mide que el agujero caiga sobre el buscador.
 campo no lo nombra si no está atado (`for`, `aria-labelledby`, envolviéndolo):
 14 campos de Administración y Mis preferencias se anunciaban como «cuadro de
 texto». *Regla:* todo control tiene nombre en el **árbol de accesibilidad**, no
-solo «algo de texto cerca». *Se detecta:* `arbol_accesibilidad_test` recorre las
+solo «algo de texto cerca». *Se detecta:* los `barrido_*` recorren las
 45 pantallas con `Accessibility.getFullAXTree` (el recuento por tipo de control
 subestima: 9 tipos eran 14 campos).
 
@@ -683,7 +683,7 @@ desplazarse», no «responde». *Se detecta:* `masa` (un toque simulado con
 foco en un campo de texto; y nada de lo que está en el diálogo se mueve al soltar el foco (el
 modo teclado se apaga cuando el toque terminó, no antes).
 
-**Controles que nadie midió.** Hay una prueba del tamaño de la letra (`letra_minima_test`) y
+**Controles que nadie midió.** Hay una prueba del tamaño de la letra (los `barrido_*`) y
 ninguna del tamaño de lo que se toca: «Me gusta» mide 19×36 y «Responder» 17×36, uno al lado
 del otro en cada tarjeta, y el nombre de una persona, 92×15 (Z2). *Por qué:* un botón de
 solo-ícono se achica al ancho del ícono, y el área de toque es el botón. *Se detecta:* `masa`.

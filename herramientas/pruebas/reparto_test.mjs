@@ -41,7 +41,7 @@ eq("pesos.txt tiene a todas las pruebas (si falta alguna, correr medir_tiempos.s
   const r = repartir("rapido", todas), l = lista(r);
   eq("rápido: hay bastantes pruebas livianas (más de 30) y son menos que todas", [l.length > 30, l.length < todas.length], [true, true]);
   eq("rápido: todas pesan 6 s o menos según pesos.txt", l.every(f => (pesos[f] ?? 10) <= 6), true);
-  eq("rápido: no incluye a las pesadas (brujula, gastos, app_dom, recortes)", ["brujula_test.mjs", "gastos_test.mjs", "app_dom_test.mjs", "recortes_test.mjs"].filter(f => l.includes(f)), []);
+  eq("rápido: no incluye a las pesadas (brujula, gastos, app_dom, barrido)", ["brujula_test.mjs", "gastos_test.mjs", "app_dom_test.mjs", "barrido_compu_test.mjs"].filter(f => l.includes(f)), []);
   eq("rápido: una prueba nueva (sin peso) se considera mediana y no entra", lista(repartir("rapido", [...todas, "nueva_test.mjs"])).includes("nueva_test.mjs"), false);
 }
 // El corredor de verdad: la parte 1/4 corre solo sus archivos y se lo dice (con un nombre que no existe, no corre nada).

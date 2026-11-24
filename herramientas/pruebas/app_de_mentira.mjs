@@ -1,7 +1,7 @@
 /* ======================================================================
    La app con un Supabase de mentira y datos parecidos a los reales
 
-   Lo comparten las pruebas (recortes_test.mjs) y la auditoría
+   Lo comparten las pruebas (barrido.mjs) y la auditoría
    (herramientas/auditoria/herramientas/): entrar con alguien, en el tamaño y el idioma
    que se pida, recorrer todas las pantallas, y medir lo que queda cortado.
    El Supabase de mentira es el mismo de app_dom_test.mjs (se saca de ahí
