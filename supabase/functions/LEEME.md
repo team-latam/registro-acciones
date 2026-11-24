@@ -252,10 +252,13 @@ quiere, cuándo y de qué. Los diseños de los correos están en
   horaria del aparato), solo si a esa persona le pueden llegar correos.
   `prefs_de_correo()` los devuelve con lo de fábrica (español, Argentina)
   si faltan o no son válidos.
-- **Ningún correo lleva `reply_to`** (avisos, resúmenes y el mail de bienvenida de Brújula): el
-  usuario vio «reply-to benny@…» en el correo y pidió que solo figure `info@team-latam.com`
-  (24/11/2026). Hasta ese día los avisos y resúmenes llevaban `reply_to: benny@team-latam.com`
-  (`RESPONDER_A` y la variable `AVISOS_RESPONDER_A`, ya sin uso). Si alguien contesta, le llega a `info@`.
+- **Todos los correos de Toldot (avisos, resúmenes y el de bienvenida de Brújula) llevan
+  `reply_to: benny@team-latam.com`**, porque `info@team-latam.com` **no es una casilla**: es solo el
+  remitente que firma en Resend (decisión del usuario, 24/11/2026). El mismo día se probó sacar el
+  `reply_to` (el usuario no quería ver «reply-to benny@…» en el correo) y se volvió atrás en minutos:
+  sin el `reply_to` las respuestas iban a una dirección sin casilla y se perdían. La forma de que el
+  encabezado no se muestre **sin** perder respuestas es que `info@` pase a ser un alias de la cuenta de
+  Benny en el correo del dominio; recién cuando eso funcione se puede sacar el `reply_to`.
 
 ---
 

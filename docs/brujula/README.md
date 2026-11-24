@@ -181,9 +181,7 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
   —así ninguna palabra se parte, aunque el admin ponga el nombre que quiera— y el nombre completo al apoyar el mouse. A la izquierda de
   «Persona» hay un tilde para elegir a todas las que aparecen (según la búsqueda y el filtro); queda a medias si hay algunas
   elegidas. En el celular la cabecera sigue, con ese tilde, y se van solo las columnas.
-- **Ningún mail de Toldot lleva «Reply-To» (24/11/2026):** el usuario vio «reply-to benny@…» en el mail y pidió que solo figure
-  `info@team-latam.com`; las respuestas van a `info@`, que es de quien viene. Primero se lo sacó al de bienvenida y ese mismo día a los
-  avisos y a los resúmenes.
+- **El mail de bienvenida lleva «Reply-To» a `benny@team-latam.com`, como todos los de Toldot (24/11/2026):** `info@team-latam.com` no es una casilla, es solo el remitente; sin el «Reply-To» las respuestas se perderían. (Ese día se lo sacó y se lo volvió a poner en minutos.) Para que el encabezado no se vea hay que hacer de `info@` un alias de la cuenta de Benny: `supabase/functions/LEEME.md`.
 - **Lo que se anota en el registro de actividad:** `brujula_dio` y `brujula_quito` (03-validacion.sql), con quién lo hizo, a quién y
   de qué carpetas.
 - **El aviso por correo a los admin** (viene apagado) lo corre el workflow horario de siempre («Resúmenes por correo»); se prende

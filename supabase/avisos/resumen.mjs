@@ -15,7 +15,7 @@
    ====================================================================== */
 import { readFileSync } from "node:fs";
 import { correoResumen, zonaValida } from "../functions/_compartido/correos.mjs";
-import { DESDE, DESDE_DE_PRUEBA } from "../functions/_compartido/avisos.mjs";
+import { DESDE, DESDE_DE_PRUEBA, RESPONDER_A } from "../functions/_compartido/avisos.mjs";
 
 const ZONA = "America/Argentina/Buenos_Aires";
 export const cfg = { url: "", llave: "", resend: "", admin: "", seco: false };
@@ -137,7 +137,7 @@ export function armarResumen({ email, pr, periodo, desde, hasta, posts, replies,
 export async function mandar(para, correo){
   const enviar = from => fetch("https://api.resend.com/emails", { method: "POST",
     headers: { Authorization: `Bearer ${cfg.resend}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to: [para], ...correo }) });
+    body: JSON.stringify({ from, to: [para], reply_to: RESPONDER_A, ...correo }) });
   let r = await enviar(DESDE);
   if(r.status === 403) r = await enviar(DESDE_DE_PRUEBA);
   if(!r.ok) throw new Error(`Resend contestó ${r.status}`);
