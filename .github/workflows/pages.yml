@@ -149,6 +149,13 @@ jobs:
         with:
           path: _sitio
 
+      # GitHub tarda unos segundos en poder VER el sitio que se acaba de subir: sin esta pausa, «deploy-pages» lo pedía en el mismo
+      # instante, no lo encontraba («Found 0 artifact(s)») y fallaba (24/11/2026, 3 de 4 publicaciones seguidas). Y volver a
+      # correrlo a medias no arregla nada: el segundo intento sube OTRA copia y «deploy-pages» se niega a elegir entre dos.
+      - name: Dejar que GitHub registre el sitio subido
+        if: steps.modo.outputs.listo == 'si'
+        run: sleep 20
+
       - id: publicar
         if: steps.modo.outputs.listo == 'si'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
