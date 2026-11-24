@@ -385,6 +385,32 @@ export async function revisarRecortes(p, estado){
 // sección de Administración, las fichas y Mis preferencias. En cada
 // parada llama a `paso(p, nombre)`: ahí se mide lo que se quiera.
 export const cerrar = async p => { for(let i = 0; i < 3; i++){ await p.keyboard.press("Escape"); await p.waitForTimeout(120); } };
+// Brújula (Administración › Brújula, desde el 23/11/2026): el catálogo sale de la base y quién tiene acceso se lee de Drive por la función
+// `brujula`. Acá las dos cosas de mentira, con gente inventada (@example.org), para que los recorridos también pasen por esa pantalla
+// (la auditoría del 24/11/2026 encontró que ningún recorrido la visitaba: ni recortes, ni nombres para el lector, ni letra mínima, ni oscuro).
+const BJ = { c1: "CarpetaUnoAbCdEf", c2: "CarpetaDosGhIjKl", pl1: "PlanillaUnoAbCdEf", pl2: "PlanillaDosGhIjKl" };
+export async function brujulaDeMentira(p){
+  await p.evaluate(BJ => { const t = window.__sb.tablas, ya = "2026-11-01T00:00:00Z";
+    t.brujula_carpetas = [{ id: BJ.c1, nombre: "Brújula Cloud", nombre_drive: "Brújula Cloud", orden: 1, activa: true, planillas: [BJ.pl1], creada: ya, creada_por: "benny@team-latam.com" },
+      { id: BJ.c2, nombre: "CARE", nombre_drive: "CARE", orden: 2, activa: true, planillas: [BJ.pl1, BJ.pl2], creada: ya, creada_por: "benny@team-latam.com" }];
+    t.brujula_planillas = [{ id: BJ.pl1, nombre: "Users grande", orden: 1 }, { id: BJ.pl2, nombre: "Users CARE", orden: 2 }];
+    t.brujula_paquetes = [{ id: "paq-todo", nombre: "Todo Brújula", orden: 1 }];
+    t.brujula_paquete_carpetas = [{ id: "pc1", paquete: "paq-todo", carpeta: BJ.c1 }, { id: "pc2", paquete: "paq-todo", carpeta: BJ.c2 }]; }, BJ);
+  const persona = (correo, nombre, o = {}) => ({ correo, nombre, idioma: "Español", comunidad: "", carpetas: {}, permisos: {}, editor: false, planillas: [], pendiente: false, error: "", ...o });
+  const leido = () => ({ leido: new Date().toISOString(),
+    carpetas: [{ id: BJ.c1, nombre: "Brújula Cloud", orden: 1, activa: true, planillas: [BJ.pl1], estado: "ok", personas: 3 }, { id: BJ.c2, nombre: "CARE", orden: 2, activa: true, planillas: [BJ.pl1, BJ.pl2], estado: "ok", personas: 1 }],
+    planillas: [{ id: BJ.pl1, nombre: "Users grande", orden: 1, estado: "ok", filas: 3, pendientes: 2 }, { id: BJ.pl2, nombre: "Users CARE", orden: 2, estado: "ok", filas: 0, pendientes: 0 }],
+    personas: [
+      persona("valeria@example.org", "Valeria Montes", { comunidad: "Buenos Aires", carpetas: { [BJ.c1]: "reader", [BJ.c2]: "reader" }, permisos: { [BJ.c1]: "pv1", [BJ.c2]: "pv2" }, planillas: [{ planilla: BJ.pl1, fila: 2, enviado: true }] }),
+      persona("camila@example.org", "Camila Ortega", { carpetas: { [BJ.c1]: "reader" }, permisos: { [BJ.c1]: "pc1" } }),
+      persona("hannah@example.org", "Hannah Cole", { idioma: "Inglés", pendiente: true, planillas: [{ planilla: BJ.pl1, fila: 3, enviado: false }] }),
+      persona("joaquin@example.org", "Joaquín Salas", { pendiente: true, error: "Error: no se pudo compartir", planillas: [{ planilla: BJ.pl1, fila: 4, enviado: false }] }),
+      persona("equipo@example.org", "Equipo", { carpetas: { [BJ.c1]: "writer" }, permisos: { [BJ.c1]: "pq1" }, editor: true })] });
+  await p.route(/\/functions\/v1\/brujula/, ruta => {
+    const cuerpo = JSON.parse(ruta.request().postData() || "{}");
+    return ruta.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(cuerpo.accion === "leer" ? leido() : {}) });
+  });
+}
 export async function recorrerApp(p, paso){
   await paso(p, ("Inicio"));
   for(const [n, sel, sub] of [["Nuevo evento", '#fabMain', '[data-action="new-evento"]'], ["Nueva rutina", '#fabMain', '[data-action="new-rutina"]']]){
@@ -427,10 +453,17 @@ export async function recorrerApp(p, paso){
   if(await click(p, '[data-action="reporte-filtros"]')){ await p.waitForTimeout(200); await paso(p, ("Reportes filtros")); await cerrar(p); }
   if(await click(p, '[data-action="reporte-modo"][data-key="comparar"]')){ await p.waitForTimeout(300); await paso(p, ("Reportes comparar")); }
   await irAdmin(p);
-  for(const [v, k] of [["admin"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"], ["preferencias", "agenda"], ["preferencias", "gastos"]]){
+  for(const [v, k] of [["admin"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"], ["preferencias", "agenda"], ["preferencias", "gastos"], ["preferencias", "problemas"]]){
     await p.evaluate(([v, k]) => { const b = document.querySelector(`[data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`); b && b.click(); }, [v, k || ""]);
     await p.waitForTimeout(350); await paso(p, ("Admin " + (k || v)));
   }
+  // Brújula: la lista de personas, las carpetas, el formulario de invitar y la ficha de una persona.
+  await brujulaDeMentira(p);
+  await p.evaluate(() => { const b = document.querySelector('[data-action="admin-go"][data-view="preferencias"][data-key="brujula"]'); b && b.click(); });
+  await p.waitForTimeout(700); await paso(p, ("Admin brujula"));
+  if(await click(p, '[data-action="bj-tab"][data-key="carpetas"]')){ await p.waitForTimeout(350); await paso(p, ("Admin brujula: carpetas")); await click(p, '[data-action="bj-tab"][data-key="personas"]'); await p.waitForTimeout(250); }
+  if(await click(p, '[data-action="bj-invitar-abrir"]')){ await p.waitForTimeout(350); await paso(p, ("Admin brujula: invitar")); await click(p, '[data-action="bj-volver"]'); await p.waitForTimeout(250); }
+  if(await click(p, '.bj-fila:not(.bj-cab) [data-action="bj-persona"]')){ await p.waitForTimeout(350); await paso(p, ("Admin brujula: una persona")); await click(p, '[data-action="bj-volver"]'); await p.waitForTimeout(250); }
   // Volver a Personas: el recorrido de arriba termina en otra sección, y sin
   // esto la «ficha persona» (hasta el 7/10/2026) era la copia de seguridad.
   const personas = () => p.evaluate(() => { const b = document.querySelector('[data-action="admin-go"][data-view="solicitudes"][data-key="usuarios"]'); b && b.click(); }).then(() => p.waitForTimeout(350));

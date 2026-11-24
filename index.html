@@ -622,7 +622,7 @@
   .bj-redondo{ width:44px; height:44px; border:none; border-radius:50%; background:var(--surface-alt); color:var(--ink); font:inherit; font-size:16px; cursor:pointer; flex:none; }
   .bj-redondo:disabled, .bj-btn:disabled{ opacity:.45; cursor:default; }
   .bj-tools{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-  .bj-buscar-w{ flex:1 1 240px; display:flex; position:relative; }
+  .bj-buscar-w{ flex:1 1 240px; min-width:0; display:flex; position:relative; }
   .bj-buscar{ flex:1; min-width:0; min-height:44px; border:1px solid var(--border); border-radius:999px; padding:0 16px; font:inherit; font-size:13.5px; background:var(--card); color:var(--text); }
   .bj-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
   .bj-btn{ border:none; border-radius:999px; background:var(--petroleo); color:#fff; padding:0 20px; min-height:44px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
@@ -689,7 +689,7 @@
   .bj-paq-t{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
   .bj-form{ padding:20px 22px; display:flex; flex-direction:column; gap:16px; }
   .bj-form h3{ font-size:19px; }
-  .bj-campos{ border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .bj-campos{ border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; margin:0; min-width:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }   /* un fieldset no se achica solo: min-width:0 (celular de 320 px, auditoría del 24/11/2026) */
   .bj-campos legend{ font-size:12.5px; font-weight:800; padding:0 6px; }
   .bj-campos label, .bj-campo{ display:flex; flex-direction:column; gap:5px; font-size:12.5px; font-weight:700; }
   .bj-combo{ position:relative; display:flex; flex-direction:column; gap:5px; }
@@ -735,7 +735,7 @@
     .bj-puntos{ display:flex; }
     .bj-fila{ grid-template-columns:32px minmax(0,1fr) 44px; }
     .bj-puntos{ grid-column:2; }
-    .bj-dos, .bj-campos{ grid-template-columns:1fr; }
+    .bj-dos, .bj-campos{ grid-template-columns:minmax(0,1fr); }
   }
   .pb-lista{ list-style:none; margin:0; padding:0; display:grid; gap:12px; }
   .pb-fila{ border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:grid; gap:6px; background:var(--card); }
@@ -5314,6 +5314,17 @@
     .post-quien [data-action="show-user-profile"]{ padding-block:5px; }
   }
 
+  /* ===== Modo oscuro: lo elegido en un grupo de botones se ve a primera vista (24/11/2026, docs/AUDITORIA.md, H5; decisión D29, opción A) =====
+     Antes el botón elegido y el que no, casi tenían el mismo color en oscuro (relleno de 1,4 a 2,1 contra 3 que pide WCAG; en claro, de 12 a 21):
+     el petróleo del elegido es muy parecido al fondo de la tarjeta. Acá el elegido va con el celeste de la marca y letra oscura. En claro no cambia
+     nada. Un grupo de botones nuevo se suma a la lista (lo avisa barrido_celular_test.mjs, que mira el oscuro). Las variantes con su propio color
+     (los gastos «sugeridos» y «con duda») no se tocan: se excluyen. */
+  html[data-theme="dark"] :is(.chip-toggle.active, .fl-chip.on, .ag-chip.on, .bj-tab.active, .bj-fchip.active, .place-seg-btn.active,
+    .feed-solapas button.on, .rep-seg button.active, .um-segmented button.active, .bj-seg button.active, .gx-lvista button[aria-pressed="true"],
+    .gx-opciones:not([data-sug]):not([data-duda]) .gx-opc[aria-pressed="true"]){ background:var(--celeste-dark); border-color:var(--celeste-dark); color:#06282b; box-shadow:none; }
+  html[data-theme="dark"] .feed-solapas button.on .fs-n{ background:rgba(6,40,43,.18); color:#06282b; }
+  html[data-theme="dark"] .bj-radio.active{ border-color:var(--celeste-dark); box-shadow:inset 0 0 0 1px var(--celeste-dark); }   /* las tarjetas «Todo Brújula / A medida»: el elegido, con borde celeste */
+
   /* ===== Hebreo: los rótulos chicos (24/11/2026, docs/AUDITORIA.md, V4) =====
      Los rótulos de grupo y de tarjeta se pensaron para el alfabeto latino: 11 px, negrita fuerte (800), letras separadas y
      MAYÚSCULAS. En hebreo no hay mayúsculas, separar las letras estorba la lectura y 11 px en negrita se empasta. Acá, solo en
@@ -5364,7 +5375,7 @@
   /* Las etiquetas chicas (días de la semana, estados, avisos) en negrita común: en hebreo, a 11 px, el 800 se empasta. */
   html[lang="he"] :is(.dow, .ad-dow, .year-dows span, .cal-head, .hoy, .pl-months span, .fl-hito-estado, .rs-ok, .ag-estado, .gx-chip){ font-weight:700; }
   /* Y los chips, estados y encabezados de calendario de menos de 12 px suben a 12 px (en hebreo, a 11 el trazo se ve apretado). */
-  html[lang="he"] :is(.type-badge, .cal-gutter, .dow, .ad-dow, .year-dows span, .hoy, .pl-months span, .cal-head, .fl-hito-estado, .rs-ok, .ag-estado, .sc-txt, .scope-chip, .status-pill, .date-trigger.empty, .gx-chip){ font-size:12px; }
+  html[lang="he"] :is(.type-badge, .cal-gutter, .dow, .ad-dow, .year-dows span, .hoy, .pl-months span, .cal-head, .fl-hito-estado, .rs-ok, .ag-estado, .sc-txt, .scope-chip, .status-pill, .date-trigger.empty, .gx-chip, .bj-tag, .bj-chip, .um-segmented button, .pb-estado){ font-size:12px; }
 </style>
 </head>
 <body>
@@ -20985,7 +20996,7 @@ function renderAvisosPorCorreo(p){
           ? t("Lo que no tiene momento (actividades nuevas, eventos próximos), a qué hora","The rest (new activities, upcoming events), at what time","O resto (atividades novas, eventos próximos), em que horário","השאר (פעילויות חדשות, אירועים קרובים), באיזו שעה")
           : t("A qué hora","At what time","Em que horário","באיזו שעה")} <span>(${esc(t("tu hora: {z}","your time: {z}","seu horário: {z}","לפי השעה שלך: {z}",{ z: lugarDeLaZona(prefs().emailTz || zonaDelAparato()) }))})</span></div>
         ${horaBotones}
-        <div class="setting-sub" style="margin-top:10px;">${t("Si no pasó nada, no llega ningún correo.","If nothing happened, no email is sent.","Se nada aconteceu, não chega nenhum e-mail.","אם לא קרה כלום, לא נשלח מייל.")}</div>
+        <div class="setting-sub" style="margin-top:10px;">${t("Llega a lo largo del día, desde esa hora. Si no pasó nada, no llega ningún correo.","It arrives during the day, from that time on. If nothing happened, no email is sent.","Chega ao longo do dia, a partir desse horário. Se nada aconteceu, não chega nenhum e-mail.","המייל מגיע במהלך היום, מהשעה הזו ואילך. אם לא קרה כלום, לא נשלח מייל.")}</div>
       </div>
       <div class="setting-row" style="display:block;">
         <div class="setting-label">${t("De qué","About what","Sobre o quê","על מה")}</div>
@@ -20996,7 +21007,7 @@ function renderAvisosPorCorreo(p){
         t("Te avisamos al momento cuando alguien te da un paso de «Lo que sigue».","We let you know right away when someone gives you a step from “What's next”.","Avisamos na hora quando alguém atribui a você um passo de «O que segue».","נעדכן אותך מיד כשמישהו/י מקצה לך שלב מתוך «מה הלאה»."),
         prefSwitch("emailPasos", p.emailPasos !== false))}
       ${prefRow("📅", t("El día que vence","The day it's due","No dia em que vence","ביום שבו זה מסתיים"),
-        t("Otro aviso, a primera hora de ese día, por cada pendiente tuyo que tenga fecha.","Another notice, first thing that day, for each of your to-dos with a date.","Outro aviso, logo cedo nesse dia, para cada pendência sua com data.","עוד התראה, בבוקר אותו יום, על כל משימה שלך עם תאריך."),
+        t("Otro aviso ese día, por cada pendiente tuyo que tenga fecha.","Another notice that day, for each of your to-dos with a date.","Outro aviso nesse dia, para cada pendência sua com data.","עוד התראה באותו יום, על כל משימה שלך עם תאריך."),
         prefSwitch("emailVence", p.emailVence !== false))}
       ${gastosVisible() ? prefRow("🧾", t("Gastos que me observan","Expenses flagged for me","Despesas que me observam","הוצאות שקיבלו הערה"),
         t("Te avisamos al momento cuando un administrador te pide corregir un gasto.","We let you know right away when an admin asks you to fix an expense.","Avisamos na hora quando um administrador pede que você corrija uma despesa.","נעדכן אותך מיד כשמנהל/ת מבקש/ת לתקן הוצאה.")

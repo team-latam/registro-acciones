@@ -253,13 +253,73 @@ export const selectores = (p, tam) => {
   };
 };
 
+// ---------- En oscuro, lo elegido se distingue de lo no elegido (docs/AUDITORIA.md, H5; decisión D29, 24/11/2026) ----------
+// En cada grupo de botones (aria-pressed / aria-checked / aria-selected) el elegido tiene que verse distinto del que no: su relleno o su
+// borde, contra el del no elegido, a 3 a 1 como mínimo (WCAG 1.4.11). Antes del 24/11/2026 el petróleo del elegido casi no se distinguía del fondo
+// de la tarjeta en oscuro (de 1,4 a 2,1 a 1). Un grupo nuevo que no lo cumpla hace fallar esto: se arregla en el CSS del modo oscuro (el bloque
+// «Modo oscuro: lo elegido…» de index.html) o, si el elegido se marca de otra manera, se anota acá con el motivo.
+const EXCEPCIONES_DE_SELECCION = {
+  "toggle-like": "«Me gusta»: el corazón cambia de dibujo (vacío / lleno) y la cuenta, no el relleno",
+  "fp-cat": "la lista de categorías del panel de filtros: la elegida se marca con la tarjeta y una sombra, como una fila de lista",
+  "cal-ir-anio": "los años de «Ir a una fecha»: el elegido lleva un anillo celeste hacia adentro (box-shadow inset) y fondo propio",
+  "gastos-lista-vista": "el selector de vista de la lista de Gastos: la fila elegida se marca con la tarjeta clara sobre un riel",
+};
+const luminancia = c => { const m = String(c).match(/[\d.]+/g).map(Number); if(m.length > 3 && m[3] === 0) return null;
+  const [r, g, b2] = m.slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b2; };
+const contraste = (a, b2) => { const x = luminancia(a), y = luminancia(b2); return x === null || y === null ? null : (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+export const seleccion = (p, tam) => {
+  const grupos = new Map();
+  return {
+    paso: async (p, pantalla) => {
+      const r = await p.evaluate(() => { const out = [];
+        for(const e of document.querySelectorAll('[aria-pressed], [role=radio][aria-checked], [role=tab][aria-selected]')){
+          if(!e.offsetParent || e.closest("select")) continue;
+          const on = e.getAttribute("aria-pressed") === "true" || e.getAttribute("aria-checked") === "true" || e.getAttribute("aria-selected") === "true";
+          const c = getComputedStyle(e);
+          // Un botón sin relleno (transparente) se ve con el fondo de lo que tiene detrás: el del primer ancestro que tenga.
+          let f = e, fondo = c.backgroundColor; while(/rgba\(\d+, \d+, \d+, 0\)|transparent/.test(fondo) && f.parentElement){ f = f.parentElement; fondo = getComputedStyle(f).backgroundColor; }
+          out.push({ g: (e.dataset.action || String(e.className).split(" ")[0] || e.tagName) + " (" + (e.parentElement ? String(e.parentElement.className).split(" ")[0] : "") + ")", k: e.dataset.action || "", on, bg: fondo, bo: c.borderTopColor });
+        } return out; });
+      for(const x of r){ const g = grupos.get(x.g) || { pantalla, k: x.k }; const lado = x.on ? "on" : "off"; if(!g[lado]) g[lado] = x; grupos.set(x.g, g); }
+    },
+    fin: eq => {
+      const flojos = [];
+      for(const [k, g] of grupos){
+        if(!g.on || !g.off || EXCEPCIONES_DE_SELECCION[g.k]) continue;
+        const fondo = contraste(g.on.bg, g.off.bg), borde = contraste(g.on.bo, g.off.bo);
+        if((fondo === null || fondo < 3) && (borde === null || borde < 3)) flojos.push(`${k} — relleno ${fondo === null ? "sin" : fondo.toFixed(2)}, borde ${borde === null ? "sin" : borde.toFixed(2)} (${g.pantalla})`);
+      }
+      eq(`${tam}: en oscuro, lo elegido se distingue de lo no elegido en cada grupo de botones (relleno o borde, 3 a 1)`, flojos, []);
+      eq(`${tam}: se midieron grupos de botones elegido/no elegido (más de 12)`, [...grupos.values()].filter(g => g.on && g.off).length > 12, true);
+    },
+  };
+};
+
+// ---------- Todo el menú de Administración tiene su parada (24/11/2026) ----------
+// La regla «una pantalla nueva se suma a recorrerApp» (README de las pruebas) no se cumplió con Brújula el 23/11: ningún recorrido la visitaba y nadie lo notó hasta
+// el 24/11 (docs/AUDITORIA.md, H9). Acá se compara el menú de Administración con las paradas: cada sección del menú tiene que tener la suya («Admin <clave>»).
+export const cobertura = (p, tam) => {
+  const vistas = new Set();
+  return {
+    paso: async (p, n) => { vistas.add(n); },
+    fin: async eq => {
+      await p.evaluate(() => { const b = document.querySelector('[data-action="toggle-user-menu"]'); b && b.click(); });
+      await p.evaluate(() => { const b = document.querySelector('.user-menu [data-action="goto-view"][data-view="admin"]'); b && b.click(); });
+      await p.waitForTimeout(400);
+      const menu = await p.$$eval('.admin-menu [data-action="admin-go"]', l => l.map(e => ({ nombre: e.dataset.key || e.dataset.view, view: e.dataset.view })));
+      eq(`${tam}: el menú de Administración tiene secciones (la prueba mira algo)`, menu.length >= 10, true);
+      eq(`${tam}: cada sección del menú de Administración tiene su parada en el recorrido`, menu.filter(m => !vistas.has("Admin " + m.nombre)).map(m => m.nombre), []);
+    },
+  };
+};
+
 // ---------- El recorrido ----------
 // cfg: { nombre, vp, lang, dark, revisiones: [nombre de revisión...], despues?(p, r) }.
 // Las revisiones corren en cada parada en este orden: las que solo miran, después recortes (que pasa
 // el foco por cada control) y al final selectores (que abre y elige). `despues(p, r)` es lo que una
 // configuración hace a mano al terminar el recorrido (Año del celular, secciones de hebreo, etc.).
-const ORDEN = ["arbol", "letra", "hebreo", "recortes", "selectores"];
-const FABRICAS = { arbol, letra, hebreo, recortes, selectores };
+const ORDEN = ["cobertura", "arbol", "letra", "hebreo", "seleccion", "recortes", "selectores"];
+const FABRICAS = { cobertura, arbol, letra, hebreo, seleccion, recortes, selectores };
 export async function barrer(b, cfg, eq){
   const { nombre, vp, lang = "", dark = false, revisiones, despues } = cfg;
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, lang, dark });
@@ -271,7 +331,7 @@ export async function barrer(b, cfg, eq){
   if(despues) await despues(p, r, eq);
   let editar = true;
   if(r.selectores) editar = await r.selectores.extras(p);
-  for(const k of ORDEN) if(r[k]) k === "selectores" ? r[k].fin(eq, { base: baseSelect, editar }) : r[k].fin(eq);
+  for(const k of ORDEN) if(r[k]) k === "selectores" ? r[k].fin(eq, { base: baseSelect, editar }) : await r[k].fin(eq);
   eq(`${nombre}: sin un solo error en la página`, errores, []);
   await p.close();
 }

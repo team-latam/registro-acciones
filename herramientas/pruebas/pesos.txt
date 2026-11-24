@@ -21,9 +21,9 @@ auditoria_textos_test.mjs 1
 aviso_admin_test.mjs 6
 aviso_celular_test.mjs 6
 barra_test.mjs 8
-barrido_celular_test.mjs 40
-barrido_compu_test.mjs 52
-barrido_variantes_test.mjs 42
+barrido_celular_test.mjs 45
+barrido_compu_test.mjs 55
+barrido_variantes_test.mjs 45
 borradores_test.mjs 8
 brujula_test.mjs 42
 buscador_celular_test.mjs 12

@@ -78,6 +78,11 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
        c.querySelector('[data-action="correo-cuando"].active').dataset.key,
        [...c.querySelectorAll('[data-action="correo-tema"].active')].map(x => x.dataset.key)]; }),
      [true, "daily", ["menciones", "respuestas", "pedidos"]]);
+  // D28 (auditoría del 24/11/2026): GitHub corre el envío unas 3 veces por día, no cada hora: la pantalla no promete la hora exacta.
+  eq("la hora del resumen dice que llega a lo largo del día, desde esa hora (no a esa hora exacta)",
+     await p.evaluate(() => (document.querySelector(".avisos-correo .correo-horas").parentElement.querySelector(".setting-sub:last-of-type") || {}).textContent || ""),
+     "Llega a lo largo del día, desde esa hora. Si no pasó nada, no llega ningún correo.");
+  eq("«El día que vence» ya no promete «a primera hora»", await p.evaluate(() => /primera hora/.test(document.querySelector(".avisos-correo").textContent)), false);
   await p.click('[data-action="correo-cuando"][data-key="instant"]');
   await p.click('[data-action="correo-tema"][data-key="nuevos"]');
   await p.waitForTimeout(300);
