@@ -27,10 +27,11 @@ export { APP } from "./correos.mjs";
 // docs/QUE-GUARDAR.md). Si Resend todavía no lo acepta —la verificación
 // tarda, o un día se cae— el aviso sale igual desde la dirección de
 // prueba de Resend, que solo entrega a la cuenta de Resend: mejor eso que
-// ningún aviso. Las respuestas van al admin: info@ no es una casilla.
+// ningún aviso. Ningún correo lleva «Reply-To» (pedido del usuario, 24/11/2026: el correo
+// mostraba «reply-to benny@…» y quiere que solo figure info@team-latam.com): si alguien
+// contesta, le llega a info@, que es de quien viene.
 export const DESDE = "Toldot <info@team-latam.com>";
 export const DESDE_DE_PRUEBA = "Toldot <onboarding@resend.dev>";
-export const RESPONDER_A = "benny@team-latam.com";
 
 // Lo que arma cada tipo de aviso. El cuerpo del pedido dice cuál:
 //   (nada) o {tipo:"pedido"}              el pedido de acceso de quien llama
@@ -106,7 +107,7 @@ export async function atenderAviso(req, { env, fetch: traer = fetch, esperar = d
   const mandar = (from, para, correo) => traer("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${llave}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to: [para], reply_to: env("AVISOS_RESPONDER_A") || RESPONDER_A, ...correo }),
+    body: JSON.stringify({ from, to: [para], ...correo }),
   });
   // Si a alguien no le salió, se borra su marca de «enviado»: así lo
   // recibe en su resumen en vez de perderse (hasta el 7/10/2026 la marca

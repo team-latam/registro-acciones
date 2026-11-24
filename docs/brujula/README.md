@@ -181,8 +181,9 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
   —así ninguna palabra se parte, aunque el admin ponga el nombre que quiera— y el nombre completo al apoyar el mouse. A la izquierda de
   «Persona» hay un tilde para elegir a todas las que aparecen (según la búsqueda y el filtro); queda a medias si hay algunas
   elegidas. En el celular la cabecera sigue, con ese tilde, y se van solo las columnas.
-- **El mail de bienvenida sale sin «Reply-To» (24/11/2026):** las respuestas van a `info@team-latam.com`, que es de quien viene. Los
-  otros mails de Toldot (avisos y resúmenes) siguen con «responder a benny@…»: el usuario no pidió cambiarlos.
+- **Ningún mail de Toldot lleva «Reply-To» (24/11/2026):** el usuario vio «reply-to benny@…» en el mail y pidió que solo figure
+  `info@team-latam.com`; las respuestas van a `info@`, que es de quien viene. Primero se lo sacó al de bienvenida y ese mismo día a los
+  avisos y a los resúmenes.
 - **Lo que se anota en el registro de actividad:** `brujula_dio` y `brujula_quito` (03-validacion.sql), con quién lo hizo, a quién y
   de qué carpetas.
 - **El aviso por correo a los admin** (viene apagado) lo corre el workflow horario de siempre («Resúmenes por correo»); se prende

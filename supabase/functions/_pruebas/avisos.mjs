@@ -105,8 +105,8 @@ const leer = async r => [r.status, await r.json()];
 {
   const m = mundo();
   await atenderAviso(pedir(), { env: entorno(), fetch: m.traer, esperar: m.esperar });
-  eq("sale de info@team-latam.com, y las respuestas van al admin",
-     [m.reg.correos[0].from, m.reg.correos[0].reply_to], ["Toldot <info@team-latam.com>", "benny@team-latam.com"]);
+  eq("sale de info@team-latam.com, sin «Reply-To» (el correo no muestra a ninguna persona en particular)",
+     [m.reg.correos[0].from, "reply_to" in m.reg.correos[0], "replyTo" in m.reg.correos[0]], ["Toldot <info@team-latam.com>", false, false]);
   const v = mundo({ dominioSinVerificar: true });
   const r = await leer(await atenderAviso(pedir(), { env: entorno(), fetch: v.traer, esperar: v.esperar }));
   eq("con el dominio todavía sin verificar, sale igual desde la dirección de prueba de Resend",

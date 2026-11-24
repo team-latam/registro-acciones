@@ -252,9 +252,10 @@ quiere, cuándo y de qué. Los diseños de los correos están en
   horaria del aparato), solo si a esa persona le pueden llegar correos.
   `prefs_de_correo()` los devuelve con lo de fábrica (español, Argentina)
   si faltan o no son válidos.
-- Las respuestas a un aviso siguen yendo a `benny@team-latam.com`
-  (`reply_to`): el usuario eligió dejarlo así.
-  (El mail de bienvenida de Brújula, en cambio, sale **sin** `reply_to`: pedido del usuario, 24/11/2026.)
+- **Ningún correo lleva `reply_to`** (avisos, resúmenes y el mail de bienvenida de Brújula): el
+  usuario vio «reply-to benny@…» en el correo y pidió que solo figure `info@team-latam.com`
+  (24/11/2026). Hasta ese día los avisos y resúmenes llevaban `reply_to: benny@team-latam.com`
+  (`RESPONDER_A` y la variable `AVISOS_RESPONDER_A`, ya sin uso). Si alguien contesta, le llega a `info@`.
 
 ---
 
