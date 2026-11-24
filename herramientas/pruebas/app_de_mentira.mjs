@@ -247,8 +247,14 @@ export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion
   }, [base, sinSesion ? null : { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || "", !!dark, falla || ""]);
   if(cpu && cpu > 1){ const cdp = await p.context().newCDPSession(p); await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpu }); }
   if(iniciar) await p.addInitScript(iniciar);
+  // Esperar a que la página quede quieta (sin cambios durante 250 ms y con la app dibujada) en vez de dormir 1,2 s a ciegas:
+  // la app está lista a los ~0,6 s. Con el procesador frenado (`cpu`) o sin sesión se mantiene la espera fija de siempre, y
+  // PAUSA_FIJA=1 la devuelve para todo (por si una prueba nueva depende de ese tiempo).
+  const quieta = !cpu && !sinSesion && !process.env.PAUSA_FIJA;
+  if(quieta) await p.addInitScript(() => { window.__ultMut = performance.now(); new MutationObserver(() => { window.__ultMut = performance.now(); }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true }); });
   await p.goto((pagina || PAGINA) + query);
-  await p.waitForTimeout(1200);
+  if(quieta) await p.waitForFunction(() => document.querySelector("#viewRoot") && document.querySelector("#viewRoot").children.length > 0 && performance.now() - window.__ultMut > 250, null, { timeout: 15000, polling: 50 });
+  else await p.waitForTimeout(1200);
   return { p, errores };
 }
 
