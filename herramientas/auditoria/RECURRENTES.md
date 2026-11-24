@@ -192,6 +192,15 @@ y etiquetas de 11 px en hebreo. *Por qué:* la regla estaba escrita en el README
 `herramientas/pruebas/barrido.mjs` compara el menú de Administración con las paradas y falla si falta una. *Regla:* en el celular chico (320 px) se mira también con **letra ancha** (`ancha: true` en `barrer`: lo que entra justo con la letra de este sandbox no entra con Inter, la de GitHub y la del celular; el 24/11/2026 se cortaron así las solapas de Problemas). Una pantalla o ventana nueva se suma a `recorrerApp`
 **en la misma tanda** (con sus datos de mentira si lee algo de afuera: `brujulaDeMentira`); la prueba avisa si es del menú de Administración, y a mano si no (el menú de usuario, las ventanas).
 
+**Un botón flotante que está al final del HTML** (24/11/2026; docs/AUDITORIA.md, H10). El «+» de crear estaba **después de toda la lista**: con el teclado, 115 Tab
+para llegar desde que se abre la página (con 1.500 actividades, más); sus acciones cerradas se veían invisibles pero con Tab, y al abrir el menú con Enter el foco no
+entraba. *Por qué:* un botón con `position:fixed` se ve igual en cualquier lugar del HTML, y por eso se lo deja «donde cayó»; el orden del teclado sale del HTML, no de la
+pantalla. *Se detecta:* `teclado_flujo_test` (cuántos Tab hacen falta, que lo cerrado no se alcance, crear de punta a punta sin mouse) y la revisión `alcanzable` de los
+barridos (un control que solo responde al mouse). *Regla:* **lo que está siempre a mano en la pantalla (botón flotante, barra fija) va antes del contenido en el HTML**, y
+se acomoda a la vista con CSS (`column-reverse`, `position`); lo que se abre y se cierra se oculta con `visibility:hidden` (no solo con `opacity:0` y `pointer-events:none`,
+que lo dejan con Tab); al abrir con el teclado el foco entra al menú, al salir con Tab se cierra y al cerrar vuelve a quien lo abrió. Un control que se toca con el mouse y no
+tiene forma de usarse con el teclado se anota en `SOLO_MOUSE_CONOCIDO` de `barrido.mjs` **con el motivo** (hoy dos: `cal-new` y `fp-cerrar`), nunca en silencio.
+
 ## GitHub
 
 **Las acciones de los workflows quedan viejas sin que nadie se entere.**

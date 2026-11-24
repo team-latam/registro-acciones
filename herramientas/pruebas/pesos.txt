@@ -66,6 +66,7 @@ foco_confirmar_test.mjs 4
 forma_test.mjs 1
 formatos_test.mjs 1
 gastos_analisis_test.mjs 8
+gastos_cuenta_test.mjs 6
 gastos_estadisticas_test.mjs 6
 gastos_finanzas_test.mjs 7
 gastos_importar_lector_test.mjs 1

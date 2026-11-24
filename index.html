@@ -31378,7 +31378,7 @@ const BRUJULA_ACCIONES = {
   "bj-marca-planilla": async el => { const s = bj.form.planillas, id = el.dataset.id; if(el.checked) s.add(id); else s.delete(id); },
   "bj-activa": async () => { bj.form.activa = !bj.form.activa; render(); },
   "bj-carpeta-guardar": async () => {
-    const f = bj.form; if(bj.ocupado || !f.res || f.res.caso !== "ok") return;
+    const f = bj.form; if(bj.ocupado || !f.res || f.res.caso !== "ok" || !f.nombre.trim()) return;
     bj.ocupado = true; render();
     try{
       await store.brujula.carpetaNueva({ id: f.res.id, nombre: f.nombre.trim(), nombreDrive: f.res.nombre, orden: bjCarpetas().length + 1, activa: f.activa, planillas: [...f.planillas] });
@@ -31394,7 +31394,7 @@ const BRUJULA_ACCIONES = {
     bj.vista = "carpeta-editar"; render(); scrollToTop();
   },
   "bj-carpeta-cambiar": async () => {
-    const f = bj.form; if(bj.ocupado) return;
+    const f = bj.form; if(bj.ocupado || !f.nombre.trim()) return;
     bj.ocupado = true; render();
     try{
       await store.brujula.carpetaCambiar(f.id, { nombre: f.nombre.trim(), activa: f.activa, planillas: [...f.planillas] });
@@ -31430,7 +31430,7 @@ const BRUJULA_ACCIONES = {
     bj.form = { id: p.id, nombre: p.nombre, carpetas: new Set(bj.cat.enPaquete.filter(x => x.paquete === p.id).map(x => x.carpeta)) }; bj.vista = "paquete"; render();
   },
   "bj-paquete-guardar": async () => {
-    const f = bj.form; if(bj.ocupado) return;
+    const f = bj.form; if(bj.ocupado || !f.nombre.trim()) return;
     bj.ocupado = true; render();
     try{ await store.brujula.paqueteGuardar({ id: f.id, nombre: f.nombre.trim(), orden: bj.cat.paquetes.length + 1, carpetas: [...f.carpetas] }); bj.vista = "lista"; bj.form = {}; await bjCargar(); }
     catch(err){ console.warn("No se pudo guardar el paquete:", err && err.message); }
@@ -31473,6 +31473,13 @@ document.addEventListener("input", e => {
     bj.form[k.slice(2)] = el.value;
     // Los botones que dependen de lo escrito se prenden o se apagan en el lugar.
     if(k === "f.confirmar"){ const c = bjCarpeta(bj.form.id), b = document.getElementById("bjSacarTodos"); if(b && c) b.disabled = bj.ocupado || el.value.trim() !== c.nombre.trim(); return; }
+    // «Agregar», «Guardar» (carpeta) y «Guardar» (paquete) dependen del nombre: antes quedaban prendidos con el nombre vacío y la base lo rechazaba
+    // (la pantalla decía «No se pudo leer Drive», que no era el motivo; auditoría del 24/11/2026, rompe-código).
+    if(k === "f.nombre" && (bj.vista === "carpeta-nueva" || bj.vista === "carpeta-editar" || bj.vista === "paquete")){
+      const b = document.querySelector('[data-action="bj-carpeta-guardar"], [data-action="bj-carpeta-cambiar"], [data-action="bj-paquete-guardar"]');
+      if(b) b.disabled = bj.ocupado || !el.value.trim() || (bj.vista === "carpeta-nueva" && !(bj.form.res && bj.form.res.caso === "ok"));
+      return;
+    }
     if(bj.vista === "invitar"){ clearTimeout(bj._t); bj._t = setTimeout(() => { const a = document.activeElement, id = a && a.dataset && a.dataset.bj, pos = a && a.selectionStart; render(); const n = id && document.querySelector(`[data-bj="${id}"]`); if(n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(_){} } }, 300); }
   }
 });

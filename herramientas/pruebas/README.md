@@ -73,7 +73,10 @@ INDEX=/tmp/roto.html ./herramientas/pruebas/correr.sh
   hebreo, y la letra del CSS), `barrido_celular_test.mjs` (celular oscuro, más la Vista Año) y `barrido_variantes_test.mjs` (celular
   chico y celular en hebreo): ~135 s de trabajo, casi la mitad, sin sacar ni una comprobación (cada rotura de prueba que detectaba
   una de las cinco la sigue detectando). **Una revisión nueva de «todas las pantallas» se escribe como una fábrica más de
-  `barrido.mjs`** (`{ paso(p, parada), fin(eq) }`), no como otra prueba con su propio `recorrerApp`. Revisiones de hoy: recortes, selectores, letra, árbol de accesibilidad, hebreo, **selección en oscuro** (el elegido se distingue del que no, 3 a 1) y **cobertura** (cada sección del menú de Administración tiene su parada).
+  `barrido.mjs`** (`{ paso(p, parada), fin(eq) }`), no como otra prueba con su propio `recorrerApp`. Revisiones de hoy: recortes, selectores, letra, árbol de accesibilidad, hebreo, **selección en oscuro** (el elegido se distingue del que no, 3 a 1), **cobertura** (cada sección del menú de Administración tiene su parada) y **alcanzable** (un control que se usa con el mouse se alcanza también con el teclado; las excepciones, anotadas con su motivo en `SOLO_MOUSE_CONOCIDO`).
+- **Usar la app solo con el teclado (24/11/2026).** `teclado_flujo_test.mjs` crea **un evento y una actividad de punta a punta con solo Tab, escribir y Enter**, mide
+  cuántos Tab hacen falta para llegar al «+» de crear (11; eran 115, porque estaba al final del HTML), que lo cerrado no se alcance, que Escape cierre y que el
+  foco no se pierda nunca. Las de antes (`teclado_autocompletar_test` y compañía) cuidan cada desplegable por separado; esta cuida el camino entero.
 - **Cuánto vale una prueba que da verde (24/11/2026).** Una prueba nueva tiene que fallar contra el código roto (ver CLAUDE.md); para medirlo
   en serio sobre un tramo, `node herramientas/auditoria/herramientas/mutaciones.mjs --desde N --hasta M --prueba nombre` (el rompe-código)
   le hace roturas chicas al `index.html` y cuenta cuántas detecta la prueba; lo que sobrevive es una lista de lugares a mirar. Tarda
