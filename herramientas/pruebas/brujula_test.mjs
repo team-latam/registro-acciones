@@ -62,6 +62,9 @@ async function abrir({ lang, viewport, guion = {}, datos = LEIDO, estado = 200, 
 const textos = (p, sel) => p.$$eval(sel, l => l.map(e => e.innerText.replace(/\s+/g, " ").trim()));
 const filas = p => p.$$eval(".bj-fila:not(.bj-cab)", l => l.map(f => f.querySelector(".bj-nombre").innerText.trim()));
 const clic = async (p, sel, ms = 350) => { await p.click(sel); await p.waitForTimeout(ms); };
+// Espera de verdad (hasta 8 s) a que se cumpla algo que la app hace DESPUÉS de apretar un botón (varias invitaciones una tras otra):
+// con una pausa fija, el reloj más lento de GitHub (24/11/2026, 3 comprobaciones de «Invitar») miraba a mitad de camino.
+const hastaQue = async (p, f) => { const fin = Date.now() + 8000; while(Date.now() < fin && !(await f())) await p.dormir(100); };
 const confirmar = async p => { await p.click("#confirmOk"); await p.waitForTimeout(500); };
 const tabla = (p, t) => p.evaluate(t => window.__sb.tablas[t], t);
 
@@ -377,6 +380,7 @@ const cerrar = c => ({ filas: c.filas.map(f => ({ ...f, estado: "cerrada" })) })
   await p.waitForTimeout(500);
   await p.uncheck(`[data-action="bj-carpeta-marcar"][data-id="${C1}"]`); await p.waitForTimeout(250);
   await clic(p, '[data-action="bj-invitar"]', 700);
+  await hastaQue(p, async () => (await textos(p, ".bj-form h3"))[0] === "Listo en 2 de 3");
   const d = pedidos.filter(x => x.accion === "dar");
   eq("una lista pegada: una invitación por cada línea con un correo (las demás se ignoran), con su nombre si lo trae",
      d.map(x => [x.persona.correo, x.persona.nombre]), [["ana@example.org", "Ana Pérez"], ["malo@example.org", ""], ["luis@example.org", "Luis Sosa"]]);
