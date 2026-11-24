@@ -254,6 +254,7 @@ quiere, cuándo y de qué. Los diseños de los correos están en
   si faltan o no son válidos.
 - Las respuestas a un aviso siguen yendo a `benny@team-latam.com`
   (`reply_to`): el usuario eligió dejarlo así.
+  (El mail de bienvenida de Brújula, en cambio, sale **sin** `reply_to`: pedido del usuario, 24/11/2026.)
 
 ---
 

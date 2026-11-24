@@ -636,15 +636,19 @@
   .bj-barra .bj-btn.claro{ background:rgba(255,255,255,.16); color:#fff; }
   .bj-barra .bj-link{ color:#bfe9ef; margin-inline-start:auto; }
   .bj-vacio{ padding:22px; text-align:center; color:var(--text-muted); font-size:13.5px; }
-  .bj-fila{ display:grid; grid-template-columns:32px minmax(220px,1fr) calc(var(--bj-n, 7) * 64px) 44px; align-items:center; gap:10px; padding:10px 14px; border-top:1px solid var(--border); }
+  .bj-fila{ display:grid; grid-template-columns:32px minmax(230px,1fr) minmax(calc(var(--bj-n, 7) * 72px), 2.2fr) 44px; align-items:center; gap:8px; padding:8px 10px; border-top:1px solid var(--border); }
   .bj-fila.sel{ background:var(--celeste-soft); }
-  .bj-cab{ border-top:none; font-size:12px; font-weight:700; color:var(--text-muted); }
+  .bj-cab{ border-top:none; font-size:12px; font-weight:700; color:var(--text-muted); align-items:center; }
   .bj-tabla{ overflow-x:auto; }
-  .bj-celdas{ display:grid; grid-template-columns:repeat(var(--bj-n, 7), 64px); }
+  .bj-celdas{ display:grid; grid-template-columns:repeat(var(--bj-n, 7), minmax(0, 1fr)); }
   .bj-c, .bj-c-cab{ text-align:center; }
   .bj-c{ font-weight:800; font-size:15px; }
   .bj-c.si{ color:var(--ok-text); } .bj-c.no{ color:var(--text-muted); } .bj-c.ed{ color:var(--link); }
-  .bj-c-cab{ font-size:12px; line-height:1.2; overflow-wrap:anywhere; padding:0 2px; }
+  /* El título de una columna, en horizontal: el ícono de la carpeta (el emoji de su nombre) arriba y el nombre debajo, centrado y
+     partido solo entre palabras. Las columnas se reparten el ancho que sobra (la de «Persona» no se lo queda todo). */
+  .bj-c-cab{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:0 2px; line-height:1.25; }
+  .bj-c-n{ min-width:0; max-width:100%; font-size:12px; text-wrap:balance; overflow-wrap:break-word; }
+  .bj-c-ic{ flex:none; height:20px; font-size:16px; line-height:20px; }
   .bj-puntos{ display:none; gap:3px; }
   .bj-puntos i{ width:9px; height:9px; border-radius:50%; border:1.5px solid var(--text-muted); display:block; }
   .bj-puntos i.on{ background:var(--ok-text); border-color:var(--ok-text); }
@@ -657,6 +661,13 @@
   .bj-nombre{ border:none; background:none; padding:0; font:inherit; font-size:13.5px; font-weight:700; color:var(--text); cursor:pointer; text-align:start; min-height:24px; }
   .bj-mail{ font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
   .bj-chips{ display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  /* En la lista cada persona ocupa dos líneas, ninguna se parte: el nombre con sus etiquetas al lado y debajo el correo; lo que no
+     entra se corta con «…» (lo completo, al apoyar el mouse). */
+  .bj-fila .bj-datos{ display:flex; flex-direction:column; gap:1px; }
+  .bj-l1{ display:flex; align-items:center; gap:6px; min-width:0; }
+  .bj-l1 .bj-nombre{ flex:0 1 auto; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bj-l1 .bj-chips{ flex:none; margin:0; flex-wrap:nowrap; }
+  .bj-fila .bj-mail{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .bj-chip, .bj-tag{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--chip-bg); color:var(--ink); }
   .bj-tag.todo{ background:var(--ok-bg); color:var(--ok-text); }
   .bj-tag.parc, .bj-tag.pend{ background:var(--warn-bg); color:var(--warn-text); }
@@ -680,6 +691,8 @@
   .bj-campos{ border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
   .bj-campos legend{ font-size:12.5px; font-weight:800; padding:0 6px; }
   .bj-campos label, .bj-campo{ display:flex; flex-direction:column; gap:5px; font-size:12.5px; font-weight:700; }
+  .bj-combo{ position:relative; display:flex; flex-direction:column; gap:5px; }
+  .bj-combo .autocomplete-option{ font-size:14px; min-height:44px; }
   .bj-campo.fila{ flex-direction:row; justify-content:space-between; align-items:center; min-height:44px; }
   .bj-ancho{ grid-column:1 / -1; }
   .bj-form input[type=text], .bj-form input[type=email], .bj-form input[type=url], .bj-form textarea{ border:1px solid var(--border); border-radius:10px; padding:11px 12px; font:inherit; font-size:14px; background:var(--card); color:var(--text); min-height:44px; }
@@ -715,8 +728,9 @@
   .bj-res-l{ list-style:none; margin:6px 0 0; padding:0; display:grid; gap:4px; font-size:13.5px; }
   .bj-res-l .ok > span:first-child{ color:var(--ok-text); font-weight:800; }
   .bj-res-l .mal > span:first-child{ color:var(--danger-fg); font-weight:800; }
+  @media (min-width:761px) and (max-width:1180px){ .bj-fila .bj-av{ display:none; } .bj-fila{ grid-template-columns:32px minmax(190px,1fr) minmax(calc(var(--bj-n, 7) * 72px), 2.2fr) 44px; } }
   @media (max-width:760px){
-    .bj-celdas, .bj-cab{ display:none; }
+    .bj-celdas{ display:none; }
     .bj-puntos{ display:flex; }
     .bj-fila{ grid-template-columns:32px minmax(0,1fr) 44px; }
     .bj-puntos{ grid-column:2; }
@@ -12900,6 +12914,7 @@ function render(){
   syncDateFieldOpenState();
   syncOccPopState();
   syncRecurPopState();
+  bjMarcarTodas();
   if(focusSel){
     let el = null;
     try{ el = document.querySelector(focusSel); }catch(e){}
@@ -30795,9 +30810,9 @@ function bjFila(p){
   return `<div class="bj-fila${sel ? " sel" : ""}" role="row" style="--bj-n:${act.length}">
     <input type="checkbox" class="bj-check" data-action="bj-sel" data-correo="${esc(p.correo)}" ${sel ? "checked" : ""} aria-label="${esc(t("Elegir a {n}","Select {n}","Escolher {n}","בחירת {n}", { n: p.nombre || p.correo }))}">
     <div class="bj-quien"><span class="bj-av" aria-hidden="true">${esc(bjIni(p))}</span>
-      <div class="bj-datos"><button type="button" class="bj-nombre" data-action="bj-persona" data-correo="${esc(p.correo)}" dir="auto">${esc(p.nombre || p.correo)}</button>
-        <div class="bj-mail" dir="ltr">${esc(p.correo)}</div>
-        <div class="bj-chips">${lang ? `<span class="bj-chip">${lang}</span>` : ""}<span class="bj-tag ${e}">${esc(bjEtiqueta(p, e))}</span></div></div></div>
+      <div class="bj-datos"><div class="bj-l1"><button type="button" class="bj-nombre" data-action="bj-persona" data-correo="${esc(p.correo)}" dir="auto" title="${esc(p.nombre || p.correo)}">${esc(p.nombre || p.correo)}</button>
+          <span class="bj-chips">${lang ? `<span class="bj-chip">${lang}</span>` : ""}<span class="bj-tag ${e}">${esc(bjEtiqueta(p, e))}</span></span></div>
+        <div class="bj-mail" dir="ltr" title="${esc(p.correo)}">${esc(p.correo)}</div></div></div>
     <div class="bj-celdas">${act.map(c => bjCelda(p, c)).join("")}</div>
     <div class="bj-puntos" aria-hidden="true">${act.map(c => `<i class="${p.carpetas[c.id] ? "on" : ""}"></i>`).join("")}</div>
     <button type="button" class="bj-mas-btn" data-action="bj-persona" data-correo="${esc(p.correo)}" aria-label="${esc(t("Gestionar a {n}","Manage {n}","Gerenciar {n}","ניהול של {n}", { n: p.nombre || p.correo }))}">⋯</button>
@@ -30807,13 +30822,24 @@ function bjHtmlLista(){
   const act = bjActivas(), todas = bjFiltradas(), lista = todas.slice(0, bj.mas);
   if(!bjPersonas().length) return `<div class="bj-vacio">${esc(bj.error ? bjMensajeDeError(bj.error) : t("Todavía no hay nadie.","Nobody yet.","Ainda não há ninguém.","עדיין אין אף אחד."))}</div>`;
   if(!todas.length) return `<div class="bj-vacio">${esc(t("Nadie coincide.","No matches.","Ninguém corresponde.","אין התאמות."))}</div>`;
-  return `<div class="bj-tabla" role="table"><div class="bj-fila bj-cab" role="row" style="--bj-n:${act.length}"><span></span><span>${esc(t("Persona","Person","Pessoa","אדם"))}</span>
-    <div class="bj-celdas">${act.map(c => `<span class="bj-c-cab" title="${esc(c.nombre)}">${esc(c.nombre)}</span>`).join("")}</div><span></span></div>
+  const marcadas = todas.filter(p => bj.sel.has(p.correo)).length;
+  return `<div class="bj-tabla" role="table"><div class="bj-fila bj-cab" role="row" style="--bj-n:${act.length}">
+    <input type="checkbox" class="bj-check" data-action="bj-sel-todas" data-parcial="${marcadas > 0 && marcadas < todas.length ? 1 : 0}" ${marcadas && marcadas === todas.length ? "checked" : ""} aria-label="${esc(t("Elegir a todas las personas de la lista","Select everyone in the list","Escolher todas as pessoas da lista","בחירת כל האנשים ברשימה"))}"><span>${esc(t("Persona","Person","Pessoa","אדם"))}</span>
+    <div class="bj-celdas">${act.map(bjTituloColumna).join("")}</div><span></span></div>
     ${lista.map(bjFila).join("")}</div>
     <div class="bj-pie"><span>${esc(t("Mostrando {a} de {b}","Showing {a} of {b}","Mostrando {a} de {b}","מוצגים {a} מתוך {b}", { a: lista.length, b: todas.length }))}</span>
     ${todas.length > lista.length ? `<button type="button" class="btn-text-add" data-action="bj-ver-mas">${esc(t("Ver más","See more","Ver mais","עוד"))}</button>` : ""}</div>`;
 }
-function bjRepintarLista(){ const el = document.getElementById("bjLista"); if(el) el.innerHTML = bjHtmlLista(); const b = document.getElementById("bjBarra"); if(b) b.innerHTML = bjHtmlBarra(); }
+function bjRepintarLista(){ const el = document.getElementById("bjLista"); if(el) el.innerHTML = bjHtmlLista(); const b = document.getElementById("bjBarra"); if(b) b.innerHTML = bjHtmlBarra(); bjMarcarTodas(); }
+// El tilde de «elegir a todas» queda a medias cuando se eligió a algunas (eso solo se puede poner con código).
+function bjMarcarTodas(){ const x = document.querySelector('#bjLista [data-action="bj-sel-todas"]'); if(x) x.indeterminate = x.dataset.parcial === "1"; }
+// El título de una columna: el ícono de la carpeta (el emoji de su nombre) arriba y el nombre en horizontal debajo (el nombre
+// completo, al apoyar el mouse).
+function bjTituloColumna(c){
+  const ic = (/\p{Extended_Pictographic}(?:[\uFE0F\u{1F3FB}-\u{1F3FF}]|\u200D\p{Extended_Pictographic})*/u.exec(c.nombre) || [""])[0];
+  const txt = c.nombre.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, "").replace(/\s+/g, " ").trim() || c.nombre;
+  return `<span class="bj-c-cab" role="columnheader" title="${esc(c.nombre)}" aria-label="${esc(c.nombre)}"><span class="bj-c-ic" aria-hidden="true">${esc(ic)}</span><span class="bj-c-n" dir="auto" aria-hidden="true">${esc(txt)}</span></span>`;
+}
 // ¿Ninguna de esas personas tiene carpetas? Entonces no hay acceso que quitar: lo que se hace es sacarlas de la lista.
 const bjSoloLista = correos => correos.length > 0 && correos.every(c => { const p = bjDe(c); return p && !bjTieneLector(p); });
 function bjHtmlBarra(){
@@ -30920,6 +30946,80 @@ function bjLeerLista(texto, idioma){
   }
   return salida;
 }
+/* ---------- La comunidad: el buscador de lugares de siempre ----------
+   El campo era la lista nativa del navegador con todas las comunidades de las planillas (gigante, y dejaba escribir «otro» en
+   minúscula, que la lista cerrada de la planilla no reconoce). Ahora es el mismo autocompletar que el resto de Toldot
+   (.autocomplete-list, ocho como máximo, flechas y Enter): las ciudades de toda LatAm que ya tenemos (y sus países) más «Otro».
+   Lo que se guarda se escribe como la planilla ya lo escribe: «Buenos Aires (CABA)» queda «Buenos Aires» si la planilla ya usa
+   ese nombre; «Otro» es siempre «Otro». */
+let bjComCache = null;
+function bjOpcionesComunidad(){
+  const lang = currentLang();
+  if(bjComCache && bjComCache.lang === lang) return bjComCache.items;
+  const items = [];
+  COUNTRIES.forEach(c => {
+    items.push({ valor: c.name, etiqueta: countryLabel(c.name), icono: "🏳️", norm: normalize(`${countryLabel(c.name)} ${c.name}`) });
+    (CITY_PRESETS[c.name] || []).forEach(ci => items.push({ valor: ci.name, etiqueta: `${cityLabel(c.name, ci.name)}, ${countryLabel(c.name)}`, icono: "📍",
+      norm: normalize(`${cityLabel(c.name, ci.name)} ${ci.name} ${countryLabel(c.name)} ${c.name}`) }));
+  });
+  items.push({ valor: "Otro", etiqueta: t("Otro","Other","Outro","אחר"), icono: "✨", norm: normalize("otro other outro אחר") });
+  bjComCache = { lang, items };
+  return items;
+}
+const bjSinParentesis = x => String(x || "").replace(/\s*\([^)]*\)\s*/g, " ").trim();
+// Cómo la escribe la planilla: si ya hay una comunidad con ese nombre (sin mirar tildes, mayúsculas ni lo que va entre paréntesis), esa.
+function bjComoLaPlanilla(valor){
+  if(valor === "Otro") return "Otro";
+  const q = [normalize(valor), normalize(bjSinParentesis(valor))];
+  const hay = bjTodos().map(p => p.comunidad).filter(Boolean).find(c => q.includes(normalize(c)));
+  return hay || valor;
+}
+// Lo escrito ya es una opción (aunque no se haya tocado la lista)? → su valor; vacío → ""; otra cosa → null.
+function bjComunidadResuelta(texto){
+  const x = String(texto || "").trim();
+  if(!x) return "";
+  const q = normalize(x);
+  const op = bjOpcionesComunidad().find(o => normalize(o.valor) === q || normalize(bjSinParentesis(o.valor)) === q || normalize(o.etiqueta) === q);
+  if(op) return bjComoLaPlanilla(op.valor);
+  const ya = bjTodos().map(p => p.comunidad).filter(Boolean).find(c => normalize(c) === q);
+  return ya || null;
+}
+// Lo que se ofrece mientras se escribe: ocho como máximo; si no hay nada, «Otro».
+function bjCoincidenciasComunidad(texto){
+  const q = normalize(texto);
+  if(!q) return [];
+  const ops = bjOpcionesComunidad(), otro = ops[ops.length - 1];
+  const m = ops.filter(o => o.norm.includes(q)).slice(0, 8);
+  return m.length ? m : [otro];
+}
+function bjHtmlComunidades(){
+  const f = bj.form, m = f.comOpen ? bjCoincidenciasComunidad(f.comunidad) : [];
+  if(!m.length) return "";
+  const sin = !bjOpcionesComunidad().some(o => o.norm.includes(normalize(f.comunidad)));
+  return `<div class="autocomplete-list" id="bjComunidadOpciones" role="listbox">${sin ? `<div class="autocomplete-empty">${esc(t("Sin resultados","No results","Sem resultados","אין תוצאות"))}</div>` : ""}${m.map((o, i) => `
+    <button type="button" role="option" aria-selected="${i === f.comIdx}" class="autocomplete-option${i === f.comIdx ? " active" : ""}" data-action="bj-comunidad-elegir" data-idx="${i}"><span aria-hidden="true">${o.icono}</span> ${esc(o.etiqueta)}</button>`).join("")}</div>`;
+}
+const bjPuedeInvitar = f => {
+  const personas = f.modo === "una" ? ((f.correo || "").trim() ? 1 : 0) : bjLeerLista(f.lista, f.idioma).length;
+  return f.carpetas.size > 0 && personas > 0 && !bj.ocupado && (f.modo !== "una" || bjComunidadResuelta(f.comunidad) !== null);
+};
+// Se repinta en el lugar (sin volver a dibujar el formulario, así no se pierde el cursor).
+function bjActualizarComunidad(){
+  const f = bj.form, lista = document.getElementById("bjComunidadLista"), inp = document.getElementById("bjComunidad");
+  if(!lista || !inp) return;
+  lista.innerHTML = bjHtmlComunidades();
+  inp.setAttribute("aria-expanded", String(!!lista.firstElementChild));
+  const aviso = document.getElementById("bjComunidadAviso"); if(aviso) aviso.hidden = bjComunidadResuelta(f.comunidad) !== null || !!f.comOpen;
+  const b = document.querySelector('[data-action="bj-invitar"]'); if(b) b.disabled = !bjPuedeInvitar(f);
+}
+function bjElegirComunidad(i){
+  const f = bj.form, o = bjCoincidenciasComunidad(f.comunidad)[i]; if(!o) return;
+  f.comunidad = bjComoLaPlanilla(o.valor); f.comOpen = false; f.comIdx = 0;
+  const inp = document.getElementById("bjComunidad"); if(inp) inp.value = f.comunidad;
+  bjActualizarComunidad();
+  if(inp) inp.focus();
+}
+
 function bjVistaInvitar(){
   const f = bjFormInvitar(), act = bjActivas();
   const pq = bj.cat.paquetes;
@@ -30937,8 +31037,9 @@ function bjVistaInvitar(){
         <label>${esc(t("Correo","Email","E-mail","מייל"))}<input type="email" data-bj="f.correo" value="${esc(f.correo)}" autocomplete="off" dir="ltr"></label>`
       : `<label class="bj-ancho">${esc(t("Un nombre y un correo por renglón","One name and email per line","Um nome e e-mail por linha","שם ומייל בכל שורה"))}<textarea rows="6" data-bj="f.lista" dir="auto" placeholder="Ana Pérez, ana@ejemplo.org">${esc(f.lista)}</textarea></label>`}
       <div class="bj-campo"><span id="bjIdiomaT">${esc(t("Idioma del mail","Email language","Idioma do e-mail","שפת המייל"))}</span><div class="bj-seg" role="radiogroup" aria-labelledby="bjIdiomaT">${BJ_IDIOMAS.map(x => `<button type="button" role="radio" aria-checked="${f.idioma === x[0]}" class="${f.idioma === x[0] ? "active" : ""}" data-action="bj-idioma" data-key="${x[0]}">${esc(t(x[1], x[2], x[3], x[4]))}</button>`).join("")}</div></div>
-      ${f.modo === "una" ? `<label>${esc(t("Comunidad","Community","Comunidade","קהילה"))}<input type="text" list="bjComunidades" data-bj="f.comunidad" value="${esc(f.comunidad)}" autocomplete="off"></label>
-        <datalist id="bjComunidades">${[...new Set(bjPersonas().map(p => p.comunidad).filter(Boolean))].sort().map(c => `<option value="${esc(c)}">`).join("")}</datalist>` : ""}
+      ${f.modo === "una" ? `<div class="bj-combo"><label>${esc(t("Comunidad","Community","Comunidade","קהילה"))}<input type="text" id="bjComunidad" role="combobox" aria-expanded="false" aria-controls="bjComunidadOpciones" aria-autocomplete="list" data-bj="f.comunidad" value="${esc(f.comunidad)}" autocomplete="off"></label>
+        <div id="bjComunidadLista">${bjHtmlComunidades()}</div>
+        <div class="bj-mail" id="bjComunidadAviso" role="status"${bjComunidadResuelta(f.comunidad) !== null || f.comOpen ? " hidden" : ""}>${esc(t("Elegí una opción de la lista.","Pick an option from the list.","Escolha uma opção da lista.","בחרו אפשרות מהרשימה."))}</div></div>` : ""}
       ${yaN ? `<div class="bj-nota ancho">${esc(t("Ya tiene {n} carpetas.","Already has {n} folders.","Já tem {n} pastas.","כבר יש לו/ה {n} תיקיות.", { n: yaN }))}</div>` : ""}</fieldset>
     <fieldset class="bj-campos"><legend>${esc(t("Carpetas","Folders","Pastas","תיקיות"))}</legend>
       <div class="bj-radios" role="radiogroup">${pq.map(p => radio(p.id, p.nombre, t("{n} carpetas","{n} folders","{n} pastas","{n} תיקיות", { n: bj.cat.enPaquete.filter(x => x.paquete === p.id).length }))).join("")}${radio("medida", t("A medida","Custom","Sob medida","מותאם"), t("Elegir carpetas","Choose folders","Escolher pastas","בחירת תיקיות"))}</div>
@@ -30946,7 +31047,7 @@ function bjVistaInvitar(){
     <div class="bj-campo fila"><span>${esc(t("Mail de bienvenida","Welcome email","E-mail de boas-vindas","מייל ברוכים הבאים"))}</span><button type="button" role="switch" aria-checked="${f.mail}" class="bj-interruptor${f.mail ? " on" : ""}" data-action="bj-mail" aria-label="${esc(t("Mail de bienvenida","Welcome email","E-mail de boas-vindas","מייל ברוכים הבאים"))}"><i></i></button></div>
     <div class="bj-fin"><span class="bj-mail">${esc(n === 1 ? t("1 carpeta","1 folder","1 pasta","תיקייה אחת") : t("{n} carpetas","{n} folders","{n} pastas","{n} תיקיות", { n }))}${f.mail ? ` · ${esc(t("con mail","with email","com e-mail","עם מייל"))}` : ` · ${esc(t("sin mail","no email","sem e-mail","בלי מייל"))}`}</span>
       <button type="button" class="bj-btn claro" data-action="bj-volver">${esc(t("Cancelar","Cancel","Cancelar","ביטול"))}</button>
-      <button type="button" class="bj-btn" data-action="bj-invitar"${!n || !personas.length || bj.ocupado ? " disabled" : ""}>${esc(bj.ocupado ? t("Trabajando…","Working…","Trabalhando…","עובד…") : t("Invitar","Invite","Convidar","הזמנה"))}</button></div></div>`;
+      <button type="button" class="bj-btn" data-action="bj-invitar"${bjPuedeInvitar(f) ? "" : " disabled"}>${esc(bj.ocupado ? t("Trabajando…","Working…","Trabalhando…","עובד…") : t("Invitar","Invite","Convidar","הזמנה"))}</button></div></div>`;
 }
 
 /* ---------- Agregar o quitar carpetas a varias personas ---------- */
@@ -31108,6 +31209,10 @@ const BRUJULA_ACCIONES = {
   "bj-recargar": async () => { await bjCargar(); },
   "bj-filtro": async el => { bj.filtro = el.dataset.key; bj.mas = 50; bj.sel.clear(); render(); },
   "bj-ver-mas": async () => { bj.mas += 50; bjRepintarLista(); },
+  "bj-sel-todas": async el => {
+    for(const p of bjFiltradas()){ if(el.checked) bj.sel.add(p.correo); else bj.sel.delete(p.correo); }
+    bjRepintarLista();
+  },
   "bj-sel": async el => { const c = el.dataset.correo; if(el.checked) bj.sel.add(c); else bj.sel.delete(c); bjRepintarLista(); },
   "bj-limpiar": async () => { bj.sel.clear(); render(); },
   "bj-volver": async () => { bj.vista = "lista"; bj.form = {}; bj.resultado = null; render(); },
@@ -31124,9 +31229,10 @@ const BRUJULA_ACCIONES = {
   "bj-carpeta-marcar": async el => { const f = bj.form, id = el.dataset.id; if(el.checked) f.carpetas.add(id); else f.carpetas.delete(id); if(bj.vista === "invitar") f.paquete = "medida"; render(); },
   "bj-invitar": async () => {
     const f = bj.form;
-    const personas = f.modo === "una" ? [{ correo: f.correo.trim().toLowerCase(), nombre: f.nombre.trim(), idioma: f.idioma, comunidad: f.comunidad.trim() }] : bjLeerLista(f.lista, f.idioma);
+    const personas = f.modo === "una" ? [{ correo: f.correo.trim().toLowerCase(), nombre: f.nombre.trim(), idioma: f.idioma, comunidad: bjComunidadResuelta(f.comunidad) || "" }] : bjLeerLista(f.lista, f.idioma);
     await bjEjecutar("dar", personas, [...f.carpetas], { mail: f.mail });
   },
+  "bj-comunidad-elegir": async el => { bjElegirComunidad(Number(el.dataset.idx)); },
   "bj-dar-pendientes": async () => {
     const pend = bjPendientes(), pq = bj.cat.paquetes[0];
     const ids = pq ? bj.cat.enPaquete.filter(x => x.paquete === pq.id).map(x => x.carpeta) : bjActivas().map(c => c.id);
@@ -31279,12 +31385,31 @@ document.addEventListener("input", e => {
   if(k === "buscar"){ bj.buscar = el.value; bj.mas = 50; bjRepintarLista(); return; }
   if(k === "planillaLink"){ bj.planillaLink = el.value; return; }
   if(k === "linkCarpeta"){ bj.form.linkCarpeta = el.value; return; }
+  if(k === "f.comunidad"){ bj.form.comunidad = el.value; bj.form.comOpen = true; bj.form.comIdx = 0; bjActualizarComunidad(); return; }
   if(k.startsWith("f.")){
     bj.form[k.slice(2)] = el.value;
     // Los botones que dependen de lo escrito se prenden o se apagan en el lugar.
     if(k === "f.confirmar"){ const c = bjCarpeta(bj.form.id), b = document.getElementById("bjSacarTodos"); if(b && c) b.disabled = bj.ocupado || el.value.trim() !== c.nombre.trim(); return; }
     if(bj.vista === "invitar"){ clearTimeout(bj._t); bj._t = setTimeout(() => { const a = document.activeElement, id = a && a.dataset && a.dataset.bj, pos = a && a.selectionStart; render(); const n = id && document.querySelector(`[data-bj="${id}"]`); if(n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(_){} } }, 300); }
   }
+});
+
+// El teclado de la comunidad, como el de los otros autocompletar: flechas, Enter y Escape (que cierra la lista, no la pantalla).
+document.addEventListener("keydown", e => {
+  const el = e.target; if(!el || el.id !== "bjComunidad" || !bj.form) return;
+  const f = bj.form, m = bjCoincidenciasComunidad(f.comunidad), abierta = f.comOpen && m.length > 0;
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    if(!f.comOpen){ f.comOpen = true; f.comIdx = 0; }
+    else f.comIdx = Math.max(0, Math.min(m.length - 1, (f.comIdx || 0) + (e.key === "ArrowDown" ? 1 : -1)));
+    bjActualizarComunidad();
+  }else if(e.key === "Enter" && abierta){ e.preventDefault(); bjElegirComunidad(f.comIdx || 0); }
+  else if(e.key === "Escape" && abierta){ e.preventDefault(); e.stopPropagation(); f.comOpen = false; bjActualizarComunidad(); }
+}, true);
+// Al salir del campo (y no ir a una de sus opciones) la lista se cierra.
+document.addEventListener("focusout", e => {
+  if(!e.target || e.target.id !== "bjComunidad" || !bj.form || !bj.form.comOpen) return;
+  setTimeout(() => { if(!(document.activeElement && document.activeElement.closest && document.activeElement.closest(".bj-combo"))){ bj.form.comOpen = false; bjActualizarComunidad(); } }, 120);
 });
 
 /* ======================================================================

@@ -333,6 +333,8 @@ const ELENA = { correo: "Elena@Example.org ", nombre: "Elena <b>Ríos", idioma: 
   const c = m.reg.correos[0];
   eq("dar: un solo mail, al correo de la persona, desde Toldot y con la llave de Resend",
      [m.reg.correos.length, c.to, c.from.startsWith("Toldot <"), m.reg.resendAuth], [1, ["elena@example.org"], true, "Bearer re_prueba"]);
+  eq("dar: el mail sale solo de info@team-latam.com, sin «Reply-To» (las respuestas no van a ninguna persona en particular)",
+     [c.from, "reply_to" in c, "replyTo" in c], ["Toldot <info@team-latam.com>", false, false]);
   eq("dar: el mail va en hebreo, de derecha a izquierda, con el link a la primera carpeta y el nombre sin HTML",
      [c.subject, /dir="rtl"/.test(c.html), c.html.includes(ID_CAR1), c.html.includes("<b>Ríos")], ["ברוכים הבאים ל-Brújula", true, true, false]);
   eq("dar: la planilla recibe una fila nueva ya marcada «Enviado» (así el Script no la repite), de Toldot y con una nota",

@@ -45,8 +45,8 @@ const LEIDO = () => ({
 
 const b = await abrirNavegador();
 // Entra como admin y deja la función `brujula` de mentira: anota cada pedido y contesta según el guion.
-async function abrir({ lang, viewport, guion = {}, datos = LEIDO, estado = 200 } = {}){
-  const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { base: base(), lang, viewport });
+async function abrir({ lang, viewport, guion = {}, datos = LEIDO, estado = 200, baseFn = base } = {}){
+  const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { base: baseFn(), lang, viewport });
   const pedidos = [];
   await p.route(/\/functions\/v1\/brujula/, ruta => {
     const cuerpo = JSON.parse(ruta.request().postData() || "{}");
@@ -212,6 +212,75 @@ const cerrar = c => ({ filas: c.filas.map(f => ({ ...f, estado: "cerrada" })) })
   await p.close();
 }
 
+/* ---------- Elegir a todas y los títulos de las columnas (24/11/2026) ---------- */
+{
+  const { p } = await abrir();
+  eq("a la izquierda de «Persona» hay un tilde para elegir a todas (y arranca sin marcar)",
+     [await p.$eval(".bj-cab > :first-child", e => e.dataset.action), await p.$eval('.bj-cab [data-action="bj-sel-todas"]', e => [e.checked, e.indeterminate])], ["bj-sel-todas", [false, false]]);
+  await p.check('[data-action="bj-sel-todas"]'); await p.waitForTimeout(250);
+  eq("lo marca para todas las de la lista", [await textos(p, ".bj-barra strong"), await p.$$eval('[data-action="bj-sel"]:checked', l => l.length), await p.$eval('[data-action="bj-sel-todas"]', e => [e.checked, e.indeterminate])], [["6 personas elegidas"], 6, [true, false]]);
+  await p.uncheck('[data-action="bj-sel"][data-correo="camila@example.org"]'); await p.waitForTimeout(250);
+  eq("si se desmarca una, el tilde de todas queda a medias", await p.$eval('[data-action="bj-sel-todas"]', e => [e.checked, e.indeterminate]), [false, true]);
+  await p.click('[data-action="bj-sel-todas"]'); await p.waitForTimeout(250);
+  eq("tocarlo a medias las elige a todas", [await textos(p, ".bj-barra strong"), await p.$eval('[data-action="bj-sel-todas"]', e => [e.checked, e.indeterminate])], [["6 personas elegidas"], [true, false]]);
+  await p.click('[data-action="bj-sel-todas"]'); await p.waitForTimeout(250);
+  eq("tocarlo marcado las suelta a todas (y la barra se va)", [await p.$$eval('[data-action="bj-sel"]:checked', l => l.length), await p.$$eval(".bj-barra", l => l.length)], [0, 0]);
+  // Solo las que aparecen: con una búsqueda, elige solo esas.
+  await p.fill("#bjBuscar", "camil"); await p.waitForTimeout(250);
+  await p.check('[data-action="bj-sel-todas"]'); await p.waitForTimeout(250);
+  eq("con una búsqueda elige solo a las que aparecen", await textos(p, ".bj-barra strong"), ["1 persona elegida"]);
+  await p.fill("#bjBuscar", ""); await p.waitForTimeout(250);
+  eq("al volver a ver a todas, el tilde queda a medias (1 de 6)", await p.$eval('[data-action="bj-sel-todas"]', e => [e.checked, e.indeterminate]), [false, true]);
+  await p.close();
+}
+{
+  // Los títulos, en horizontal: el emoji de la carpeta arriba y el nombre debajo; el nombre completo al apoyar el mouse.
+  const conEmoji = () => { const x = base(); x.brujula_carpetas[0].nombre = "Hadraja - Enseñanza 🧑‍🏫"; x.brujula_carpetas[1].nombre = "Material de Congresos y Seminarios 📚"; return x; };
+  const { p } = await abrir({ baseFn: conEmoji });
+  eq("cada título: el emoji (entero, aunque sea compuesto) por un lado y el nombre sin emoji por otro; el nombre completo en el title",
+     await p.$$eval(".bj-cab .bj-c-cab", l => l.map(e => [e.querySelector(".bj-c-ic").innerText, e.querySelector(".bj-c-n").innerText, e.title])),
+     [["🧑‍🏫", "Hadraja - Enseñanza", "Hadraja - Enseñanza 🧑‍🏫"], ["📚", "Material de Congresos y Seminarios", "Material de Congresos y Seminarios 📚"]]);
+  eq("van en horizontal (nada en vertical ni girado)", await p.$$eval(".bj-c-n", l => l.map(e => [getComputedStyle(e).writingMode, getComputedStyle(e).transform])), [["horizontal-tb", "none"], ["horizontal-tb", "none"]]);
+  eq("ninguna palabra del título es más ancha que su columna (no se parte ni se corta)",
+     await p.$$eval(".bj-cab .bj-c-cab", l => l.map(c => { const n = c.querySelector(".bj-c-n"), cs = getComputedStyle(n);
+       return n.innerText.split(/\s+/).every(w => { const x = document.createElement("span"); x.textContent = w; x.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${cs.font}`; c.appendChild(x); const ok = x.offsetWidth <= c.clientWidth; x.remove(); return ok; }); })), [true, true]);
+  eq("la cabecera es baja: no deja un hueco enorme a la izquierda", await p.$eval(".bj-cab", e => e.getBoundingClientRect().height <= 110), true);
+  eq("la columna de «Persona» no se queda con todo el ancho: las carpetas se reparten lo que sobra",
+     await p.evaluate(() => { const f = document.querySelector(".bj-fila:not(.bj-cab)"), q = f.querySelector(".bj-quien").getBoundingClientRect(), c = f.querySelector(".bj-celdas").getBoundingClientRect(); return c.width >= q.width; }), true);
+  eq("las tildes de cada fila quedan debajo de su título (misma columna)",
+     await p.evaluate(() => { const c = [...document.querySelectorAll(".bj-cab .bj-c-cab")].map(e => Math.round(e.getBoundingClientRect().left)); const f = [...document.querySelectorAll(".bj-fila:not(.bj-cab) .bj-celdas")][0].children; return [...f].map((e, i) => Math.abs(Math.round(e.getBoundingClientRect().left) - c[i]) <= 1); }), [true, true]);
+  await p.close();
+}
+{
+  // Las personas: dos líneas cortas, ninguna se parte; los títulos, centrados en vertical.
+  const largo = () => { const d = LEIDO(); d.personas.push(persona("una.persona.con.un.correo.muy.largo.de.verdad@subdominio.example.org", "Nombre Apellido Segundo Apellido Muy Largo", { carpetas: { [C1]: "reader" }, permisos: { [C1]: "pl1" } })); return d; };
+  const { p } = await abrir({ datos: largo });
+  const n = (await filas(p)).length;
+  eq("cada persona ocupa dos líneas y ninguna se parte (el nombre y el correo en una línea cada uno) y la fila es baja",
+     await p.$$eval(".bj-fila:not(.bj-cab)", l => l.map(f => [f.querySelector(".bj-nombre").getBoundingClientRect().height <= 30, f.querySelector(".bj-mail").getBoundingClientRect().height <= 18, f.getBoundingClientRect().height <= 72])), Array(n).fill([true, true, true]));
+  eq("lo que no entra se corta con «…» y lo completo queda en el title (nombre y correo)",
+     await p.$$eval(".bj-fila:not(.bj-cab):last-of-type", l => l.map(f => { const m = f.querySelector(".bj-mail"), nm = f.querySelector(".bj-nombre"); return [m.scrollWidth > m.clientWidth, m.title, nm.title]; })),
+     [[true, "una.persona.con.un.correo.muy.largo.de.verdad@subdominio.example.org", "Nombre Apellido Segundo Apellido Muy Largo"]]);
+  eq("el nombre y sus etiquetas van en la misma línea", await p.$$eval(".bj-fila:not(.bj-cab)", l => l.every(f => Math.abs(f.querySelector(".bj-nombre").getBoundingClientRect().top - f.querySelector(".bj-chips").getBoundingClientRect().top) < 12)), true);
+  eq("los títulos de las columnas están centrados en vertical (el ícono y el nombre juntos, a mitad de la cabecera)",
+     await p.evaluate(() => { const cab = document.querySelector(".bj-cab").getBoundingClientRect(), mitad = cab.top + cab.height / 2;
+       return [...document.querySelectorAll(".bj-cab .bj-c-cab")].every(c => { const a = c.querySelector(".bj-c-ic").getBoundingClientRect(), b = c.querySelector(".bj-c-n").getBoundingClientRect(); return Math.abs((a.top + b.bottom) / 2 - mitad) <= 4; }); }), true);
+  eq("en escritorio la tabla entra sin barra de desplazamiento", await p.$eval(".bj-tabla", e => e.scrollWidth <= e.clientWidth + 1), true);
+  await p.setViewportSize({ width: 1100, height: 760 }); await p.waitForTimeout(300);
+  eq("en una ventana más angosta (1100) también entra: se va el círculo con las iniciales y el correo sigue en una línea",
+     [await p.$eval(".bj-tabla", e => e.scrollWidth <= e.clientWidth + 1), await p.$eval(".bj-fila:not(.bj-cab) .bj-av", e => getComputedStyle(e).display), await p.$$eval(".bj-fila:not(.bj-cab) .bj-mail", l => l.every(m => m.getBoundingClientRect().height <= 18))], [true, "none", true]);
+  await p.close();
+}
+{
+  // En el celular la cabecera sigue (con el tilde de todas) y solo se van las columnas.
+  const { p } = await abrir({ viewport: { width: 390, height: 844 } });
+  eq("celular: está el tilde de todas y «Persona», sin los títulos de las carpetas",
+     [await p.$eval(".bj-cab", e => getComputedStyle(e).display !== "none"), await p.$eval('.bj-cab [data-action="bj-sel-todas"]', e => e.offsetWidth >= 24 && e.offsetHeight >= 24), await p.$eval(".bj-cab .bj-celdas", e => getComputedStyle(e).display)], [true, true, "none"]);
+  await p.check('[data-action="bj-sel-todas"]'); await p.waitForTimeout(250);
+  eq("celular: elige a todas", await textos(p, ".bj-barra strong"), ["6 personas elegidas"]);
+  await p.close();
+}
+
 /* ---------- Una persona ---------- */
 {
   const { p, pedidos } = await abrir({ guion: { quitar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: false, error: "heredado" })), planilla: "no" }), dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), mail: "no", planilla: "no" }) } });
@@ -227,6 +296,45 @@ const cerrar = c => ({ filas: c.filas.map(f => ({ ...f, estado: "cerrada" })) })
   await clic(p, '[data-action="bj-persona"][data-correo="camila@example.org"]');
   await clic(p, '[data-action="bj-dar-una"]');
   eq("dar acceso a una carpeta: sin mail y sin tocar la planilla", pedidos.filter(x => x.accion === "dar").map(x => [x.persona.correo, x.carpetas, x.mail, x.planilla ?? null]), [["camila@example.org", [C2], false, null]]);
+  await p.close();
+}
+
+/* ---------- La comunidad: el buscador de lugares (24/11/2026) ---------- */
+{
+  const { p, pedidos } = await abrir({ guion: { dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), mail: "no", planilla: "agregada" }) } });
+  await clic(p, '[data-action="bj-invitar-abrir"]');
+  eq("es un buscador como los de siempre (no la lista nativa del navegador, que era gigante)", [await p.$$eval("datalist", l => l.length), await p.$eval("#bjComunidad", e => e.getAttribute("role")), await p.$$eval(".bj-combo .autocomplete-option", l => l.length)], [0, "combobox", 0]);
+  await p.fill('[data-bj="f.nombre"]', "Elena Ríos"); await p.fill('[data-bj="f.correo"]', "elena@example.org"); await p.waitForTimeout(450);
+  await p.click("#bjComunidad"); await p.keyboard.type("cordo"); await p.waitForTimeout(200);
+  const ops = await textos(p, ".bj-combo .autocomplete-option");
+  eq("al escribir ofrece lugares con el mismo formato que el resto de Toldot (ciudad, país) y ocho como mucho", [ops.includes("📍 Córdoba, Argentina"), ops.length <= 8, await p.$eval("#bjComunidad", e => e.getAttribute("aria-expanded"))], [true, true, "true"]);
+  await p.fill("#bjComunidad", ""); await p.keyboard.type("buenos"); await p.waitForTimeout(200);
+  eq("ofrece también la ciudad con su país («Buenos Aires (CABA), Argentina»)", (await textos(p, ".bj-combo .autocomplete-option")).includes("📍 Buenos Aires (CABA), Argentina"), true);
+  await p.keyboard.press("ArrowDown"); await p.keyboard.press("ArrowUp"); await p.keyboard.press("Enter"); await p.waitForTimeout(250);
+  eq("flechas y Enter eligen; queda como la planilla ya la escribe («Buenos Aires», no «Buenos Aires (CABA)») y la lista se cierra",
+     [await p.inputValue("#bjComunidad"), await p.$$eval(".bj-combo .autocomplete-option", l => l.length), await p.$eval("#bjComunidadAviso", e => e.hidden)], ["Buenos Aires", 0, true]);
+  await p.fill("#bjComunidad", ""); await p.keyboard.type("zzzz"); await p.waitForTimeout(200);
+  eq("sin resultados: lo dice y ofrece «Otro»", [await textos(p, ".bj-combo .autocomplete-empty"), await textos(p, ".bj-combo .autocomplete-option")], [["Sin resultados"], ["✨ Otro"]]);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(150);
+  eq("Escape cierra la lista y no la pantalla", [await p.$$eval(".bj-combo .autocomplete-option", l => l.length), (await textos(p, ".bj-form h3"))[0]], [0, "Invitar personas"]);
+  await p.click(".bj-form h3"); await p.waitForTimeout(300);
+  eq("lo escrito que no es una opción avisa y no deja invitar", [await p.$eval("#bjComunidadAviso", e => e.hidden), await p.$eval('[data-action="bj-invitar"]', e => e.disabled)], [false, true]);
+  await p.fill("#bjComunidad", "otro"); await p.waitForTimeout(150); await p.click(".bj-form h3"); await p.waitForTimeout(300);
+  eq("«otro» en minúscula es una opción válida: ya no avisa y se puede invitar", [await p.$eval("#bjComunidadAviso", e => e.hidden), await p.$eval('[data-action="bj-invitar"]', e => e.disabled)], [true, false]);
+  await clic(p, '[data-action="bj-invitar"]', 600);
+  eq("a la función le llega «Otro» tal como lo escribe la planilla", pedidos.filter(x => x.accion === "dar").map(x => x.persona.comunidad), ["Otro"]);
+  await p.close();
+}
+{
+  // Tocar una opción con el mouse o el dedo también elige.
+  const { p, pedidos } = await abrir({ guion: { dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), mail: "no", planilla: "agregada" }) } });
+  await clic(p, '[data-action="bj-invitar-abrir"]');
+  await p.fill('[data-bj="f.nombre"]', "Elena Ríos"); await p.fill('[data-bj="f.correo"]', "elena@example.org"); await p.waitForTimeout(450);
+  await p.click("#bjComunidad"); await p.keyboard.type("mendoza"); await p.waitForTimeout(200);
+  await clic(p, '.bj-combo .autocomplete-option[data-idx="0"]', 300);
+  eq("tocar una opción la elige", [await p.inputValue("#bjComunidad"), await p.$$eval(".bj-combo .autocomplete-option", l => l.length)], ["Mendoza", 0]);
+  await clic(p, '[data-action="bj-invitar"]', 600);
+  eq("y a la función le llega esa", pedidos.filter(x => x.accion === "dar").map(x => x.persona.comunidad), ["Mendoza"]);
   await p.close();
 }
 

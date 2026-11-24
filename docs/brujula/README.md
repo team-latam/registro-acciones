@@ -171,6 +171,18 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
   «Enviado»; con otra palabra, como «Descartado», las vuelve a procesar y a escribir encima— más una nota. Pasaba que «Quitar todo
   el acceso» le pedía a la función quitar **cero** carpetas, la función rechazaba el pedido entero y la pantalla ponía «Google no
   contestó» en las 7 carpetas: un fallo del pedido entero ahora se dice una sola vez y sin inventar un motivo por carpeta.
+- **La comunidad al invitar (24/11/2026):** era la lista nativa del navegador con todas las comunidades de las planillas (gigante,
+  y dejaba escribir «otro» en minúscula, que la lista cerrada de la planilla marca como inválida). Ahora es el buscador de lugares de
+  Toldot (`.autocomplete-list`, ocho como máximo, flechas y Enter) con las ciudades de toda LatAm que ya tenemos, sus países y «Otro».
+  Se escribe en la planilla como ella ya lo escribe: «Buenos Aires (CABA)» queda «Buenos Aires» si la planilla ya usa ese nombre
+  (sin mirar tildes ni lo que va entre paréntesis); «Otro» siempre es «Otro». Hay que elegir una opción: un texto que no lo es avisa
+  y no deja invitar. (Pegar una lista de personas no lleva comunidad.)
+- **La grilla (24/11/2026):** los títulos de las carpetas van en vertical, de abajo hacia arriba, con el emoji del nombre abajo
+  —así ninguna palabra se parte, aunque el admin ponga el nombre que quiera— y el nombre completo al apoyar el mouse. A la izquierda de
+  «Persona» hay un tilde para elegir a todas las que aparecen (según la búsqueda y el filtro); queda a medias si hay algunas
+  elegidas. En el celular la cabecera sigue, con ese tilde, y se van solo las columnas.
+- **El mail de bienvenida sale sin «Reply-To» (24/11/2026):** las respuestas van a `info@team-latam.com`, que es de quien viene. Los
+  otros mails de Toldot (avisos y resúmenes) siguen con «responder a benny@…»: el usuario no pidió cambiarlos.
 - **Lo que se anota en el registro de actividad:** `brujula_dio` y `brujula_quito` (03-validacion.sql), con quién lo hizo, a quién y
   de qué carpetas.
 - **El aviso por correo a los admin** (viene apagado) lo corre el workflow horario de siempre («Resúmenes por correo»); se prende

@@ -29,7 +29,7 @@
 import { encabezados } from "./web.mjs";
 import { leerCuenta, permisoDeGoogle } from "./google.mjs";
 import { correoBrujula } from "./correos.mjs";
-import { DESDE, RESPONDER_A } from "./avisos.mjs";
+import { DESDE } from "./avisos.mjs";
 
 // Leer (mirar y comprobar) usa un permiso de solo lectura. Compartir, quitar y escribir en las planillas piden otro, y solo
 // cuando alguien lo pide.
@@ -307,7 +307,8 @@ export async function darAcceso(traer, token, ctx, p, { env, ahora }){
       const c = correoBrujula({ nombre: limpio(p.nombre), lang: idiomaDe(p.idioma), enlace: `https://drive.google.com/drive/folders/${primera.id}` });
       try{
         const r = await traer("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${llave}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: DESDE, to: [correo], reply_to: env("AVISOS_RESPONDER_A") || RESPONDER_A, ...c }) });
+          // Sin «Reply-To» (pedido del usuario, 24/11/2026): si la persona contesta, le llega a info@team-latam.com, que es de quien viene.
+          body: JSON.stringify({ from: DESDE, to: [correo], ...c }) });
         mail = r.ok ? "enviado" : "error";
       }catch(e){ mail = "error"; }
     }
