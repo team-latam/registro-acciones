@@ -7,7 +7,7 @@
 import { generateKeyPairSync } from "node:crypto";
 import { idDeLink, comprobarLink, combinar, leerTodo, atender, ALCANCE_LECTURA, ALCANCE_ESCRITURA } from "../_compartido/brujula.mjs";
 import { correoBrujula } from "../_compartido/correos.mjs";
-import { olvidarPermisos } from "../_compartido/google.mjs";
+import { olvidarPermisos, leerCuenta, permisoDeGoogle } from "../_compartido/google.mjs";
 
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
@@ -93,7 +93,7 @@ const DRIVE = {
 };
 const DESTINOS = { DestinoRealAbCdEfG: { id: "DestinoRealAbCdEfG", name: "Hadraja · Enseñanza", mimeType: "application/vnd.google-apps.folder", capabilities: { canShare: true } } };
 
-function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false, rechazar = [], resend = "ok" } = {}){
+function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false, rechazar = [], resend = "ok", catalogo = null, fallas = {}, delFallas = {}, permGet = {}, lectores = null, lectores2 = null, infinitas = false } = {}){
   const reg = { google: [], drive: [], base: [], tokens: 0 };
   const traer = async (url, op = {}) => {
     const u = String(url);
@@ -110,7 +110,7 @@ function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false, rec
         if(rpc === 401) return new Response("{}", { status: 401 });
         return new Response(JSON.stringify(admin));
       }
-      if(u.includes("/brujula_carpetas")) return new Response(JSON.stringify(CATALOGO));
+      if(u.includes("/brujula_carpetas")) return new Response(JSON.stringify(catalogo || CATALOGO));
       if(u.includes("/brujula_planillas")) return new Response(JSON.stringify(PLANILLAS));
       throw new Error("tabla inesperada: " + u);
     }
@@ -128,11 +128,13 @@ function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false, rec
       if(op.method === "POST"){
         const cuerpo = JSON.parse(op.body);
         reg.creados = (reg.creados || []).concat([{ carpeta: id, q: Object.fromEntries(q), cuerpo }]);
+        if(fallas[cuerpo.emailAddress]) return new Response(JSON.stringify({ error: { message: fallas[cuerpo.emailAddress].mensaje || "" } }), { status: fallas[cuerpo.emailAddress].estado });
         if(rechazar.includes(cuerpo.emailAddress)) return new Response(JSON.stringify({ error: { message: "El administrador de ejemplo.org inhabilitó la recepción de elementos ajenos a su organización." } }), { status: 400 });
         return new Response(JSON.stringify({ id: "nuevo" + reg.creados.length, role: "reader" }));
       }
-      const paginas = PERMISOS[id];
+      const paginas = lectores && id === ID_CAR1 ? [{ pagina: 1, permisos: lectores }] : lectores2 && id === ID_CAR2 ? [{ pagina: 1, permisos: lectores2 }] : PERMISOS[id];
       if(!paginas) return new Response(JSON.stringify({ error: { message: "File not found" } }), { status: 404 });
+      if(infinitas && id === ID_CAR1) return new Response(JSON.stringify({ permissions: [], nextPageToken: "siempre-hay-mas" }));
       const n = q.get("pageToken") ? 2 : 1;
       const p = paginas.find(x => x.pagina === n);
       return new Response(JSON.stringify({ permissions: p.permisos, ...(p.siguiente ? { nextPageToken: p.siguiente } : {}) }));
@@ -142,9 +144,11 @@ function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false, rec
       reg.drive.push(decodeURIComponent(m[1]));
       if(op.method === "DELETE"){
         reg.borrados = (reg.borrados || []).concat([clave]);
+        if(delFallas[m[2]]) return new Response(JSON.stringify({ error: { message: delFallas[m[2]].mensaje || "" } }), { status: delFallas[m[2]].estado });
         if(m[2] === "ph1") return new Response(JSON.stringify({ error: { message: "The permission is inherited and cannot be deleted." } }), { status: 403 });
         return new Response(null, { status: 204 });
       }
+      if(permGet[m[2]]) return new Response(JSON.stringify({ error: { message: permGet[m[2]].mensaje || "" } }), { status: permGet[m[2]].estado });
       return PERM[clave] ? new Response(JSON.stringify(PERM[clave])) : new Response("{}", { status: 404 });
     }
     if((m = /\/drive\/v3\/files\/([^/?]+)\?/.exec(u))){
@@ -172,7 +176,7 @@ function mundo({ admin = true, rpc = null, drive = null, tokenNiega = false, rec
       }
       if(metodo === "PUT"){
         const v = JSON.parse(op.body).values[0];
-        if(rango === "G1:H1") reg.titulos[id] = v;
+        if(rango === "G1:H1"){ reg.titulos[id] = v; reg.putsTitulos = (reg.putsTitulos || 0) + 1; }
         else { const n = Number(/^H(\d+)$/.exec(rango)[1]); (filas[n - 2] ||= [])[7] = v[0]; }
         return new Response("{}");
       }
@@ -446,6 +450,174 @@ const ELENA = { correo: "Elena@Example.org ", nombre: "Elena <b>Ríos", idioma: 
   eq("planilla: algo que no es un link", await planilla("hoja", "mi planilla"), { caso: "link" });
 }
 eq("planilla: comprobar usa el permiso de solo lectura", await (async () => { const mm = mundo({ drive: "hoja" }); await hacer({ accion: "comprobar-planilla", link: `https://docs.google.com/spreadsheets/d/${A}/edit` }, mm); return mm.reg.scope; })(), ALCANCE_LECTURA);
+
+/* ---------- Los bordes (el rompe-código del 24/11/2026 mostró que ninguna prueba los miraba) ----------
+   herramientas/auditoria/herramientas/mutaciones.mjs, sobre este archivo: 255 de 301 roturas detectadas. Lo que sobrevivía eran los
+   límites justos (40 carpetas, 200 letras, la fila 5001), cómo se clasifica lo que contesta Google, el recuento de «sacar a todos»,
+   las notas de la planilla y que cada pedido a Drive lleve «supportsAllDrives». */
+{
+  // Cada pedido a Drive lleva supportsAllDrives=true (carpetas de unidades compartidas): leer, dar, quitar, sacar a todos y comprobar.
+  const conDrive = async (cuerpo, m = mundo()) => { await hacer(cuerpo, m); return m.reg.google.filter(u => u.includes("/drive/v3/")); };
+  const todasConAllDrives = lista => lista.length > 0 && lista.every(u => /[?&]supportsAllDrives=true(&|$)/.test(u));
+  eq("Drive: «leer» pide siempre supportsAllDrives=true", todasConAllDrives(await conDrive({ accion: "leer" })), true);
+  eq("Drive: «dar» también", todasConAllDrives(await conDrive({ accion: "dar", persona: ELENA, carpetas: [ID_CAR1, ID_CAR2] })), true);
+  eq("Drive: «quitar» también (pedir el permiso y borrarlo)", todasConAllDrives(await conDrive({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "pv1" } })), true);
+  eq("Drive: «sacar a todos» también", todasConAllDrives(await conDrive({ accion: "sacar-todos", carpeta: ID_CAR1, confirmar: "Brújula Cloud" })), true);
+  eq("Drive: «comprobar» también", todasConAllDrives(await conDrive({ accion: "comprobar", link: `https://drive.google.com/drive/folders/${A}` }, mundo({ drive: "ok" }))), true);
+
+  // El link: 2048 letras justas entran, 2049 no.
+  const largo = n => `https://drive.google.com/drive/folders/${A}?x=` + "a".repeat(n - (`https://drive.google.com/drive/folders/${A}?x=`).length);
+  eq("link: de 2048 letras justas, sí; de 2049, no", [idDeLink(largo(2048)), idDeLink(largo(2049))], [A, null]);
+
+  // Dar: el correo de 200 letras justas, y 40 carpetas justas.
+  const correoDe = n => "a".repeat(n - "@example.org".length) + "@example.org";
+  let m = mundo(); let r = await hacer({ accion: "dar", persona: { correo: correoDe(200), nombre: "Larga" }, carpetas: [ID_CAR1] }, m);
+  eq("dar: un correo de 200 letras justas entra", [r.estado, r.cuerpo.carpetas], [200, [{ id: ID_CAR1, ok: true }]]);
+  r = await hacer({ accion: "dar", persona: { correo: correoDe(201), nombre: "Larga" }, carpetas: [ID_CAR1] }, mundo());
+  eq("dar: uno de 201, no", [r.estado, r.cuerpo], [400, { error: "correo" }]);
+  const cuarenta = n => Array.from({ length: n }, (_, i) => ({ id: "Carpeta" + String(i).padStart(3, "0") + "AbCdEfGhIj", nombre: "C" + i, orden: i, activa: true, planillas: [] }));
+  const cat = cuarenta(41);
+  m = mundo({ catalogo: cat }); r = await hacer({ accion: "dar", persona: ELENA, carpetas: cat.slice(0, 40).map(c => c.id) }, m);
+  eq("dar: 40 carpetas justas entran (una por una)", [r.estado, r.cuerpo.carpetas.length, m.reg.creados.length], [200, 40, 40]);
+  m = mundo({ catalogo: cat }); r = await hacer({ accion: "dar", persona: ELENA, carpetas: cat.map(c => c.id) }, m);
+  eq("dar: 41 no (400, y no se crea ningún permiso)", [r.estado, r.cuerpo, m.reg.creados], [400, { error: "carpetas" }, undefined]);
+  r = await hacer({ accion: "dar", persona: ELENA, carpetas: [] }, mundo());
+  eq("dar: sin carpetas, 400", [r.estado, r.cuerpo], [400, { error: "carpetas" }]);
+  m = mundo({ catalogo: cat }); r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: cat.slice(0, 40).map(c => c.id), permisos: {} }, m);
+  eq("quitar: 40 carpetas justas entran (sin el dato del permiso no se arriesga, pero se atiende)", [r.estado, r.cuerpo.carpetas.length], [200, 40]);
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: cat.map(c => c.id), permisos: {} }, mundo({ catalogo: cat }));
+  eq("quitar: 41 no (400)", [r.estado, r.cuerpo], [400, { error: "carpetas" }]);
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [], permisos: {} }, mundo());
+  eq("quitar: sin carpetas, 400", [r.estado, r.cuerpo], [400, { error: "carpetas" }]);
+
+  // Cómo se clasifica lo que contesta Google al dar (la pantalla explica cada palabra; nunca se repite lo que dijo Google).
+  const fallas = { "r404@example.org": { estado: 404 }, "r429@example.org": { estado: 429 }, "r500q@example.org": { estado: 500, mensaje: "Quota exceeded for quota metric" },
+    "r403@example.org": { estado: 403 }, "r400@example.org": { estado: 400 }, "r500@example.org": { estado: 500, mensaje: "Backend Error" }, "r403h@example.org": { estado: 403, mensaje: "The permission is inherited" },
+    "r403r@example.org": { estado: 403, mensaje: "User rate limit exceeded" } };
+  m = mundo({ fallas });
+  const motivo = async correo => (await hacer({ accion: "dar", persona: { correo, nombre: "X" }, carpetas: [ID_CAR1] }, m)).cuerpo.carpetas[0].error;
+  eq("errores de Google: 404 → «carpeta», 429 → «limite», 403 → «permiso», 400 → «rechazado», 500 → «google»",
+     [await motivo("r404@example.org"), await motivo("r429@example.org"), await motivo("r403@example.org"), await motivo("r400@example.org"), await motivo("r500@example.org")], ["carpeta", "limite", "permiso", "rechazado", "google"]);
+  eq("errores de Google: «quota» o «rate» en el texto también es «limite» (aunque el número sea otro), y «inherited» es «heredado»",
+     [await motivo("r500q@example.org"), await motivo("r403r@example.org"), await motivo("r403h@example.org")], ["limite", "limite", "heredado"]);
+  eq("errores de Google: lo que dijo Google no vuelve a la pantalla", JSON.stringify(await (async () => (await hacer({ accion: "dar", persona: { correo: "r500q@example.org", nombre: "X" }, carpetas: [ID_CAR1] }, m)).cuerpo)()).includes("Quota"), false);
+
+  // Quitar: lo que pasa cuando Drive contesta otra cosa, y cuándo se anota en la planilla.
+  m = mundo({ permGet: { pf500: { estado: 500 }, pf403: { estado: 403 } } });
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1, ID_CAR2], permisos: { [ID_CAR1]: "pf500", [ID_CAR2]: "pf403" } }, m);
+  eq("quitar: si Drive no deja ni mirar el permiso, no se da por hecho (ok: false, con el motivo)", r.cuerpo.carpetas, [{ id: ID_CAR1, ok: false, error: "google" }, { id: ID_CAR2, ok: false, error: "permiso" }]);
+  eq("quitar: y no se borra nada", m.reg.borrados, undefined);
+  m = mundo({ delFallas: { pv1: { estado: 500 }, pv2: { estado: 403, mensaje: "The permission is inherited" } } });
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "pv1" } }, m);
+  eq("quitar: si al borrar Drive falla, se dice (ok: false) y la planilla no anota nada", [r.cuerpo.carpetas, r.cuerpo.planilla], [[{ id: ID_CAR1, ok: false, error: "google" }], "no"]);
+  // La nota de la planilla nombra solo lo que se quitó de verdad (no lo que ya no tenía), y solo si se quitó algo.
+  m = mundo();
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1, ID_CAR2], permisos: { [ID_CAR1]: "pv1", [ID_CAR2]: "yaborrado" }, filas: [{ planilla: ID_PLA1, fila: 2 }] }, m);
+  eq("quitar: la nota dice solo la carpeta que se quitó («Brújula Cloud»), no la que ya no tenía", [r.cuerpo.carpetas, m.reg.hojaFilas[ID_PLA1][0][7]], [[{ id: ID_CAR1, ok: true }, { id: ID_CAR2, ok: true, ya: true }], "Quitado de Brújula Cloud (2026-11-23)"]);
+  m = mundo();
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "yaborrado" }, filas: [{ planilla: ID_PLA1, fila: 2 }] }, m);
+  eq("quitar: si no se quitó nada (ya no lo tenía), la planilla no se toca", [r.cuerpo.planilla, m.reg.hojaFilas, m.reg.putsTitulos], ["no", undefined, undefined]);
+  m = mundo();
+  r = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "pv1" } }, m);
+  eq("quitar: sin filas en el pedido, no se anota en ninguna planilla", [r.cuerpo.carpetas, r.cuerpo.planilla, m.reg.hojaFilas], [[{ id: ID_CAR1, ok: true }], "no", undefined]);
+
+  // Las filas de la planilla: cuáles son filas de datos (de la 2 a la 5001).
+  const filaDar = async (fila, correo = "valeria@example.org") => { const mm = mundo(); const rr = await hacer({ accion: "dar", persona: { correo, nombre: "V" }, carpetas: [ID_CAR1], planilla: ID_PLA1, fila }, mm); return rr.cuerpo.planilla; };
+  eq("dar: la fila 2 (la primera de datos) se actualiza si sigue siendo de esa persona", await filaDar(2), "actualizada");
+  eq("dar: la fila 1 (los títulos), una fila con decimales o con texto: no es de datos, se agrega una nueva",
+     [await filaDar(1), await filaDar(2.5), await filaDar("2"), await filaDar(undefined)], ["agregada", "agregada", "agregada", "agregada"]);
+  eq("dar: la fila 5001 (la última) todavía cuenta como fila de datos (y si no es de esa persona, «fila-cambio»); la 5002, no", [await filaDar(5001), await filaDar(5002)], ["fila-cambio", "agregada"]);
+  eq("dar: la fila 3 es de otra persona: no se pisa", await filaDar(3), "fila-cambio");
+  const filaQuitar = async fila => { const mm = mundo(); const rr = await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "pv1" }, filas: [{ planilla: ID_PLA1, fila }] }, mm); return rr.cuerpo.planilla; };
+  eq("quitar: la fila 2 se anota; la 1, la 2.5 y el texto no (no son filas de datos)", [await filaQuitar(2), await filaQuitar(1), await filaQuitar(2.5), await filaQuitar("x")], ["escrita", "no", "no", "no"]);
+  eq("quitar: la 5001 es de datos (sin esa persona, no se escribe); la 5002 ni se mira", [await filaQuitar(5001), await filaQuitar(5002)], ["no", "no"]);
+  // Los títulos «Desde» y «Nota de Toldot»: se escriben si faltan, y no se vuelven a escribir.
+  m = mundo();
+  await hacer({ accion: "dar", persona: { correo: "nuevo1@example.org", nombre: "N1" }, carpetas: [ID_CAR1], planilla: ID_PLA1 }, m);
+  await hacer({ accion: "dar", persona: { correo: "nuevo2@example.org", nombre: "N2" }, carpetas: [ID_CAR1], planilla: ID_PLA1 }, m);
+  eq("planilla: los títulos se escriben la primera vez y la segunda ya no (una sola vez)", [m.reg.putsTitulos, m.reg.titulos[ID_PLA1]], [1, ["Desde", "Nota de Toldot"]]);
+  m = mundo(); (m.reg.titulos ||= {})[ID_PLA1] = ["Desde", ""];
+  await hacer({ accion: "dar", persona: { correo: "nuevo3@example.org", nombre: "N3" }, carpetas: [ID_CAR1], planilla: ID_PLA1 }, m);
+  eq("planilla: si falta solo uno de los dos títulos, se completa y se respeta el otro", m.reg.titulos[ID_PLA1], ["Desde", "Nota de Toldot"]);
+  m = mundo(); (m.reg.titulos ||= {})[ID_PLA1] = ["Desde", "Nota de Toldot"];
+  await hacer({ accion: "dar", persona: { correo: "nuevo4@example.org", nombre: "N4" }, carpetas: [ID_CAR1], planilla: ID_PLA1 }, m);
+  eq("planilla: si los dos títulos ya están, no se escribe nada", m.reg.putsTitulos, undefined);
+
+  // Sacar a todos: cómo se cuenta cada cosa (los 204 y los 200 son «quitados»; lo heredado y lo que falla, aparte).
+  const lector = (id, correo) => ({ id, type: "user", role: "reader", emailAddress: correo, displayName: correo });
+  m = mundo({ lectores: [lector("a1", "a1@example.org"), lector("a2", "a2@example.org"), lector("h1", "h1@example.org"), lector("e1", "e1@example.org"), lector("e2", "e2@example.org"), lector("a3", "a3@example.org"), lector("ok200", "ok200@example.org")],
+    delFallas: { h1: { estado: 403, mensaje: "The permission is inherited" }, e1: { estado: 500 }, e2: { estado: 403 }, ok200: { estado: 200 } } });
+  r = await hacer({ accion: "sacar-todos", carpeta: ID_CAR1, confirmar: "Brújula Cloud" }, m);
+  eq("sacar a todos: cuenta aparte lo quitado (204 y 200), lo heredado y lo que falló", r.cuerpo, { quitados: 4, heredados: 1, errores: 2, editores: 0 });
+  eq("sacar a todos: intentó con cada lector, de a cinco por vez (7 lectores)", m.reg.borrados.length, 7);
+
+  // Leer: las 50 páginas de Drive son el tope (una carpeta que nunca termina no se pide para siempre).
+  m = mundo({ infinitas: true });
+  await hacer({ accion: "leer" }, m);
+  eq("leer: de una carpeta que siempre dice «hay más», se piden 50 páginas y no más", m.reg.drive.filter(x => x === ID_CAR1).length, 50);
+  // Leer: el id de cada permiso viaja (hace falta para quitarlo) y las personas salen ordenadas por nombre.
+  r = await hacer({ accion: "leer" }, mundo());
+  const persona1 = r.cuerpo.personas.find(x => x.correo === "u1@example.org");
+  eq("leer: de cada persona trae el id del permiso de cada carpeta", persona1.permisos, { [ID_CAR1]: "p0", [ID_CAR2]: "r1" });
+  const nombres = r.cuerpo.personas.map(x => x.nombre || x.correo);
+  eq("leer: las personas salen ordenadas por nombre (o por correo si no lo tienen)", nombres, [...nombres].sort((a, b) => a.localeCompare(b, "es")));
+  // Quitar con filas: la 5001 es de datos (se llega a mirar la fila en Google) y la 5002 ni se mira.
+  const miradas = async fila => { const mm = mundo(); await hacer({ accion: "quitar", correo: "valeria@example.org", carpetas: [ID_CAR1], permisos: { [ID_CAR1]: "pv1" }, filas: [{ planilla: ID_PLA1, fila }] }, mm); return mm.reg.google.some(u => u.includes(`A${fila}%3AH${fila}`)); };
+  eq("quitar: de la fila 5001 se pide la fila a Google (es de datos); de la 5002, ni se pide", [await miradas(5001), await miradas(5002)], [true, false]);
+  // Leer: el nombre que ya tiene una persona no se pisa con el de otro permiso suyo.
+  r = await hacer({ accion: "leer" }, mundo({ lectores: [{ id: "x1", type: "user", role: "reader", emailAddress: "solo.drive@example.org", displayName: "Primero" }], lectores2: [{ id: "x2", type: "user", role: "reader", emailAddress: "solo.drive@example.org", displayName: "Segundo" }] }));
+  eq("leer: el nombre de una persona que no está en ninguna planilla viene del primer permiso que lo trae (no lo pisa el de la otra carpeta)", r.cuerpo.personas.find(x => x.correo === "solo.drive@example.org").nombre, "Primero");
+  // Descartar: las filas ignoradas dicen de qué planilla y de qué fila eran, y los límites son los de las filas de datos.
+  r = await hacer({ accion: "descartar", correo: "ana@example.org", filas: [{ planilla: "OtraPlanillaAbCdEfGh", fila: 4 }, { planilla: ID_PLA1, fila: 1 }, { planilla: ID_PLA1, fila: 5002 }, { planilla: ID_PLA1, fila: 2.5 }] }, mundo());
+  eq("descartar: cada fila ignorada dice de qué planilla y de qué fila era", r.cuerpo.filas, [{ planilla: "OtraPlanillaAbCdEfGh", fila: 4, estado: "ignorada" }, { planilla: ID_PLA1, fila: 1, estado: "ignorada" }, { planilla: ID_PLA1, fila: 5002, estado: "ignorada" }, { planilla: ID_PLA1, fila: 2.5, estado: "ignorada" }]);
+  r = await hacer({ accion: "descartar", correo: "ana@example.org", filas: [{ planilla: ID_PLA1, fila: 2 }, { planilla: ID_PLA1, fila: 5001 }] }, mundo());
+  eq("descartar: la fila 2 y la 5001 son de datos (se miran; no son de esa persona: «ya» y «fila-cambio»)", r.cuerpo.filas.map(f => f.estado), ["fila-cambio", "fila-cambio"]);
+}
+
+/* ---------- La llave de la cuenta de servicio y el permiso de un rato (google.mjs; rompe-código del 24/11/2026) ---------- */
+{
+  const llaveOk = JSON.parse(CUENTA);
+  eq("llave: el JSON de Google, tal cual, se lee (y sin token_uri usa el de Google)", leerCuenta(CUENTA), { correo: llaveOk.client_email, llave: llaveOk.private_key, tokenUri: "https://oauth2.googleapis.com/token" });
+  eq("llave: con otro token_uri, se respeta", leerCuenta(JSON.stringify({ ...llaveOk, token_uri: "https://otro.example/token" })).tokenUri, "https://otro.example/token");
+  const falla = f => { try{ f(); return null; }catch(e){ return e.message; } };
+  eq("llave: lo que no es JSON se dice con palabras", /no es un JSON válido/.test(falla(() => leerCuenta("esto no es json"))), true);
+  const sinCampos = /no tiene client_email y private_key/;
+  eq("llave: sin client_email, sin private_key, con una private_key que no es PEM, o vacía: se rechaza (cada una por separado)",
+     [{ ...llaveOk, client_email: undefined }, { ...llaveOk, private_key: undefined }, { ...llaveOk, private_key: "no es una llave" }, { ...llaveOk, client_email: 5 }, { ...llaveOk, private_key: 5 }, null].map(c => sinCampos.test(falla(() => leerCuenta(c === null ? "null" : JSON.stringify(c))) || "")), [true, true, true, true, true, true]);
+  // El permiso: Google lo da por una hora; se guarda hasta un minuto antes de que venza.
+  const cuenta = leerCuenta(CUENTA);
+  let pedidos = 0, expira = 3600, status = 200, cuerpoRes = null;
+  const traerToken = async () => { pedidos++; return new Response(JSON.stringify(cuerpoRes || { access_token: "t" + pedidos, expires_in: expira }), { status }); };
+  const T0 = Date.parse("2026-11-23T12:00:00Z");
+  olvidarPermisos();
+  const a1 = await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 });
+  eq("permiso: el primero se pide a Google", [a1, pedidos], ["t1", 1]);
+  eq("permiso: si sigue vigente, se reusa (59 minutos y 59 segundos después, falta menos de un minuto: ya no)", [await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 + 3_000_000 }), pedidos], ["t1", 1]);
+  eq("permiso: justo un minuto antes de que venza ya se pide uno nuevo (y no antes)", [await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 + 3_540_000 }), pedidos], ["t2", 2]);
+  olvidarPermisos(); pedidos = 0;
+  await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 });
+  await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 + 3_539_999 });
+  eq("permiso: a un milisegundo de ese minuto, todavía se reusa", pedidos, 1);
+  olvidarPermisos(); pedidos = 0; cuerpoRes = { access_token: "sinvencimiento" };
+  await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 });
+  await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 + 3_000_000 });
+  eq("permiso: si Google no dice cuánto dura, se supone una hora", pedidos, 1);
+  olvidarPermisos(); pedidos = 0; cuerpoRes = { access_token: "corto", expires_in: 120 };
+  await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 });
+  await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 + 90_000 });
+  eq("permiso: si dura 2 minutos, a los 90 segundos (falta menos de un minuto) se pide otro", pedidos, 2);
+  // Errores: ni un número de más ni el detalle de Google (puede traer el correo de la cuenta).
+  olvidarPermisos(); cuerpoRes = { error: "invalid_grant", error_description: "brujula@proyecto.iam…" }; status = 400;
+  let msg = null; try{ await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 }); }catch(e){ msg = e.message; }
+  eq("permiso: si Google lo niega (400), el error dice el número y el tipo, no el detalle", msg, "Google no dio permiso a la cuenta de servicio (400: invalid_grant).");
+  olvidarPermisos(); cuerpoRes = {}; status = 200; msg = null;
+  try{ await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 }); }catch(e){ msg = e.message; }
+  eq("permiso: si Google contesta 200 pero sin permiso, también falla (no se guarda un «undefined»)", msg, "Google no dio permiso a la cuenta de servicio (200).");
+  olvidarPermisos(); cuerpoRes = { access_token: "bueno" }; status = 500; msg = null;
+  try{ await permisoDeGoogle(cuenta, { fetch: traerToken, ahora: T0 }); }catch(e){ msg = e.message; }
+  eq("permiso: si Google contesta con error (500), falla aunque el cuerpo traiga algo que parezca un permiso", /Google no dio permiso/.test(msg || ""), true);
+  olvidarPermisos();
+}
 
 /* ---------- El mail de bienvenida ---------- */
 for(const [l, asunto] of [["es", "Te damos la bienvenida a Brújula"], ["en", "Welcome to Brújula"], ["pt", "Boas-vindas à Brújula"], ["he", "ברוכים הבאים ל-Brújula"]]){
