@@ -187,6 +187,13 @@ fijadas por SHA» y estaba tachado, pero eso se había dejado a propósito
 para después. *Regla:* tachar solo lo hecho; lo que se decide dejar se
 escribe al lado, en la misma fila.
 
+**«Publicar el sitio» se cae en el último paso aunque todas las pruebas den verde** (24/11/2026, 3 corridas seguidas).
+*Por qué:* `deploy-pages` pide el sitio recién subido en el mismo instante y GitHub todavía no lo muestra («Found 0
+artifact(s)»); antes andaba por un margen de azar y al achicarse todo el tiempo dejó de alcanzar. Volver a correr solo ese
+paso empeora: sube otra copia con el mismo nombre y `deploy-pages` se niega a elegir entre dos («Artifact count is 2»); lo
+que sirve es una corrida nueva (Actions → «Publicar el sitio» → Run workflow). *Se detecta:* en Actions, el paso «Publicar en
+GitHub Pages». *Regla:* entre `upload-pages-artifact` y `deploy-pages` va una pausa (`sleep 20`, ya puesta en `pages.yml`).
+
 ## Código
 
 **Código muerto después de reemplazar algo.** El selector de lugar paso a
