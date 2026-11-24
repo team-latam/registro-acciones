@@ -4,7 +4,7 @@
    Los rótulos de grupo y de tarjeta se pensaron para el alfabeto latino: 11 px, negrita fuerte, letras separadas y MAYÚSCULAS.
    En hebreo no hay mayúsculas, separar las letras estorba y 11 px en negrita se empasta (el menú de Administración se veía mal).
    Acá se recorre toda la app en hebreo (escritorio y celular, y las secciones de Administración) y se mide TODO texto en hebreo:
-   ninguno con letras separadas ni en mayúsculas, ninguno de menos de 12 px en negrita fuerte, el menú de Administración con
+   ninguno con letras separadas ni en mayúsculas, ninguno de menos de 12 px (los títulos, los chips, los estados), el menú de Administración con
    rótulos casi del tamaño de sus ítems. Y en español no cambia nada (ahí siguen como se pensaron).
    Un rótulo nuevo de ese estilo hace fallar esto: se suma a la lista de «Hebreo» del CSS de index.html.
    ====================================================================== */
@@ -23,7 +23,7 @@ const sonda = p => p.evaluate(() => {
     const quien = (typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".") : el.tagName.toLowerCase()) + " «" + tx.slice(0, 12) + "»";
     if(ls > 0) mal.push(`letras separadas (${ls}px): ${quien}`);
     if(cs.textTransform === "uppercase") mal.push(`mayúsculas: ${quien}`);
-    if(fs < 12 && peso >= 800) mal.push(`${fs}px en negrita ${peso}: ${quien}`);
+    if(fs < 12) mal.push(`${fs}px (en hebreo, nada de menos de 12 px): ${quien}`);
   }
   return mal;
 });
@@ -38,7 +38,7 @@ for(const vp of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]){
     await irAdmin(p);
     for(const [v, k] of [["resumen"], ["personas"], ["preferencias", "brujula"], ["preferencias", "tipos"], ["preferencias", "correos"], ["preferencias", "gastos"]]){ await admin(p, v, k); await p.waitForTimeout(250); await ver("Administración " + (k || v)); }
   }
-  eq(`hebreo ${vp.width}: ningún texto con letras separadas, en mayúsculas ni de menos de 12 px en negrita fuerte`, [...halladas].slice(0, 8).map(([x, n]) => x + " — " + n), []);
+  eq(`hebreo ${vp.width}: ningún texto con letras separadas, en mayúsculas ni de menos de 12 px`, [...halladas].slice(0, 8).map(([x, n]) => x + " — " + n), []);
   eq(`hebreo ${vp.width}: sin errores en la página`, errores, []);
   await p.close();
 }

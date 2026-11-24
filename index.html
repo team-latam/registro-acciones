@@ -5362,6 +5362,8 @@
   html[lang="he"] .admin-titulo{ font-size:18px; font-weight:700; }
   /* Las etiquetas chicas (días de la semana, estados, avisos) en negrita común: en hebreo, a 11 px, el 800 se empasta. */
   html[lang="he"] :is(.dow, .ad-dow, .year-dows span, .cal-head, .hoy, .pl-months span, .fl-hito-estado, .rs-ok, .ag-estado, .gx-chip){ font-weight:700; }
+  /* Y los chips, estados y encabezados de calendario de menos de 12 px suben a 12 px (en hebreo, a 11 el trazo se ve apretado). */
+  html[lang="he"] :is(.type-badge, .cal-gutter, .dow, .ad-dow, .year-dows span, .hoy, .pl-months span, .cal-head, .fl-hito-estado, .rs-ok, .ag-estado, .sc-txt, .scope-chip, .status-pill, .date-trigger.empty, .gx-chip){ font-size:12px; }
 </style>
 </head>
 <body>
