@@ -189,7 +189,7 @@ botón lleva el anillo hacia adentro, como los botones.
 **Una pantalla nueva que ningún recorrido visita** (24/11/2026; docs/AUDITORIA.md, H9). Brújula (23/11) y Administración › Problemas no tenían parada en
 `recorrerApp`, así que ni recortes, ni nombres para el lector, ni letra mínima, ni oscuro, ni hebreo las miraban; al sumarlas aparecieron campos cortados a 320 px
 y etiquetas de 11 px en hebreo. *Por qué:* la regla estaba escrita en el README, pero nada la hacía cumplir. *Se detecta:* la revisión `cobertura` de
-`herramientas/pruebas/barrido.mjs` compara el menú de Administración con las paradas y falla si falta una. *Regla:* una pantalla o ventana nueva se suma a `recorrerApp`
+`herramientas/pruebas/barrido.mjs` compara el menú de Administración con las paradas y falla si falta una. *Regla:* en el celular chico (320 px) se mira también con **letra ancha** (`ancha: true` en `barrer`: lo que entra justo con la letra de este sandbox no entra con Inter, la de GitHub y la del celular; el 24/11/2026 se cortaron así las solapas de Problemas). Una pantalla o ventana nueva se suma a `recorrerApp`
 **en la misma tanda** (con sus datos de mentira si lee algo de afuera: `brujulaDeMentira`); la prueba avisa si es del menú de Administración, y a mano si no (el menú de usuario, las ventanas).
 
 ## GitHub

@@ -321,8 +321,11 @@ export const cobertura = (p, tam) => {
 const ORDEN = ["cobertura", "arbol", "letra", "hebreo", "seleccion", "recortes", "selectores"];
 const FABRICAS = { cobertura, arbol, letra, hebreo, seleccion, recortes, selectores };
 export async function barrer(b, cfg, eq){
-  const { nombre, vp, lang = "", dark = false, revisiones, despues } = cfg;
+  const { nombre, vp, lang = "", dark = false, ancha = false, revisiones, despues } = cfg;
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, lang, dark });
+  // «ancha»: con una letra más ancha que la de este sandbox (la de GitHub y la de un celular de verdad es otra: Inter, más ancha). Lo que entra justo acá y
+  // no entra allá se ve así (RECURRENTES: «Lo que entra justo acá y en GitHub no»; el 24/11/2026 las solapas de Administración › Problemas, en 320 px).
+  if(ancha) await p.addStyleTag({ content: `*{ font-family:"DejaVu Sans", Verdana, monospace !important; }` });
   const r = {};
   for(const k of ORDEN) if(revisiones.includes(k)) r[k] = await FABRICAS[k](p, nombre, vp.width);
   let baseSelect = true;
