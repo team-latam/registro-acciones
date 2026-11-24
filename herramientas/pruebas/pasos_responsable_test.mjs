@@ -132,8 +132,12 @@ const vp = { width: 1280, height: 900 };
     eq("celular: se abre la ventanita, con el buscador arriba (sin «+ Responsable» como primera fila) y sin «Quitar» porque no hay responsable", await p.evaluate(() => { const el = document.getElementById("respPop"); return [el.firstElementChild.querySelector("#respBuscar") !== null, el.querySelectorAll(".rp-quitar").length, el.querySelector("#respBuscar").placeholder, !/\+ Responsable/.test(el.textContent)]; }), [true, 0, "Buscar a alguien…", true]);
     eq("…entra en la pantalla y se ven todos (35) con scroll adentro de la lista", await p.evaluate(() => { const l = document.getElementById("respLista"); return [document.querySelectorAll("#respPop .rp-op").length, l.scrollHeight > l.clientHeight, getComputedStyle(l).overflowY]; }), [35, true, "auto"]);
     eq("…y entra entera en la pantalla", await estaEnLaPantalla(p), true);
-    eq("celular: queda pegada al botón (justo abajo o justo arriba) y a lo ancho de la pantalla, con 12 px de margen a cada lado", await p.evaluate(() => { const b = document.querySelector('.post[data-post-id="p1"] .rs-pasos li:first-child .rs-resp').getBoundingClientRect(), r = document.getElementById("respPop").getBoundingClientRect();
-      return [Math.abs(r.top - b.bottom) < 12 || Math.abs(b.top - r.bottom) < 12, Math.round(r.left), Math.round(innerWidth - r.right)]; }), [true, 12, 12]);
+    // Se mide cuando la página dejó de moverse (la ventanita se acomoda y la página puede estar desplazándose para mostrar el
+    // botón): una sola medición apenas abierta fallaba de vez en cuando en GitHub (24/11/2026, 37357e8), con el reloj más lento.
+    const pegada = () => p.evaluate(() => { const b = document.querySelector('.post[data-post-id="p1"] .rs-pasos li:first-child .rs-resp').getBoundingClientRect(), r = document.getElementById("respPop").getBoundingClientRect();
+      return [Math.abs(r.top - b.bottom) < 12 || Math.abs(b.top - r.bottom) < 12, Math.round(r.left), Math.round(innerWidth - r.right)]; });
+    { const fin = Date.now() + 3000; let v = await pegada(); while(JSON.stringify(v) !== "[true,12,12]" && Date.now() < fin){ await p.dormir(100); v = await pegada(); }
+      eq("celular: queda pegada al botón (justo abajo o justo arriba) y a lo ancho de la pantalla, con 12 px de margen a cada lado", v, [true, 12, 12]); }
     // Con el teclado la parte visible se achica: se simula con una pantalla más baja. La ventanita sigue abierta, entera en la pantalla, y el botón a la vista.
     await p.setViewportSize({ width: 390, height: 500 }); await p.waitForTimeout(500);
     eq("celular, con la pantalla más baja (el teclado): sigue abierta, entera en la pantalla y con el botón a la vista", await p.evaluate(() => { const b = document.querySelector('.post[data-post-id="p1"] .rs-pasos li:first-child .rs-resp').getBoundingClientRect(), r = document.getElementById("respPop").getBoundingClientRect();

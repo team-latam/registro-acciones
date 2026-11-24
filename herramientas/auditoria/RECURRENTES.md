@@ -727,4 +727,4 @@ es más lento que el sandbox, y un celular lento también; lo que anda «en el m
 tarda unos cientos de milisegundos. *Se detecta:* solo en GitHub (no se reproduce ni con cuatro
 corridas a la vez). *Regla:* una comprobación sobre algo que la app hace **después** de guardar (el foco,
 un aviso, la lista) espera a que ocurra (`hasta(...)`), no lo exige en el acto; y si la espera revela
-que la app no se recupera sola cuando tarda, la app también reintenta (`cerrarGasto` ahora lo hace).
+que la app no se recupera sola cuando tarda, la app también reintenta (`cerrarGasto` ahora lo hace). Pasó también con la posición de la ventanita de «+ Responsable» en el celular (24/11/2026, `pasos_responsable_test`: se medía apenas abierta, con la página todavía desplazándose): ahora se vuelve a medir hasta que quede quieta.
