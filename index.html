@@ -418,7 +418,7 @@
      contenido del botón. */
   .fab-wrap{
     position:fixed; inset-block-end:24px; inset-inline-end:24px; z-index:65;
-    display:flex; flex-direction:column; align-items:flex-end; gap:10px;
+    display:flex; flex-direction:column-reverse; align-items:flex-end; gap:10px;   /* column-reverse: en el HTML el + va primero (teclado), en la pantalla las acciones quedan arriba */
     /* El contenedor no recibe clicks: las acciones del menú están arriba
        del + ocupando lugar aunque no se vean, y esa zona vacía tapaba a
        la flecha de "subir" que vive ahí. Solo el + y las acciones
@@ -440,9 +440,10 @@
   .fab-actions{
     display:flex; flex-direction:column; align-items:flex-end; gap:10px;
     opacity:0; transform:translateY(10px); pointer-events:none;
-    transition:opacity .16s ease, transform .16s ease;
+    visibility:hidden;   /* cerrado, sin foco ni lector de pantalla (antes: invisibles pero con Tab) */
+    transition:opacity .16s ease, transform .16s ease, visibility 0s linear .16s;
   }
-  .fab-wrap.open .fab-actions{ opacity:1; transform:none; pointer-events:auto; }
+  .fab-wrap.open .fab-actions{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .16s ease, transform .16s ease, visibility 0s; }
   .fab-action{
     display:inline-flex; align-items:center; gap:10px; cursor:pointer; white-space:nowrap;
     background:var(--celeste-soft); color:var(--ink-strong); border:1px solid var(--border);
@@ -5420,6 +5421,23 @@
       <button data-view="reportes">Reportes</button>
     </nav>
   </header>
+  <!-- El + de crear va ANTES del contenido en el HTML (es fijo: se ve en el mismo lugar): con el teclado se llega en pocos Tab y no
+       después de toda la lista (115 Tab, auditoría del 24/11/2026, H10). El botón va primero y sus acciones después (en la pantalla se
+       ven arriba del +: flex-direction:column-reverse); cerrado, las acciones ni se ven ni se alcanzan con Tab. -->
+  <div class="fab-wrap" id="fab" hidden>
+    <button type="button" class="fab-main" id="fabMain" data-action="toggle-fab" aria-haspopup="true" aria-controls="fabAcciones" aria-expanded="false" aria-label="Crear"><span aria-hidden="true">+</span></button>
+    <div class="fab-actions" id="fabAcciones">
+      <button type="button" class="fab-action" data-action="new-rutina">
+        <span class="fab-ico" aria-hidden="true">📝</span><span class="fab-label" id="fabRutinaLabel">Nueva actividad</span>
+      </button>
+      <button type="button" class="fab-action" data-action="new-evento">
+        <span class="fab-ico" aria-hidden="true">📅</span><span class="fab-label" id="fabEventoLabel">Nuevo evento</span>
+      </button>
+      <button type="button" class="fab-action" data-action="fab-gastos" id="fabGastos" hidden>
+        <span class="fab-ico" aria-hidden="true">🧾</span><span class="fab-label" id="fabGastosLabel">Subir comprobantes</span>
+      </button>
+    </div>
+  </div>
   <main id="viewRoot" tabindex="-1"></main>
   <!-- Barra de abajo en celular (ver renderBottomNav): las pestañas de
        arriba no entraban y había que descubrir que se deslizaban. El +
@@ -5440,20 +5458,6 @@
   <button type="button" class="scroll-top" id="scrollTop" data-action="scroll-top" aria-label="Subir" hidden>
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
-  <div class="fab-wrap" id="fab" hidden>
-    <div class="fab-actions">
-      <button type="button" class="fab-action" data-action="new-rutina">
-        <span class="fab-ico" aria-hidden="true">📝</span><span class="fab-label" id="fabRutinaLabel">Nueva actividad</span>
-      </button>
-      <button type="button" class="fab-action" data-action="new-evento">
-        <span class="fab-ico" aria-hidden="true">📅</span><span class="fab-label" id="fabEventoLabel">Nuevo evento</span>
-      </button>
-      <button type="button" class="fab-action" data-action="fab-gastos" id="fabGastos" hidden>
-        <span class="fab-ico" aria-hidden="true">🧾</span><span class="fab-label" id="fabGastosLabel">Subir comprobantes</span>
-      </button>
-    </div>
-    <button type="button" class="fab-main" id="fabMain" data-action="toggle-fab" aria-haspopup="true" aria-expanded="false" aria-label="Crear"><span aria-hidden="true">+</span></button>
-  </div>
 </div>
 
 <div class="calendar-notice" id="calendarToast" role="status" aria-live="polite" hidden>
@@ -22993,6 +22997,8 @@ function jumpToNewPosts(){
 }
 window.addEventListener("scroll", updateNewPostsPill, { passive:true });
 function closeFab(){ setFab(false); }
+// Saliendo del + con Tab (el foco pasa a otra cosa), el menú se cierra solo.
+fabEl.addEventListener("focusout", ev => { if(fabOpen && ev.relatedTarget && !fabEl.contains(ev.relatedTarget)) closeFab(); });
 // «Subir comprobantes» en el + (19/11), si Gastos está a la vista.
 function pintarFabGastos(){ const b = document.getElementById("fabGastos"); if(b) b.hidden = !gastosVisible(); }
 // La Rutina no tiene modal propio: su composer es la primera cosa del
@@ -23048,7 +23054,8 @@ function isTouchDevice(){
   try{ return window.matchMedia("(hover: none) and (pointer: coarse)").matches; }catch(e){ return false; }
 }
 function focusIntoComposer(){
-  composerReturnFocus = document.activeElement;
+  // Si se abrió desde el menú del + (ya cerrado y sin foco), al cerrar el foco vuelve al +, no a la acción que ya no se alcanza.
+  composerReturnFocus = fabEl && fabEl.contains(document.activeElement) ? fabMainEl : document.activeElement;
   // El foco igual ENTRA al modal (a la ✕): es lo que hace que Escape lo
   // cierre y que el lector de pantalla lo anuncie. Solo se evita que caiga
   // en un campo de texto.
@@ -34164,6 +34171,8 @@ document.addEventListener("click", async e=>{
   },
     "toggle-fab": async (el, e, action, postId) => {
     setFab(!fabOpen);
+    // Con el teclado (Enter o espacio: el click llega con detail 0) el foco pasa a la primera acción: sin esto había que adivinar el Tab.
+    if(fabOpen && e && e.detail === 0){ const a = fabEl.querySelector(".fab-action:not([hidden])"); if(a) a.focus(); }
   },
     "new-evento": async (el, e, action, postId) => {
     closeFab(); openComposer();

@@ -138,6 +138,7 @@ sueltos_test.mjs 2
 supabase_integridad_test.mjs 6
 tablas_a11y_test.mjs 3
 teclado_autocompletar_test.mjs 25
+teclado_flujo_test.mjs 14
 tendencias_azar_test.mjs 8
 tendencias_test.mjs 35
 toldot_test.mjs 19

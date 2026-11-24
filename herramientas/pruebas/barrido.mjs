@@ -295,6 +295,34 @@ export const seleccion = (p, tam) => {
   };
 };
 
+// ---------- Lo que el mouse toca, el teclado lo alcanza (24/11/2026, docs/AUDITORIA.md, H10) ----------
+// Un elemento con data-action (o un rol de botón, enlace, solapa…) que no es un botón, un enlace ni un campo y no tiene tabindex solo se puede usar con el mouse.
+// La auditoría del 24/11 los buscó en toda la app: quedaron tres comportamientos de mouse con su equivalente de teclado, anotados acá con el porqué. Un control nuevo
+// de ese tipo hace fallar esto: se hace un <button> (lo normal), o se anota acá con cómo lo hace el teclado.
+const SOLO_MOUSE_CONOCIDO = {
+  "cal-new": "tocar un hueco del calendario para crear un evento ahí es un atajo del mouse; con el teclado se crea desde el «+» y se escribe la fecha",
+  "fp-cerrar": "el velo oscuro del panel de filtros (tocar afuera lo cierra); con el teclado están el botón de cerrar y Escape",
+};
+export const alcanzable = (p, tam) => {
+  const solo = new Map();
+  return {
+    paso: async (p, pantalla) => {
+      const r = await p.evaluate(() => { const out = [];
+        const foco = e => e.matches('button, a[href], input:not([type=hidden]), select, textarea, summary, [tabindex]:not([tabindex="-1"]), [contenteditable=""], [contenteditable="true"]');
+        for(const e of document.querySelectorAll('[data-action], [role=button], [role=link], [role=tab], [role=menuitem], [role=option], [onclick]')){
+          if(!e.offsetParent && getComputedStyle(e).position !== "fixed") continue;
+          if(e.closest("[inert], [aria-hidden=true]") || foco(e)) continue;
+          if(e.querySelector('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')) continue;   // el contenedor de un control que sí se alcanza
+          const r = e.getBoundingClientRect(); if(r.width < 2 || r.height < 2) continue;
+          out.push({ accion: e.dataset.action || e.getAttribute("role") || "onclick", quien: e.tagName.toLowerCase() + (typeof e.className === "string" && e.className.trim() ? "." + e.className.trim().split(/\s+/)[0] : "") });
+        } return out; });
+      for(const x of r){ const k = x.accion + " <" + x.quien + ">"; if(!solo.has(k)) solo.set(k, { pantalla, accion: x.accion }); }
+    },
+    fin: eq => eq(`${tam}: todo lo que el mouse toca, el teclado lo alcanza (salvo lo anotado con su porqué)`,
+      [...solo].filter(([, v]) => !SOLO_MOUSE_CONOCIDO[v.accion]).map(([k, v]) => `${k} — ${v.pantalla}`), []),
+  };
+};
+
 // ---------- Todo el menú de Administración tiene su parada (24/11/2026) ----------
 // La regla «una pantalla nueva se suma a recorrerApp» (README de las pruebas) no se cumplió con Brújula el 23/11: ningún recorrido la visitaba y nadie lo notó hasta
 // el 24/11 (docs/AUDITORIA.md, H9). Acá se compara el menú de Administración con las paradas: cada sección del menú tiene que tener la suya («Admin <clave>»).
@@ -318,8 +346,8 @@ export const cobertura = (p, tam) => {
 // Las revisiones corren en cada parada en este orden: las que solo miran, después recortes (que pasa
 // el foco por cada control) y al final selectores (que abre y elige). `despues(p, r)` es lo que una
 // configuración hace a mano al terminar el recorrido (Año del celular, secciones de hebreo, etc.).
-const ORDEN = ["cobertura", "arbol", "letra", "hebreo", "seleccion", "recortes", "selectores"];
-const FABRICAS = { cobertura, arbol, letra, hebreo, seleccion, recortes, selectores };
+const ORDEN = ["cobertura", "alcanzable", "arbol", "letra", "hebreo", "seleccion", "recortes", "selectores"];
+const FABRICAS = { cobertura, alcanzable, arbol, letra, hebreo, seleccion, recortes, selectores };
 export async function barrer(b, cfg, eq){
   const { nombre, vp, lang = "", dark = false, ancha = false, revisiones, despues } = cfg;
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, lang, dark });
