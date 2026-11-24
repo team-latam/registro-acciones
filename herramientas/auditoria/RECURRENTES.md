@@ -125,6 +125,14 @@ muy poco. *Se detecta:* `herramientas/pruebas/hebreo_titulos_test.mjs` (recorre 
 rótulos van sin `letter-spacing` ni mayúsculas, a 12,5 px o más y en negrita común (700); un rótulo nuevo de ese estilo se suma
 a la lista «Hebreo» del CSS de `index.html`.
 
+**Escape que hace dos cosas (o ninguna) en un formulario con desplegables** (24/11/2026; docs/AUDITORIA.md, V5, arreglado ese
+día). *Por qué:* hay dos manejadores de Escape —el del formulario («¿Descartar?») y el de cada campo que autocompleta— y el del
+formulario tiene que saber qué desplegables hay abiertos para dejarles ese Escape; la «Dirección exacta» no estaba en esa lista.
+Y un campo con texto sin coincidencias no hacía nada con Escape. *Se detecta:* `herramientas/pruebas/teclado_autocompletar_test.mjs`
+(↑ ↓ con vuelta, Enter, Tab y Escape en lugar, mención, participante, dirección, rutina, respuesta y buscador de personas del
+proyecto). *Regla:* un desplegable nuevo se suma a la guarda de Escape del formulario (`postModalOverlay`, al final del manejador
+de Escape) y a la prueba del teclado; un Escape o cierra el desplegable o cierra el formulario, nunca los dos.
+
 ## Seguridad y privacidad
 
 **Lo escrito por alguien que entra al HTML sin escapar.** *Se detecta:*

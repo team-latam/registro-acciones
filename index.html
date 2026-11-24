@@ -32396,7 +32396,9 @@ document.addEventListener("keydown", e=>{
   if(state.view === "preferencias" && tipoAbierto){ cerrarFichaTipo(); return; }
   if(postModalOverlay.hidden) return;
   const d = composerDraft;
-  if(d.placeQuery || d.mentionQuery != null || d.participantQuery) return;
+  // (la dirección exacta también: sus sugerencias las cierra su propio manejador;
+  // sin esto el mismo Escape abría además el «¿Descartar?» del formulario)
+  if(d.placeQuery || d.mentionQuery != null || d.participantQuery || d.locationSuggestions != null) return;
   requestCloseComposer();
 });
 // Atajos de una tecla del Calendario (D/W/M/Y/A/X para las vistas, T para
@@ -32991,6 +32993,9 @@ document.addEventListener("keydown", e=>{
       setHighlight: v => { draft.placeHighlight = v; },
       onSelect: m => selectPlaceMatch(el.dataset.placeScope, el.dataset.placeOwner, m),
       onClear: () => { draft.placeQuery = ""; draft.placeHighlight = 0; },
+      // También sin coincidencias («Sin coincidencias» a la vista): si no, Escape
+      // no hacía nada y, con texto en el campo, tampoco dejaba cerrar el formulario.
+      escapeAlways: !!draft.placeQuery,
     });
     return;
   }
@@ -33003,6 +33008,7 @@ document.addEventListener("keydown", e=>{
       setHighlight: v => { draft.mentionHighlight = v; },
       onSelect: m => selectMentionMatch(el.dataset.mentionScope, el.dataset.mentionOwner, el.id, m),
       onClear: () => { draft.mentionQuery = null; draft.mentionHighlight = 0; },
+      escapeAlways: true,
     });
     return;
   }
@@ -33045,6 +33051,7 @@ document.addEventListener("keydown", e=>{
       setHighlight: v => { draft.participantHighlight = v; },
       onSelect: m => selectParticipantMatch(m),
       onClear: () => { draft.participantQuery = ""; draft.participantHighlight = 0; },
+      escapeAlways: !!draft.participantQuery,
     });
   }
   if(el.id === "cLocation"){
