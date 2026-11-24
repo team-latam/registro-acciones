@@ -120,6 +120,98 @@ const tabla = (p, t) => p.evaluate(t => window.__sb.tablas[t], t);
   await p.close();
 }
 
+/* ---------- Sacar de la lista (23/11/2026) ----------
+   Dos cosas que pasaron con la planilla de verdad: (1) una persona a la que el Script no pudo darle acceso (el administrador de
+   su organización no deja recibir archivos de afuera) queda con la fila en error y sin nada en Drive; «Quitar todo el acceso» le pedía
+   a la función quitar cero carpetas, la función rechazaba todo y la pantalla ponía «Google no contestó» en las 7 carpetas. (2) A quien
+   se le sacaba todo el acceso le quedaba su fila «Enviado» y seguía en la lista como «Sin acceso». */
+const cerrar = c => ({ filas: c.filas.map(f => ({ ...f, estado: "cerrada" })) });
+{
+  const { p, pedidos } = await abrir({ guion: { descartar: cerrar } });
+  await p.check('[data-action="bj-sel"][data-correo="joaquin@example.org"]'); await p.waitForTimeout(200);
+  eq("quien no tiene carpetas: el botón dice lo que hace («Sacar de la lista»), no «quitar el acceso»", await textos(p, ".bj-barra button"), ["Agregar carpeta", "Quitar de una carpeta", "Sacar de la lista", "Limpiar"]);
+  await clic(p, '[data-action="bj-quitar-todo-varios"]');
+  eq("pide confirmar con palabras de lista, no de acceso", (await textos(p, "#confirmMessage")).join(" "), "¿Sacar a esta persona de la lista? No tiene acceso a ninguna carpeta.");
+  await confirmar(p);
+  eq("a la función NO se le pide «quitar» (no hay nada que quitar): se le pide cerrar la fila que esperaba",
+     [pedidos.filter(x => x.accion === "quitar").length, pedidos.filter(x => x.accion === "descartar").map(x => [x.correo, x.filas])], [0, [["joaquin@example.org", [{ planilla: PL1, fila: 4 }]]]]);
+  eq("el resultado es «Listo» y dice que salió de la lista (sin «Google no contestó»)", [await textos(p, ".bj-form h3"), await textos(p, ".bj-res-n"), await textos(p, ".bj-res .bj-mail"), await p.$$eval(".bj-res-l li", l => l.length)], [["Listo"], ["Joaquín Salas"], ["Sacada de la lista."], 0]);
+  eq("queda anotado en el registro de actividad", (await tabla(p, "audit_log")).filter(x => x.type === "brujula_quito").map(x => [x.target_email, x.detail]), [["joaquin@example.org", "Sacado de la lista"]]);
+  await p.close();
+}
+{
+  // La ficha de esa persona: un solo botón, el que corresponde.
+  const { p, pedidos } = await abrir({ guion: { descartar: cerrar } });
+  await clic(p, '[data-action="bj-persona"][data-correo="joaquin@example.org"]');
+  eq("la ficha de quien tiene un error y ninguna carpeta: «Sacar de la lista» (y no «Quitar todo el acceso»)", await textos(p, ".bj-acciones button"), ["Sacar de la lista"]);
+  await clic(p, '[data-action="bj-quitar-todo"]');
+  eq("pide confirmar con el nombre", (await textos(p, "#confirmMessage")).join(" "), "¿Sacar a Joaquín Salas de la lista? No tiene acceso a ninguna carpeta.");
+  await confirmar(p);
+  eq("se cierra su fila y nada más", pedidos.filter(x => x.accion !== "leer").map(x => x.accion), ["descartar"]);
+  await p.close();
+}
+{
+  // Varias personas, una con carpetas y otra sin: la que tiene se «quita», la que no se «saca de la lista».
+  const { p, pedidos } = await abrir({ guion: { quitar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), planilla: "no" }), descartar: cerrar } });
+  await p.check('[data-action="bj-sel"][data-correo="camila@example.org"]'); await p.waitForTimeout(200);
+  await p.check('[data-action="bj-sel"][data-correo="joaquin@example.org"]'); await p.waitForTimeout(200);
+  eq("si alguna tiene carpetas, el botón sigue siendo «Quitar todo el acceso»", (await textos(p, ".bj-barra button"))[2], "Quitar todo el acceso");
+  await clic(p, '[data-action="bj-quitar-todo-varios"]'); await confirmar(p);
+  eq("a Camila se le quita la carpeta que tiene; a Joaquín solo se le cierra la fila",
+     [pedidos.filter(x => x.accion === "quitar").map(x => [x.correo, x.carpetas]), pedidos.filter(x => x.accion === "descartar").map(x => x.correo)], [[["camila@example.org", [C1]]], ["joaquin@example.org"]]);
+  eq("el resultado: Listo, y solo Joaquín sale de la lista", [await textos(p, ".bj-form h3"), await textos(p, ".bj-res .bj-mail")], [["Listo"], ["Sacada de la lista."]]);
+  await p.close();
+}
+{
+  // Alguien con una carpeta Y una fila esperando: si se le quita todo, la fila se cierra; si se le quita solo una, no.
+  const conFila = () => { const d = LEIDO(); d.personas.push(
+    persona("mixta@example.org", "Mixta Prado", { carpetas: { [C1]: "reader", [C2]: "reader" }, permisos: { [C1]: "pm1", [C2]: "pm2" }, pendiente: true, planillas: [{ planilla: PL1, fila: 5, enviado: false }] })); return d; };
+  const guion = { quitar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), planilla: "no" }), descartar: cerrar };
+  let { p, pedidos } = await abrir({ guion, datos: conFila });
+  await clic(p, '[data-action="bj-persona"][data-correo="mixta@example.org"]');
+  await clic(p, '[data-action="bj-quitar-una"][data-id="' + C1 + '"]'); await confirmar(p);
+  eq("quitarle una de dos carpetas no cierra su fila (todavía tiene acceso)", [pedidos.filter(x => x.accion === "quitar").length, pedidos.filter(x => x.accion === "descartar").length], [1, 0]);
+  await p.close();
+  ({ p, pedidos } = await abrir({ guion, datos: conFila }));
+  await clic(p, '[data-action="bj-persona"][data-correo="mixta@example.org"]');
+  await clic(p, '[data-action="bj-quitar-todo"]'); await confirmar(p);
+  eq("quitarle todo cierra además su fila", [pedidos.filter(x => x.accion === "quitar").map(x => x.carpetas), pedidos.filter(x => x.accion === "descartar").map(x => x.filas)], [[[C1, C2]], [[{ planilla: PL1, fila: 5 }]]]);
+  await p.close();
+  // Un acceso que no se pudo quitar (heredado) tampoco cierra la fila: sigue teniendo la carpeta.
+  ({ p, pedidos } = await abrir({ guion: { quitar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: false, error: "heredado" })), planilla: "no" }), descartar: cerrar }, datos: conFila }));
+  await clic(p, '[data-action="bj-persona"][data-correo="mixta@example.org"]');
+  await clic(p, '[data-action="bj-quitar-todo"]'); await confirmar(p);
+  eq("si Drive no deja quitar (heredado), la fila no se cierra", pedidos.filter(x => x.accion === "descartar").length, 0);
+  await p.close();
+}
+{
+  // Quien se queda sin carpetas y sin nada esperando ya no figura en la lista (su fila «Enviado» no se borra).
+  let quitada = false;
+  const datos = () => { const d = LEIDO(); if(quitada){ const v = d.personas.find(x => x.correo === "camila@example.org"); v.carpetas = {}; v.permisos = {}; v.planillas = [{ planilla: PL1, fila: 8, enviado: true }]; } return d; };
+  const { p, pedidos } = await abrir({ datos, guion: { quitar: c => { quitada = true; return { carpetas: c.carpetas.map(id => ({ id, ok: true })), planilla: "escrita" }; }, descartar: cerrar } });
+  eq("antes: Camila está en la lista", (await filas(p)).includes("Camila Ortega"), true);
+  await clic(p, '[data-action="bj-persona"][data-correo="camila@example.org"]');
+  await clic(p, '[data-action="bj-quitar-todo"]'); await confirmar(p);
+  await clic(p, '[data-action="bj-volver"]'); await p.waitForTimeout(500);
+  eq("después: ya no figura (la tabla, las solapas y los filtros no la cuentan)", [(await filas(p)).includes("Camila Ortega"), (await textos(p, ".bj-tab"))[0], pedidos.filter(x => x.accion === "descartar").length], [false, "Personas · 5", 0]);
+  await p.close();
+}
+{
+  // Si falla el pedido entero no se inventa un motivo por carpeta.
+  const { p } = await abrir({ guion: { quitar: () => ({ estado: 502, cuerpo: { error: "google" } }) } });
+  await p.check('[data-action="bj-sel"][data-correo="valeria@example.org"]'); await p.waitForTimeout(200);
+  await clic(p, '[data-action="bj-quitar-todo-varios"]'); await confirmar(p);
+  eq("falló todo: «No se pudo», una sola frase y ni una carpeta con «Google no contestó»", [await textos(p, ".bj-form h3"), await textos(p, ".bj-res-n"), await p.$$eval(".bj-res-l li", l => l.length)], [["No se pudo"], ["Valeria Montes No se pudo. Probá de nuevo."], 0]);
+  await p.close();
+}
+{
+  const { p } = await abrir({ guion: { quitar: () => ({ estado: 400, cuerpo: { error: "carpetas" } }) } });
+  await p.check('[data-action="bj-sel"][data-correo="valeria@example.org"]'); await p.waitForTimeout(200);
+  await clic(p, '[data-action="bj-quitar-todo-varios"]'); await confirmar(p);
+  eq("un código que la pantalla conoce se explica con su frase", await textos(p, ".bj-res-n"), ["Valeria Montes Actualizá la lista y probá de nuevo."]);
+  await p.close();
+}
+
 /* ---------- Una persona ---------- */
 {
   const { p, pedidos } = await abrir({ guion: { quitar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: false, error: "heredado" })), planilla: "no" }), dar: c => ({ carpetas: c.carpetas.map(id => ({ id, ok: true })), mail: "no", planilla: "no" }) } });

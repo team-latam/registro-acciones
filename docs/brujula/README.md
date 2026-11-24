@@ -161,6 +161,16 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
 
 - **Un acceso heredado no se ve de antemano:** Drive no dice, en «Mi unidad», si un permiso viene de una carpeta madre.
   Toldot lo descubre al intentar quitarlo y lo explica («Le llega por otra carpeta: hay que sacarlo en Drive»).
+- **Quién figura en la lista (24/11/2026):** quien tiene alguna carpeta o espera acceso. Quien se queda sin ninguna carpeta y sin
+  nada esperando **ya no figura**, aunque su fila «Enviado» siga en la planilla (la fila no se borra: queda como historial, con la
+  nota «Quitado de…»). Si se lo vuelve a invitar, vuelve a aparecer. Lo pidió el usuario: «no debería existir este registro».
+- **Sacar de la lista (24/11/2026):** una persona a la que el Script no pudo darle acceso (por ejemplo, el administrador de su
+  organización no deja recibir archivos de afuera) queda con la fila en error y **sin nada en Drive**: no hay acceso que quitar.
+  Para eso está «Sacar de la lista» (la ficha y la barra de varias personas; el botón cambia de nombre solo cuando ninguna de las
+  elegidas tiene carpetas). Escribe «Enviado» en la fila —el Script de los lunes salta solo las filas que dicen exactamente
+  «Enviado»; con otra palabra, como «Descartado», las vuelve a procesar y a escribir encima— más una nota. Pasaba que «Quitar todo
+  el acceso» le pedía a la función quitar **cero** carpetas, la función rechazaba el pedido entero y la pantalla ponía «Google no
+  contestó» en las 7 carpetas: un fallo del pedido entero ahora se dice una sola vez y sin inventar un motivo por carpeta.
 - **Lo que se anota en el registro de actividad:** `brujula_dio` y `brujula_quito` (03-validacion.sql), con quién lo hizo, a quién y
   de qué carpetas.
 - **El aviso por correo a los admin** (viene apagado) lo corre el workflow horario de siempre («Resúmenes por correo»); se prende

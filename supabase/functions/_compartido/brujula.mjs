@@ -355,6 +355,34 @@ export async function quitarAcceso(traer, token, ctx, p, { ahora }){
   return { carpetas, planilla };
 }
 
+// «Sacar de la lista»: cierra las filas de planilla que esperan acceso (las que el Script no pudo dar y dejó con un error, o
+// las que todavía no se atendieron). La fila NO se borra: se le pone «Enviado» —lo único que el Script de los lunes respeta
+// como «ya está» (cualquier otra palabra la vuelve a procesar)— y una nota que dice qué pasó. Solo toca filas que siguen
+// siendo de esa persona y que todavía no dicen «Enviado»; una fila de una planilla fuera del catálogo se ignora.
+export async function descartarFilas(traer, token, ctx, p, { ahora }){
+  const correo = String(p.correo || "").trim().toLowerCase();
+  if(!CORREO.test(correo)) return { error: "correo" };
+  const filas = Array.isArray(p.filas) ? p.filas.slice(0, MAX_PLANILLAS * 3) : [];
+  const nota = `Sacado de la lista desde Toldot (${fechaDe(ahora())})`;
+  const res = [];
+  for(const f of filas){
+    const pl = ctx.planillas.find(x => x.id === String(f && f.planilla));
+    const fila = Number(f && f.fila);
+    if(!pl || !Number.isInteger(fila) || fila < 2 || fila > MAX_FILAS + 1){ res.push({ planilla: String(f && f.planilla || ""), fila, estado: "ignorada" }); continue; }
+    try{
+      await titulosDeToldot(traer, token, pl.id);
+      const a = await google(traer, token, hoja(pl.id, `A${fila}:H${fila}`));
+      const v = (a.cuerpo.values || [[]])[0] || [];
+      if(a.estado !== 200 || limpio(v[1]).toLowerCase() !== correo){ res.push({ planilla: pl.id, fila, estado: "fila-cambio" }); continue; }
+      if(limpio(v[4], 30).toLowerCase() === "enviado"){ res.push({ planilla: pl.id, fila, estado: "ya" }); continue; }
+      const r = await escribir(traer, token, "POST", `${SHEETS}${encodeURIComponent(pl.id)}/values:batchUpdate`,
+        { valueInputOption: "RAW", data: [{ range: `E${fila}:H${fila}`, values: [["Enviado", "", "Toldot", nota]] }] });
+      res.push({ planilla: pl.id, fila, estado: r.estado === 200 ? "cerrada" : "error" });
+    }catch(e){ res.push({ planilla: pl.id, fila, estado: "error" }); }
+  }
+  return { filas: res };
+}
+
 // Le saca el acceso a TODOS los lectores de una carpeta. Pide el nombre de la carpeta escrito (lo comprueba acá, no solo en la
 // pantalla). A los editores no los toca.
 export async function sacarATodos(traer, token, ctx, p){
@@ -379,7 +407,7 @@ export async function sacarATodos(traer, token, ctx, p){
    La función `brujula` de Supabase
    ====================================================================== */
 const ACCIONES_DE_LECTURA = ["comprobar", "comprobar-planilla", "leer"];
-const ACCIONES_DE_ESCRITURA = ["dar", "quitar", "sacar-todos"];
+const ACCIONES_DE_ESCRITURA = ["dar", "quitar", "sacar-todos", "descartar"];
 export async function atender(req, { env, fetch: traer = fetch, ahora = Date.now } = {}){
   const h = encabezados(req.headers.get("origin"));
   const responder = (datos, estado = 200) => new Response(JSON.stringify(datos), { status: estado, headers: h });
@@ -434,6 +462,7 @@ export async function atender(req, { env, fetch: traer = fetch, ahora = Date.now
     const ctx = { carpetas, planillas };
     const r = accion === "dar" ? await darAcceso(traer, token, ctx, { ...(pedido.persona || {}), carpetas: pedido.carpetas, mail: pedido.mail, planilla: pedido.planilla, fila: pedido.fila }, { env, ahora })
       : accion === "quitar" ? await quitarAcceso(traer, token, ctx, pedido, { ahora })
+      : accion === "descartar" ? await descartarFilas(traer, token, ctx, pedido, { ahora })
       : await sacarATodos(traer, token, ctx, pedido);
     return r.error ? responder(r, 400) : responder(r);
   }catch(e){ console.error(e.message); return responder({ error: "google" }, 502); }

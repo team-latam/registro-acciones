@@ -413,6 +413,29 @@ const ELENA = { correo: "Elena@Example.org ", nombre: "Elena <b>Ríos", idioma: 
   r = await hacer({ accion: "sacar-todos", carpeta: "OtraCarpetaAbCdEfGh", confirmar: "x" }, mundo());
   eq("sacar a todos: una carpeta fuera del catálogo, 400", [r.estado, r.cuerpo], [400, { error: "carpetas" }]);
 
+  // Sacar de la lista (23/11/2026): una persona a la que el Script no pudo darle acceso queda con la fila en error y sin
+  // nada en Drive; no hay nada que «quitar», pero tiene que poder salir de la lista.
+  m = mundo();
+  r = await hacer({ accion: "descartar", correo: "Ana@Example.org ", filas: [{ planilla: ID_PLA1, fila: 4 }] }, m);
+  eq("descartar: cierra la fila que esperaba (la del error)", [r.estado, r.cuerpo], [200, { filas: [{ planilla: ID_PLA1, fila: 4, estado: "cerrada" }] }]);
+  eq("descartar: la fila queda «Enviado» (el Script no la repite), sin el error, de Toldot y con una nota",
+     m.reg.hojaFilas[ID_PLA1][2], ["Ana Dos", "ana@example.org", "Chile", "Español", "Enviado", "", "Toldot", "Sacado de la lista desde Toldot (2026-11-23)"]);
+  eq("descartar: pide el permiso de escribir y escribe como texto (RAW)", [m.reg.scope, m.reg.entradas.length > 0, m.reg.entradas.every(x => x === "RAW")], [ALCANCE_ESCRITURA, true, true]);
+  eq("descartar: la fila no se borra (la planilla sigue con todas sus filas)", m.reg.hojaFilas[ID_PLA1].length, FILAS_1.length);
+  m = mundo();
+  r = await hacer({ accion: "descartar", correo: "valeria@example.org", filas: [{ planilla: ID_PLA1, fila: 2 }] }, m);
+  eq("descartar: una fila que ya dice «Enviado» no se toca", [r.cuerpo.filas[0].estado, m.reg.hojaFilas[ID_PLA1][0].length], ["ya", 5]);
+  r = await hacer({ accion: "descartar", correo: "ana@example.org", filas: [{ planilla: ID_PLA1, fila: 3 }] }, m);
+  eq("descartar: si la fila ya es de otra persona (la planilla cambió), no se toca", [r.cuerpo.filas[0].estado, m.reg.hojaFilas[ID_PLA1][1][4]], ["fila-cambio", ""]);
+  r = await hacer({ accion: "descartar", correo: "ana@example.org", filas: [{ planilla: "OtraPlanillaAbCdEfGh", fila: 4 }, { planilla: ID_PLA1, fila: 1 }, { planilla: ID_PLA1, fila: "x" }, { planilla: ID_PLA1, fila: 99999 }] }, m);
+  eq("descartar: una planilla fuera del catálogo o una fila que no es una fila de datos se ignora", r.cuerpo.filas.map(f => f.estado), ["ignorada", "ignorada", "ignorada", "ignorada"]);
+  eq("descartar: y no escribió nada en la planilla de la fila 4", m.reg.hojaFilas[ID_PLA1][2].length, 6);
+  r = await hacer({ accion: "descartar", correo: "esto no es un correo", filas: [{ planilla: ID_PLA1, fila: 4 }] }, mundo());
+  eq("descartar: un correo que no es un correo, 400", [r.estado, r.cuerpo], [400, { error: "correo" }]);
+  m = mundo({ admin: false });
+  r = await hacer({ accion: "descartar", correo: "ana@example.org", filas: [{ planilla: ID_PLA1, fila: 4 }] }, m);
+  eq("descartar: quien no es admin no puede (403) y ni se habla con Google", [r.estado, r.cuerpo, m.reg.tokens], [403, { error: "no-admin" }, 0]);
+
   // Comprobar una planilla
   const planilla = async (clave, link = `https://docs.google.com/spreadsheets/d/${A}/edit`) => (await hacer({ accion: "comprobar-planilla", link }, mundo({ drive: clave }))).cuerpo;
   eq("planilla: una que Toldot puede leer y escribir", await planilla("hoja"), { caso: "ok", id: A, nombre: "Users" });

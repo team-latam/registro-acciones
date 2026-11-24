@@ -10487,6 +10487,7 @@ function crearSupabaseStore(sb, opciones = {}){
       comprobarPlanilla: link => llamarBrujula({ accion: "comprobar-planilla", link }),
       dar: cuerpo => llamarBrujula({ accion: "dar", ...cuerpo }),
       quitar: cuerpo => llamarBrujula({ accion: "quitar", ...cuerpo }),
+      descartar: cuerpo => llamarBrujula({ accion: "descartar", ...cuerpo }),
       sacarATodos: cuerpo => llamarBrujula({ accion: "sacar-todos", ...cuerpo }),
       async carpetaNueva(c){ revienta(await sb.from("brujula_carpetas").insert({ id: c.id, nombre: c.nombre, nombre_drive: c.nombreDrive || null, orden: c.orden, activa: c.activa, planillas: c.planillas || [] })); },
       async carpetaCambiar(id, p){ revienta(await sb.from("brujula_carpetas").update({ nombre: p.nombre, activa: p.activa, planillas: p.planillas }).eq("id", id)); },
@@ -30700,9 +30701,16 @@ const bjCarpetas = () => (bj.cat ? bj.cat.carpetas : []);
 const bjActivas = () => bjCarpetas().filter(c => c.activa);
 const bjCarpeta = id => bjCarpetas().find(c => c.id === id);
 const bjNombreDe = id => { const c = bjCarpeta(id); return c ? c.nombre : id; };
-const bjPersonas = () => (bj.datos ? bj.datos.personas : []);
-const bjDe = correo => bjPersonas().find(p => p.correo === correo);
+// Todo lo que se leyó (Drive + planillas) y lo que se muestra: quien ya no tiene ninguna carpeta y no espera nada (por ejemplo,
+// a quien se le sacó todo el acceso, que sigue con su fila «Enviado» en la planilla) no figura en la lista; la fila no se borra.
+const bjTodos = () => (bj.datos ? bj.datos.personas : []);
+const bjVigente = p => p.pendiente || Object.keys(p.carpetas).length > 0;
+const bjPersonas = () => bjTodos().filter(bjVigente);
+const bjDe = correo => bjTodos().find(p => p.correo === correo);
 const bjPendientes = () => bjPersonas().filter(p => p.pendiente);
+// ¿Le queda algo que Toldot pueda quitarle? (lectores; a los editores no los toca)
+const bjLectura = rol => rol === "reader" || rol === "commenter";
+const bjTieneLector = p => Object.values(p.carpetas).some(bjLectura);
 
 async function bjCargar(){
   if(!isAdmin() || !store || !store.brujula || bj.cargando) return;
@@ -30729,6 +30737,15 @@ function bjMotivo(c){
     "no-coincide": t("Actualizá la lista y probá de nuevo.","Refresh the list and try again.","Atualize a lista e tente de novo.","רעננו את הרשימה ונסו שוב."),
     "sin-dato": t("Actualizá la lista y probá de nuevo.","Refresh the list and try again.","Atualize a lista e tente de novo.","רעננו את הרשימה ונסו שוב."),
   })[c] || t("Google no contestó.","Google didn't answer.","O Google não respondeu.","Google לא ענה.");
+}
+// Por qué no salió un pedido entero (no una carpeta): una frase por código; lo desconocido, un «probá de nuevo» honesto.
+function bjMotivoDelPedido(c){
+  return ({
+    correo: t("Correo no válido.","Invalid email.","E-mail inválido.","מייל לא תקין."),
+    carpetas: t("Actualizá la lista y probá de nuevo.","Refresh the list and try again.","Atualize a lista e tente de novo.","רעננו את הרשימה ונסו שוב."),
+    "sin-sesion": t("Se cerró la sesión: volvé a entrar a Toldot.","You were signed out: sign in to Toldot again.","A sessão foi encerrada: entre de novo no Toldot.","החיבור נותק: היכנסו שוב לתולדות."),
+    "sin-configurar": bjMensajeDeError("sin-configurar"), "google-permiso": bjMensajeDeError("google-permiso"), "no-admin": bjMensajeDeError("no-admin"), base: bjMensajeDeError("base"),
+  })[c] || t("No se pudo. Probá de nuevo.","It didn't work. Try again.","Não deu certo. Tente de novo.","לא הצלחנו. נסו שוב.");
 }
 function bjMensajeDeError(c){
   return ({
@@ -30797,13 +30814,15 @@ function bjHtmlLista(){
     ${todas.length > lista.length ? `<button type="button" class="btn-text-add" data-action="bj-ver-mas">${esc(t("Ver más","See more","Ver mais","עוד"))}</button>` : ""}</div>`;
 }
 function bjRepintarLista(){ const el = document.getElementById("bjLista"); if(el) el.innerHTML = bjHtmlLista(); const b = document.getElementById("bjBarra"); if(b) b.innerHTML = bjHtmlBarra(); }
+// ¿Ninguna de esas personas tiene carpetas? Entonces no hay acceso que quitar: lo que se hace es sacarlas de la lista.
+const bjSoloLista = correos => correos.length > 0 && correos.every(c => { const p = bjDe(c); return p && !bjTieneLector(p); });
 function bjHtmlBarra(){
   const n = bj.sel.size;
   if(!n) return "";
   return `<div class="bj-barra" role="region" aria-label="${esc(t("Acciones","Actions","Ações","פעולות"))}"><strong>${esc(n === 1 ? t("1 persona elegida","1 person selected","1 pessoa escolhida","אדם אחד נבחר") : t("{n} personas elegidas","{n} people selected","{n} pessoas escolhidas","{n} אנשים נבחרו", { n }))}</strong>
     <button type="button" class="bj-btn claro" data-action="bj-cambiar" data-modo="agregar">${esc(t("Agregar carpeta","Add folder","Adicionar pasta","הוספת תיקייה"))}</button>
     <button type="button" class="bj-btn claro" data-action="bj-cambiar" data-modo="quitar">${esc(t("Quitar de una carpeta","Remove from a folder","Tirar de uma pasta","הסרה מתיקייה"))}</button>
-    <button type="button" class="bj-btn peligro" data-action="bj-quitar-todo-varios">${esc(t("Quitar todo el acceso","Remove all access","Tirar todo o acesso","הסרת כל הגישה"))}</button>
+    <button type="button" class="bj-btn peligro" data-action="bj-quitar-todo-varios">${esc(bjSoloLista([...bj.sel]) ? t("Sacar de la lista","Remove from the list","Tirar da lista","הסרה מהרשימה") : t("Quitar todo el acceso","Remove all access","Tirar todo o acesso","הסרת כל הגישה"))}</button>
     <button type="button" class="bj-link" data-action="bj-limpiar">${esc(t("Limpiar","Clear","Limpar","ניקוי"))}</button></div>`;
 }
 
@@ -30871,12 +30890,12 @@ function bjVistaPersona(){
       ${editor ? "" : rol ? `<button type="button" class="bj-btn peligro-claro" data-action="bj-quitar-una" data-id="${esc(c.id)}"${bj.ocupado ? " disabled" : ""}>${esc(t("Quitar","Remove","Tirar","הסרה"))}</button>`
         : `<button type="button" class="bj-btn claro" data-action="bj-dar-una" data-id="${esc(c.id)}"${bj.ocupado ? " disabled" : ""}>${esc(t("Dar acceso","Give access","Dar acesso","מתן גישה"))}</button>`}</div>`;
   };
-  const lector = Object.values(p.carpetas).some(r => r === "reader" || r === "commenter");
+  const lector = bjTieneLector(p);
   return `<button type="button" class="bj-volver" data-action="bj-volver">‹ ${esc(t("Volver a Brújula","Back to Brújula","Voltar à Brújula","חזרה ל-Brújula"))}</button>
     <div class="bj-card bj-ficha"><div class="bj-quien"><span class="bj-av grande" aria-hidden="true">${esc(bjIni(p))}</span><div class="bj-datos"><h3 dir="auto">${esc(p.nombre || p.correo)}</h3><div class="bj-mail" dir="ltr">${esc(p.correo)}</div>
       <div class="bj-chips">${p.idioma ? `<span class="bj-chip">${esc(p.idioma)}</span>` : ""}${p.comunidad ? `<span class="bj-chip" dir="auto">${esc(p.comunidad)}</span>` : ""}<span class="bj-tag ${e}">${esc(bjEtiqueta(p, e))}</span></div></div></div>
       <div class="bj-acciones">${lector ? `<button type="button" class="bj-btn claro" data-action="bj-reenviar"${bj.ocupado ? " disabled" : ""}>${esc(t("Reenviar el mail","Resend the email","Reenviar o e-mail","שליחת המייל שוב"))}</button>` : ""}
-        ${lector ? `<button type="button" class="bj-btn peligro-claro" data-action="bj-quitar-todo"${bj.ocupado ? " disabled" : ""}>${esc(t("Quitar todo el acceso","Remove all access","Tirar todo o acesso","הסרת כל הגישה"))}</button>` : ""}</div></div>
+        ${lector || p.pendiente ? `<button type="button" class="bj-btn peligro-claro" data-action="bj-quitar-todo"${bj.ocupado ? " disabled" : ""}>${esc(lector ? t("Quitar todo el acceso","Remove all access","Tirar todo o acesso","הסרת כל הגישה") : t("Sacar de la lista","Remove from the list","Tirar da lista","הסרה מהרשימה"))}</button>` : ""}</div></div>
     ${p.error ? `<div class="bj-aviso" role="status" dir="auto">${esc(p.error)}</div>` : ""}
     <div class="bj-card">${act.length ? act.map(fila).join("") : `<div class="bj-vacio">${esc(t("Todavía no hay carpetas.","No folders yet.","Ainda não há pastas.","עדיין אין תיקיות."))}</div>`}</div>`;
 }
@@ -30945,10 +30964,12 @@ function bjVistaCambiar(){
 function bjVistaResultado(){
   const r = bj.resultado, filas = r.filas;
   const total = filas.reduce((a, f) => a + f.carpetas.length, 0), bien = filas.reduce((a, f) => a + f.carpetas.filter(c => c.ok).length, 0);
-  const titulo = bien === total ? t("Listo","Done","Pronto","בוצע") : t("Listo en {a} de {b}","Done in {a} of {b}","Pronto em {a} de {b}","בוצע ב-{a} מתוך {b}", { a: bien, b: total });
+  const hayError = filas.some(f => f.error);
+  const titulo = !hayError && bien === total ? t("Listo","Done","Pronto","בוצע") : total ? t("Listo en {a} de {b}","Done in {a} of {b}","Pronto em {a} de {b}","בוצע ב-{a} מתוך {b}", { a: bien, b: total }) : t("No se pudo","It didn't work","Não deu certo","לא הצלחנו");
   const mailTxt = m => m === "enviado" ? t("Mail enviado","Email sent","E-mail enviado","המייל נשלח") : m === "sin-configurar" ? t("Mail sin configurar","Email not set up","E-mail não configurado","המייל לא מוגדר") : m === "error" ? t("El mail no salió","The email wasn't sent","O e-mail não saiu","המייל לא נשלח") : "";
   return `<div class="bj-card bj-form"><h3>${esc(titulo)}</h3>
-    ${filas.map(f => `<div class="bj-res"><div class="bj-res-n" dir="auto">${esc(f.nombre || f.correo)}${f.error ? ` <span class="bj-mail">${esc(f.error === "correo" ? t("Correo no válido.","Invalid email.","E-mail inválido.","מייל לא תקין.") : t("No se pudo.","Couldn't.","Não foi possível.","לא ניתן."))}</span>` : ""}</div>
+    ${filas.map(f => `<div class="bj-res"><div class="bj-res-n" dir="auto">${esc(f.nombre || f.correo)}${f.error ? ` <span class="bj-mail">${esc(bjMotivoDelPedido(f.error))}</span>` : ""}</div>
+      ${f.lista === "sacada" ? `<div class="bj-mail">${esc(t("Sacada de la lista.","Removed from the list.","Retirada da lista.","הוסרה מהרשימה."))}</div>` : ""}
       <ul class="bj-res-l">${f.carpetas.map(c => `<li class="${c.ok ? "ok" : "mal"}"><span aria-hidden="true">${c.ok ? "✓" : "!"}</span> <span dir="auto">${esc(bjNombreDe(c.id))}</span>${c.ok ? "" : ` <span class="bj-mail">${esc(bjMotivo(c.error))}</span>`}</li>`).join("")}</ul>
       ${f.mail && f.mail !== "no" ? `<div class="bj-mail">${esc(mailTxt(f.mail))}</div>` : ""}</div>`).join("")}
     <div class="bj-fin"><button type="button" class="bj-btn" data-action="bj-volver">${esc(t("Entendido","Got it","Entendi","הבנתי"))}</button></div></div>`;
@@ -31056,12 +31077,25 @@ async function bjEjecutar(tipo, personas, ids, { mail = false, anotar = true, us
         if(hechas.length) logAudit("brujula_dio", { targetEmail: p.correo, detail: hechas.join(", ").slice(0, 280) });
       }else{
         const quitables = ordenadas.filter(id => dato.carpetas[id]);
-        const r = await store.brujula.quitar({ correo: p.correo, carpetas: quitables, permisos: dato.permisos, filas: dato.planillas.map(x => ({ planilla: x.planilla, fila: x.fila })) });
-        filas.push({ correo: p.correo, nombre: p.nombre || dato.nombre, ...r });
+        // Sin carpetas que quitar (alguien a quien el Script no pudo darle acceso) no se le pide nada a Drive: la función rechaza una lista vacía.
+        const r = quitables.length ? await store.brujula.quitar({ correo: p.correo, carpetas: quitables, permisos: dato.permisos, filas: dato.planillas.map(x => ({ planilla: x.planilla, fila: x.fila })) }) : { carpetas: [] };
+        const fila = { correo: p.correo, nombre: p.nombre || dato.nombre, ...r };
         const hechas = r.carpetas.filter(c => c.ok && !c.ya).map(c => bjNombreDe(c.id));
         if(hechas.length) logAudit("brujula_quito", { targetEmail: p.correo, detail: hechas.join(", ").slice(0, 280) });
+        // Quien se queda sin carpetas y tenía filas esperando acceso sale de la lista: se cierran esas filas (no se borran).
+        const quedan = Object.keys(dato.carpetas).filter(id => bjLectura(dato.carpetas[id]) && !r.carpetas.some(c => c.id === id && c.ok));
+        const abiertas = dato.planillas.filter(x => !x.enviado);
+        if(abiertas.length && !quedan.length){
+          const d = await store.brujula.descartar({ correo: p.correo, filas: abiertas.map(x => ({ planilla: x.planilla, fila: x.fila })) });
+          if((d.filas || []).some(x => x.estado === "cerrada")){ fila.lista = "sacada"; logAudit("brujula_quito", { targetEmail: p.correo, detail: "Sacado de la lista" }); }
+          else fila.error = "google";
+        }
+        filas.push(fila);
       }
-    }catch(err){ filas.push({ correo: p.correo, nombre: p.nombre, carpetas: ordenadas.map(id => ({ id, ok: false, error: "google" })), error: err && err.codigo || "google" }); }
+    }catch(err){
+      // Si falla el pedido entero no se sabe qué pasó con cada carpeta: se dice una sola vez, sin inventar un motivo por carpeta.
+      filas.push({ correo: p.correo, nombre: p.nombre, carpetas: [], error: err && err.codigo || "google" });
+    }
   }
   bj.ocupado = false; bj.resultado = { tipo, filas }; bj.vista = "resultado"; bj.sel.clear(); bj.form = {};
   render();
@@ -31111,13 +31145,17 @@ const BRUJULA_ACCIONES = {
   },
   "bj-quitar-todo-varios": async () => {
     const correos = [...bj.sel], n = correos.length;
-    const ok = await appConfirm(t("¿Quitarles todo el acceso a {n} personas? Dejan de ver las carpetas.","Remove all access from {n} people? They'll stop seeing the folders.","Tirar todo o acesso de {n} pessoas? Deixam de ver as pastas.","להסיר את כל הגישה מ-{n} אנשים? הם יפסיקו לראות את התיקיות.", { n }), { danger: true, okLabel: t("Quitar","Remove","Tirar","הסרה") });
+    const ok = bjSoloLista(correos)
+      ? await appConfirm(n === 1 ? t("¿Sacar a esta persona de la lista? No tiene acceso a ninguna carpeta.","Remove this person from the list? They have no access to any folder.","Tirar esta pessoa da lista? Ela não tem acesso a nenhuma pasta.","להסיר את האדם הזה מהרשימה? אין לו/לה גישה לאף תיקייה.") : t("¿Sacar a {n} personas de la lista? No tienen acceso a ninguna carpeta.","Remove {n} people from the list? They have no access to any folder.","Tirar {n} pessoas da lista? Elas não têm acesso a nenhuma pasta.","להסיר {n} אנשים מהרשימה? אין להם גישה לאף תיקייה.", { n }), { danger: true, okLabel: t("Sacar","Remove","Tirar","הסרה") })
+      : await appConfirm(t("¿Quitarles todo el acceso a {n} personas? Dejan de ver las carpetas.","Remove all access from {n} people? They'll stop seeing the folders.","Tirar todo o acesso de {n} pessoas? Deixam de ver as pastas.","להסיר את כל הגישה מ-{n} אנשים? הם יפסיקו לראות את התיקיות.", { n }), { danger: true, okLabel: t("Quitar","Remove","Tirar","הסרה") });
     if(!ok) return;
     await bjEjecutar("quitar", correos.map(c => { const p = bjDe(c) || {}; return { correo: c, nombre: p.nombre }; }), bjCarpetas().map(c => c.id));
   },
   "bj-quitar-todo": async () => {
     const p = bjDe(bj.persona); if(!p) return;
-    const ok = await appConfirm(t("¿Quitarle todo el acceso a {n}? Deja de ver las carpetas.","Remove all of {n}'s access? They'll stop seeing the folders.","Tirar todo o acesso de {n}? Deixa de ver as pastas.","להסיר את כל הגישה של {n}? הוא/היא יפסיק/תפסיק לראות את התיקיות.", { n: p.nombre || p.correo }), { danger: true, okLabel: t("Quitar","Remove","Tirar","הסרה") });
+    const ok = bjTieneLector(p)
+      ? await appConfirm(t("¿Quitarle todo el acceso a {n}? Deja de ver las carpetas.","Remove all of {n}'s access? They'll stop seeing the folders.","Tirar todo o acesso de {n}? Deixa de ver as pastas.","להסיר את כל הגישה של {n}? הוא/היא יפסיק/תפסיק לראות את התיקיות.", { n: p.nombre || p.correo }), { danger: true, okLabel: t("Quitar","Remove","Tirar","הסרה") })
+      : await appConfirm(t("¿Sacar a {n} de la lista? No tiene acceso a ninguna carpeta.","Remove {n} from the list? They have no access to any folder.","Tirar {n} da lista? Não tem acesso a nenhuma pasta.","להסיר את {n} מהרשימה? אין לו/לה גישה לאף תיקייה.", { n: p.nombre || p.correo }), { danger: true, okLabel: t("Sacar","Remove","Tirar","הסרה") });
     if(ok) await bjEjecutar("quitar", [{ correo: p.correo, nombre: p.nombre }], bjCarpetas().map(c => c.id));
   },
   "bj-quitar-una": async el => {

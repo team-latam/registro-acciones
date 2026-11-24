@@ -264,8 +264,12 @@ Brújula en Toldot (`docs/brujula/README.md`): la pantalla Administración › B
 sesión de quien la usa y **solo si es admin** (`puede_gestionar_brujula()`, `supabase/30-brujula.sql`): comprobar un link
 de Drive y leer quién tiene cada carpeta del catálogo y qué hay cargado en las planillas.
 
-- **Hoy solo lee.** Pide a Google permisos de solo lectura (Drive y Sheets). Compartir, quitar y escribir en las
-  planillas vienen en las etapas siguientes, y ahí se le suma lo que haga falta.
+- **Leer y escribir son dos permisos distintos.** Para leer (`comprobar`, `comprobar-planilla`, `leer`) pide a Google
+  solo lectura; solo `dar`, `quitar`, `sacar-todos` y `descartar` piden el permiso de escribir (Drive y Sheets).
+- **`descartar` («sacar de la lista»):** cierra las filas de planilla que esperaban acceso (las que el Script no pudo dar
+  y dejó con un error). La fila **no se borra**: se le pone «Enviado» —lo único que el Script de los lunes respeta; con
+  otra palabra la vuelve a procesar— y una nota «Sacado de la lista desde Toldot». Solo toca filas que siguen siendo de
+  esa persona y que todavía no dicen «Enviado».
 - **Las carpetas salen del catálogo** (`brujula_carpetas`, con la sesión de quien llama), nunca de lo que mande el
   navegador: la cuenta de servicio no se puede usar para mirar cualquier cosa de Drive.
 - Quién tiene acceso a qué **no se guarda** en la base: se lee de Drive cada vez (también lo cambian las planillas y el
