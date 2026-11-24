@@ -133,6 +133,13 @@ Y un campo con texto sin coincidencias no hacía nada con Escape. *Se detecta:* 
 proyecto). *Regla:* un desplegable nuevo se suma a la guarda de Escape del formulario (`postModalOverlay`, al final del manejador
 de Escape) y a la prueba del teclado; un Escape o cierra el desplegable o cierra el formulario, nunca los dos.
 
+**Un texto con cantidad que no sabe decir «uno»** (24/11/2026; docs/AUDITORIA.md, H2; ya había pasado con «hace 1 días» el 13/10). Las pantallas
+nuevas de Brújula y de Importar historial decían «1 personas», «1 carpetas», «1 gastos», «1 movimientos de plata», «1 filas…», y en hebreo «1 אנשים».
+*Por qué:* con los datos de prueba (varias personas, varias carpetas) nunca se ve el caso de uno; y las pruebas **escribieron lo que salía** («CARE 1
+personas», «1 gastos · USD 25.00»): una prueba que guarda el comportamiento malo. *Se detecta:* `herramientas/auditoria/herramientas/textos.mjs` (marca
+`t("{n} cosas…")` sin una rama para 1 en los tres renglones de arriba; se verifica a mano) y `singular_plural_test`. *Regla:* todo texto con cantidad es
+`n === 1 ? t(singular…) : t(plural…)` (o un ayudante como `bjCuantasPersonas`), y una prueba de la pantalla nueva arma el caso de **exactamente uno**.
+
 ## Seguridad y privacidad
 
 **Lo escrito por alguien que entra al HTML sin escapar.** *Se detecta:*
@@ -202,6 +209,13 @@ artifact(s)»); antes andaba por un margen de azar y al achicarse todo el tiempo
 paso empeora: sube otra copia con el mismo nombre y `deploy-pages` se niega a elegir entre dos («Artifact count is 2»); lo
 que sirve es una corrida nueva (Actions → «Publicar el sitio» → Run workflow). *Se detecta:* en Actions, el paso «Publicar en
 GitHub Pages». *Regla:* entre `upload-pages-artifact` y `deploy-pages` va una pausa (`sleep 20`, ya puesta en `pages.yml`).
+
+**Un trabajo programado que corre mucho menos de lo que dice** (24/11/2026; docs/AUDITORIA.md, H1). «Resúmenes por correo» está programado cada hora
+(`7 * * * *`) y GitHub lo corrió **3,2 veces por día** entre el 15 y el 24/11 (huecos de 6 a 12 horas): quien elige recibir su resumen a las 9 lo recibe,
+de mediana, ~8 horas después. Pasa lo mismo con «¿Está arriba?» (cada 6 h, corre 2 veces por día) y con Calendar (todos los días a las 6, corre entre las 10 y las
+13 de Argentina). *Por qué:* GitHub no garantiza la hora de los trabajos que corren solos, y en un repositorio con poco movimiento los espacia más.
+*Se detecta:* mirar cuántas corridas «schedule» hay por día en Actions (no una corrida suelta). *Regla:* nada promete una hora exacta si depende de ese reloj;
+si importa la hora, el reloj es de Supabase (pg_cron) y no de GitHub, o la pantalla lo dice.
 
 ## Código
 

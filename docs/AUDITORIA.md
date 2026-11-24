@@ -7,6 +7,9 @@
 > la Agenda del 9/10 (A). Los de esta van con **Y**, y sus decisiones siguen la
 > numeración: **D20** en adelante. El método: `herramientas/auditoria/METODO.md`.
 
+> **24/11/2026:** hay una auditoría completa más nueva, al final de este documento (**código H**, decisiones D28 y D29). Lo de acá
+> arriba sigue vigente: Y12 (sin conexión) quedó en «nada por ahora».
+
 Pedido del usuario (20/11): **una revisión completa de todo el sistema**, con la
 crítica de diseño de `/impeccable` y la auditoría interna, buscando lo que no se
 veía «por estar tan metidos en la propia experiencia» y lo que depende de que el
@@ -349,3 +352,49 @@ Lo que se miró a mano y está bien:
 - **Recorrido de bienvenida:** Brújula es de admins; ya está cubierto por `TOUR_SIN_PASO.admin` (el recorrido es para todo el equipo).
 - **Peso:** lo que se publica, achicado, pasó de 515 a **532 KB comprimidos** (el límite es 600): Brújula sumó unos 17 KB.
   Queda poco margen: lo próximo grande conviene medirlo antes.
+
+---
+
+## Agregado: auditoría completa (24/11/2026) — código H
+
+Pedido del usuario (24/11): «empecemos con 1» (la auditoría completa, después de la tanda de Brújula, el hebreo, el teclado y las
+pruebas más ágiles). Sobre `68f9966` de `main`. Las herramientas completas, en verde: **5.536 comprobaciones de la app** (154 archivos),
+**1.363 de la base**, Calendar y copias; **669 pantallas en 13 combinaciones** de tamaño, idioma y oscuro **sin un solo recorte**; datos
+variados con dos semillas (1.500 y 800 actividades: el Inicio se dibuja en 24 a 40 ms); la carga con el procesador 4 y 6 veces más lento
+(primer posteo a los 1,2 y 1,9 s); la página que se publica pesa **535 KB** comprimidos (el límite que nos pusimos es 600; Brújula sumó unos 20 KB).
+A mano: la pantalla de Brújula en compu y celular, claro, oscuro y hebreo, vacía, sin Google conectado y con una sola persona; el mail de
+bienvenida en español y hebreo; los permisos de la base y de la función `brujula`; los workflows y las corridas programadas; el recorrido de
+bienvenida (Administración se deja afuera a propósito). Todo con la app de mentira; ningún dato real salió de acá.
+
+**Nada urgente.** La seguridad no cambió (la función `brujula` y sus cuatro tablas siguen siendo solo del administrador, comprobado con la
+sesión de quien llama; los workflows de las pruebas no usan secretos). Lo encontrado:
+
+| # | Qué | Nivel | Quién |
+|---|---|---|---|
+| H1 | **Los resúmenes por correo no llegan a la hora que se elige.** El trabajo está programado cada hora y GitHub lo corrió **3,2 veces por día** entre el 15 y el 24/11 (huecos de 6 a 12 horas). Quien elige las 9 de la mañana lo recibe, de mediana, ~8 horas después (a las 12: ~5; a las 18: ~3); en 1 de 192 casos medidos no le llegó ese día (el margen es de 12 horas). Lo mismo les pasa a «El día que vence: a primera hora» y a «Lugares sin actividad». Los avisos **al momento** (menciones, respuestas, pedidos) no dependen de esto: salen al instante por la función `avisar`. Es lo que ya anotaba RECURRENTES («GitHub atrasa los que corren solos»), pero nunca se había medido cuánto. | medio | **usuario (D28)** |
+| ~~H2~~ | ~~**Con uno, los textos con cantidad dicen «1 personas»**: Brújula («CARE · 1 personas», «1 carpetas», «1 filas · 1 pendientes», «Ya tiene 1 carpetas», «¿Darles acceso a 1 personas?», «se quitó el acceso a 1 personas»; en hebreo «1 אנשים») y Gastos › Importar historial («1 gastos», «1 movimientos de plata», «1 filas de salario», «Ver los 1 gastos»…). Las pruebas **daban por bueno** el texto malo («CARE 1 personas», «1 gastos · USD 25.00», «1 filas de salario»).~~ ✅ 24/11: singular en los cuatro idiomas (`bjCuantasPersonas`, `bjCuantasCarpetas`, `gxNGastos`, `gxNRendiciones`, `gxNMovimientos`); las frases largas de Importar se reescribieron para servir con uno o con varios. Pruebas nuevas en `brujula_test` (10 comprobaciones: uno de cada cosa, y hebreo) y `gastos_importar_test`; las que bendecían el texto malo se corrigieron. Y la herramienta `textos` ahora **marca** los «{n} cosas» sin rama para uno (de 18 candidatos, 3 eran reales; el resto, en `conocidos.json`). | medio | Claude |
+| ~~H3~~ | ~~En la cabecera de la grilla de Brújula, **los nombres de las carpetas quedaban 11 px más abajo** que «Persona» (el usuario había pedido «alineación vertical media»): el renglón del ícono vacío de una carpeta sin emoji empujaba el nombre.~~ ✅ 24/11: el ícono vacío no ocupa lugar (`.bj-c-ic:empty`); prueba que mide el centro de cada título (±3 px, en compu y en angosto). | bajo | Claude |
+| ~~H4~~ | ~~Sin Google conectado, «Todavía no está conectado Google.» salía **dos veces** (el aviso con «Reintentar» y el cuadro de la lista).~~ ✅ 24/11: la lista no repite el aviso. | bajo | Claude |
+| H5 | **En modo oscuro, lo elegido se distingue poco de lo no elegido**: el relleno del botón elegido contra el no elegido da **1,4 a 2,1 a 1** (Brújula 1,5; Reportes 1,4 y 1,5; las solapas del Inicio 2,1; en claro da de 12 a 21 a 1). El texto cambia de color pero no de peso. Es de toda la app, no solo de Brújula. WCAG pide 3 a 1 para mostrar un estado. | bajo | **usuario (D29)** |
+| H6 | En el celular, **los puntos de cada persona (●○) no dicen a qué carpeta corresponde cada uno** (están ocultos para el lector de pantalla y sin nombre a la vista; la etiqueta «1 de 2» ayuda, pero no cuál falta). Con 2 carpetas se adivina; con 6 u 8 no. | opcional | usuario, si lo pide |
+| ~~H7~~ | ~~Falso positivo de `seguridad`: un correo `@subdominio.example.org` de una prueba contaba como dato de una persona.~~ ✅ 24/11: los dominios `example.com/org/net` con subdominio (reservados para ejemplos) ya no se cuentan. | bajo | Claude |
+| H8 | Dato: **«¿Está arriba la página?»** (cada 6 horas) corre 2 veces por día y **Calendar** (diario, a las 6) corre entre las 10 y las 13 de Argentina; **Copia de seguridad** del domingo corrió a las 12 en vez de a las 4. Todas en verde. Es lo mismo que H1 (GitHub no garantiza la hora); no hay nada que arreglar si nadie espera la hora exacta. | dato | — |
+
+### Para el usuario
+
+| # | Qué | Opciones (la recomendada primero) |
+|---|---|---|
+| D28 | **¿Cómo resolvemos la hora de los resúmenes por correo?** (H1) | **A**: decir la verdad en la pantalla («llega durante el día, desde la hora que elijas») y dejar el resto igual. **B**: que el reloj sea el de Supabase (pg_cron), que sí es puntual: la hora elegida se cumple; hay que prender una extensión en el panel de Supabase (pasos para vos) y mover el envío a una función. **C**: dejarlo así. |
+| D29 | **¿Hacemos más visible lo elegido en modo oscuro?** (H5) | **A**: el botón elegido se rellena con el celeste de la marca y letra oscura (se ve la diferencia a primera vista; en claro no cambia nada). **B**: dejarlo como está. |
+
+### Lo que se miró y está bien
+
+- **Brújula**: las cuatro tablas solo las toca el administrador (RLS, y la función `puede_gestionar_brujula()` decide con la sesión de quien llama, antes de hablar con
+  Google); `descartar` solo escribe en las planillas del catálogo y solo si el correo de esa fila coincide; el nombre de una persona con HTML (`<img onerror=…>`) sale
+  como texto; vacía, sin Google conectado, con errores y con una sola persona se entiende; el mail de bienvenida sale bien en español y en hebreo (de derecha a izquierda,
+  con la flecha espejada).
+- **Los workflows de las pruebas** (`app.yml`, `pages.yml`) no usan secretos y corren con permiso de solo lectura, también cuando se empujan desde una rama `claude/…`.
+- **Las corridas programadas** terminan siempre en verde (copia, Calendar, «¿Está arriba?», «Base de datos», resúmenes), con los horarios corridos de H1/H8.
+- **El recorrido de bienvenida** cuenta el sistema de hoy; Administración (y con él Brújula) queda afuera a propósito (`TOUR_SIN_PASO`).
+- **La carga**: 535 KB comprimidos (bajo el límite de 600); en un celular 4 veces más lento el primer posteo aparece a 1,2 s.
+
