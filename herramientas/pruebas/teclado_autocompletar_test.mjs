@@ -10,6 +10,11 @@
    teclado se le traba el campo y ninguna otra prueba lo nota (los clicks
    siguen andando).
 
+   El piloto de la herramienta rompe-código (herramientas/auditoria/herramientas/mutaciones.mjs, 24/11/2026) sobre ese
+   manejador mostró lo que esta prueba todavía no miraba y se sumó: que las flechas, Enter y Tab no se «escapan»
+   (preventDefault), que «Sumar editor» no ofrece al autor ni a quien ya es editor, y los demás atajos de teclado:
+   Enter en «nuevo hito», en la hora y en la fecha escrita, las flechas de las listas de Personas y del buscador de arriba.
+
    Se prueba con la app de verdad y el Supabase de mentira
    (app_de_mentira.mjs); la dirección exacta (Nominatim, afuera) se simula.
    ====================================================================== */
@@ -40,6 +45,20 @@ const b = await abrirNavegador();
   const chips = () => p.$$eval('[data-action="rm-scope-post"]', l => l.length);
   eq("lugar: al empezar no hay lugares elegidos", await chips(), 0);
 
+  // Lo que el campo no se queda: ↑ ↓ Enter y Tab no hacen lo suyo (mover el cursor, mandar, saltar de campo) además de lo de la app.
+  await p.evaluate(() => { window.__teclas = []; window.addEventListener("keydown", e => window.__teclas.push([e.key, e.defaultPrevented])); });
+  const frenadas = async () => { const t = await p.evaluate(() => { const r = window.__teclas; window.__teclas = []; return r; }); return Object.fromEntries(t); };
+  await tipear(p, "#cPlaceQuery", "uru");
+  await frenadas();
+  await p.keyboard.press("ArrowDown"); await p.keyboard.press("ArrowUp");
+  eq("lugar: ↓ y ↑ no se «escapan» (el cursor del campo no se mueve)", await frenadas(), { ArrowDown: true, ArrowUp: true });
+  await p.keyboard.press("Tab");
+  eq("lugar: Tab no se «escapa» (no salta al campo siguiente)", await frenadas(), { Tab: true });
+  await p.keyboard.press("Backspace"); await p.keyboard.press("Backspace"); await p.keyboard.type("ru"); await p.waitForTimeout(250);
+  await frenadas();
+  await p.keyboard.press("Enter"); await p.waitForTimeout(150);
+  eq("lugar: Enter no se «escapa» (no manda el formulario)", await frenadas(), { Enter: true });
+  const n0 = await chips();   // las dos elegidas de arriba (Tab y Enter) ya cuentan
   await tipear(p, "#cPlaceQuery", "uru");
   let l = await lista(p);
   ok("lugar: escribir «uru» abre una lista de varias opciones", l.n >= 3, JSON.stringify(l));
@@ -58,7 +77,7 @@ const b = await abrirNavegador();
   l = await lista(p);
   const elegida = l.textos[1].replace(/^\S+\s/, "").split(",")[0];
   await p.keyboard.press("Enter"); await p.waitForTimeout(250);
-  eq("lugar: Enter suma un lugar", await chips(), 1);
+  eq("lugar: Enter suma un lugar", await chips(), n0 + 1);
   const texto = await p.$eval('[data-action="rm-scope-post"]', e => e.closest(".scope-chip").innerText);
   ok(`lugar: el lugar sumado es el resaltado («${elegida}»), no otro`, texto.includes(elegida), texto);
   eq("lugar: tras elegir, el campo queda vacío", await p.inputValue("#cPlaceQuery"), "");
@@ -69,7 +88,7 @@ const b = await abrirNavegador();
   l = await lista(p);
   const primera = l.textos[0].replace(/^\S+\s/, "").split(",")[0];
   await p.keyboard.press("Tab"); await p.waitForTimeout(250);
-  eq("lugar: Tab suma el resaltado", await chips(), 2);
+  eq("lugar: Tab suma el resaltado", await chips(), n0 + 2);
   ok(`lugar: Tab sumó «${primera}»`, (await p.$$eval('[data-action="rm-scope-post"]', ls => ls.map(e => e.closest(".scope-chip").innerText).join("|"))).includes(primera));
   eq("lugar: Tab no sacó el foco del campo", await foco(p), "cPlaceQuery");
 
@@ -80,13 +99,13 @@ const b = await abrirNavegador();
   eq("lugar: Escape vacía el campo", await p.inputValue("#cPlaceQuery"), "");
   ok("lugar: Escape cierra la lista", await cerrada(p));
   ok("lugar: Escape no cierra el formulario", await p.$eval("#cPlaceQuery", e => !!e.offsetParent));
-  eq("lugar: Escape no suma nada", await chips(), 2);
+  eq("lugar: Escape no suma nada", await chips(), n0 + 2);
 
   // Sin coincidencias, Enter no hace nada (ni suma ni manda el formulario) y
   // Escape borra lo escrito (antes no hacía nada y no dejaba cerrar el formulario).
   await tipear(p, "#cPlaceQuery", "zzzqqq");
   await p.keyboard.press("Enter"); await p.waitForTimeout(250);
-  eq("lugar: sin coincidencias, Enter no suma nada", await chips(), 2);
+  eq("lugar: sin coincidencias, Enter no suma nada", await chips(), n0 + 2);
   ok("lugar: sin coincidencias, el formulario sigue abierto", await p.$eval("#cPlaceQuery", e => !!e.offsetParent));
   await p.keyboard.press("Escape"); await p.waitForTimeout(250);
   eq("lugar: sin coincidencias, Escape borra lo escrito", await p.inputValue("#cPlaceQuery"), "");
@@ -250,6 +269,13 @@ const b = await abrirNavegador();
   await p.keyboard.press("Enter"); await p.waitForTimeout(400);
   eq("editor: Enter suma al editor", await p.$$eval(".pj-editor-chip", ls => ls.map(e => e.innerText.trim().split("\n")[0])), ["@moshe"]);
   eq("editor: tras sumar, el campo queda vacío", await p.$eval(ed, e => e.value), "");
+  // «Sumar editor» no ofrece a quien ya es editor ni al autor (la lista de lo que se ve y la de lo que elige Enter son la misma).
+  await tipear(p, ed, "mosh");
+  eq("editor: no vuelve a ofrecer a quien ya es editor", await p.$eval(".pp-list", e => e.innerText.trim()), "Sin coincidencias");
+  await p.keyboard.press("Escape"); await p.waitForTimeout(200);
+  await tipear(p, ed, "benn");
+  eq("editor: no ofrece al autor del proyecto", await p.$eval(".pp-list", e => e.innerText.trim()), "Sin coincidencias");
+  await p.keyboard.press("Escape"); await p.waitForTimeout(200);
   await tipear(p, ed, "zzz");
   eq("editor: sin coincidencias lo dice", await p.$eval(".pp-list", e => e.innerText.trim()), "Sin coincidencias");
   await p.keyboard.press("Enter"); await p.waitForTimeout(250);
@@ -265,15 +291,32 @@ const b = await abrirNavegador();
   const dueñosDe = () => p.$$eval('[data-action="ms-owner-remove"][data-ms-id="h2"]', ls => ls.map(e => e.dataset.email));
   const dueñosAntes = await dueñosDe();
   ok("responsable: el hito ya tiene un responsable (para probar que no se vuelve a ofrecer)", dueñosAntes.length >= 1);
+  // Enter sobre la primera de la lista (la lista que se ve no incluye a quien ya es responsable; la del teclado tiene que ser la misma).
   await tipear(p, own, "a");
-  const l = await ppLista();
+  let l = await ppLista();
   ok("responsable: «a» ofrece varias personas", l.n >= 2, JSON.stringify(l));
   eq("responsable: no ofrece a quien ya es responsable del hito", l.textos.filter(t => dueñosAntes.some(e => t.startsWith("@" + e.split("@")[0]))), []);
+  const primero = await p.$eval(".pp-list .autocomplete-option.active", e => e.dataset.email);
+  await p.keyboard.press("Enter"); await p.waitForTimeout(400);
+  eq("responsable: Enter agrega a la persona que estaba resaltada (la primera)", await dueñosDe(), [...dueñosAntes, primero]);
+  // ↓ y Enter: la segunda de la lista que queda.
+  await tipear(p, own, "a");
+  l = await ppLista();
+  ok("responsable: «a» vuelve a ofrecer varias, sin los que ya son responsables", l.n >= 2 && !l.textos.some(t => [...dueñosAntes, primero].some(e => t.startsWith("@" + e.split("@")[0]))), JSON.stringify(l));
   await p.keyboard.press("ArrowDown"); await p.waitForTimeout(120);
   const quien = await p.$eval(".pp-list .autocomplete-option.active", e => e.dataset.email);
   eq("responsable: ↓ resalta a la segunda", (await ppLista()).activo, 1);
   await p.keyboard.press("Enter"); await p.waitForTimeout(400);
-  eq("responsable: Enter agrega exactamente a la persona resaltada", await dueñosDe(), [...dueñosAntes, quien]);
+  eq("responsable: Enter agrega exactamente a la persona resaltada", await dueñosDe(), [...dueñosAntes, primero, quien]);
+
+  // Enter en «nuevo hito» lo agrega; vacío no agrega nada.
+  const hitos = () => p.$$eval('[data-action="ms-done"]', l => l.length), h0 = await hitos();
+  await p.focus('[data-ms-new="label"]'); await p.keyboard.press("Enter"); await p.waitForTimeout(300);
+  eq("hito: Enter con el nombre vacío no agrega nada", await hitos(), h0);
+  await p.fill('[data-ms-new="label"]', "Hito por teclado"); await p.focus('[data-ms-new="label"]'); await p.keyboard.press("Enter"); await p.waitForTimeout(500);
+  eq("hito: Enter en «nuevo hito» lo agrega", await hitos(), h0 + 1);
+  ok("hito: el hito nuevo figura con su nombre", (await p.$$eval(".pj-label-input", l => l.map(e => e.value))).includes("Hito por teclado"));
+  eq("hito: tras agregarlo, el campo queda vacío", await p.$eval('[data-ms-new="label"]', e => e.value), "");
   eq("proyecto: sin errores en la consola", errores, []);
   await p.close();
 }
@@ -336,6 +379,112 @@ const b = await abrirNavegador();
   eq("tipos: Enter en «Nombre del documento» lo suma", await docs(), [...docsAntes, "Plan de prueba"]);
   eq("tipos: tras sumar el documento, el campo queda vacío", await p.$eval('[data-action="tipo-doc-nuevo"]', e => e.value), "");
   eq("tipos: sin errores en la consola", errores, []);
+  await p.close();
+}
+
+// ---------- 10. Fecha y hora escritas: Enter las aplica ----------
+{
+  const { p, errores } = await nueva(b);
+  await p.click("#fabMain"); await p.click('[data-action="new-evento"]'); await p.waitForSelector("#cAllDay"); await p.waitForTimeout(250);
+  const disparador = () => p.$eval('[data-df-kind="composer-start"]', e => e.textContent.trim());
+  const abierto = () => p.$$eval(".date-pop:not([hidden]) .dp-date-input", l => l.length);
+  await p.click('[data-df-kind="composer-start"]'); await p.waitForSelector(".dp-date-input"); await p.waitForTimeout(250);
+  eq("fecha: al abrir el calendario, el foco está en el campo de la fecha escrita", await foco(p), "dp-date-input");
+  await p.fill(".dp-date-input", "15/12/2026"); await p.keyboard.press("Enter"); await p.waitForTimeout(400);
+  eq("fecha: Enter aplica la fecha escrita", await disparador(), "📅15/12/2026");
+  eq("fecha: Enter no cierra el calendario", await abierto(), 1);
+  await p.fill(".dp-date-input", "zzz"); await p.keyboard.press("Enter"); await p.waitForTimeout(400);
+  eq("fecha: un texto que no es fecha vuelve a la anterior", await p.inputValue(".dp-date-input"), "15/12/2026");
+  eq("fecha: …y no cambia el disparador", await disparador(), "📅15/12/2026");
+  await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  eq("fecha: Escape cierra solo el calendario", [await abierto(), !!(await p.$("#cPlaceQuery"))], [0, true]);
+  eq("fecha: ese Escape no abrió el «¿Descartar?»", await confirmAbierto(p), false);
+
+  await p.uncheck("#cAllDay"); await p.waitForSelector("#cStartTime"); await p.waitForTimeout(200);
+  await p.fill("#cStartTime", "9:30"); await p.focus("#cStartTime"); await p.keyboard.press("Enter"); await p.waitForTimeout(300);
+  eq("hora: Enter aplica «9:30» y la deja como 09:30", await p.inputValue("#cStartTime"), "09:30");
+  await p.fill("#cStartTime", "xx"); await p.keyboard.press("Enter"); await p.waitForTimeout(300);
+  eq("hora: un texto que no es hora vuelve a la anterior", await p.inputValue("#cStartTime"), "09:30");
+  ok("hora: avisa que no se entendió", (await p.$$eval(".cal-notice, .toast, [role=status], [role=alert]", l => l.map(e => e.innerText).join(" "))).includes("No se entendió el horario"));
+  await p.fill("#cStartTime", ""); await p.keyboard.press("Enter"); await p.waitForTimeout(300);
+  eq("hora: vacío y Enter la deja sin hora", await p.inputValue("#cStartTime"), "");
+  eq("fecha y hora: sin errores en la consola", errores, []);
+  await p.close();
+}
+
+// ---------- 11. Listas de Administración: ↑ ↓ Inicio Fin ----------
+{
+  const { p, errores } = await nueva(b);
+  await irAdmin(p); await admin(p, "solicitudes", "usuarios"); await p.waitForTimeout(400);
+  const quien = () => p.evaluate(() => { const e = document.activeElement; return e && (e.dataset.email || (e.dataset.view || "") + ":" + (e.dataset.key || "")); });
+  const filas = await p.$$eval(".lp-row", l => l.map(e => e.dataset.email));
+  ok("lista de Personas: hay varias filas", filas.length >= 3, JSON.stringify(filas));
+  await p.focus(".lp-row");
+  eq("lista: el foco arranca en la primera fila", await quien(), filas[0]);
+  await p.keyboard.press("ArrowDown"); eq("lista: ↓ baja a la segunda", await quien(), filas[1]);
+  await p.keyboard.press("ArrowDown"); eq("lista: ↓ baja a la tercera", await quien(), filas[2]);
+  await p.keyboard.press("ArrowUp"); eq("lista: ↑ vuelve a la segunda", await quien(), filas[1]);
+  await p.keyboard.press("End"); eq("lista: Fin va a la última", await quien(), filas[filas.length - 1]);
+  await p.keyboard.press("ArrowDown"); eq("lista: ↓ en la última se queda ahí", await quien(), filas[filas.length - 1]);
+  await p.keyboard.press("Home"); eq("lista: Inicio va a la primera", await quien(), filas[0]);
+  await p.keyboard.press("ArrowUp"); eq("lista: ↑ en la primera se queda ahí", await quien(), filas[0]);
+  // El menú de secciones de Administración.
+  const items = await p.$$eval(".admin-item", l => l.map(e => (e.dataset.view || "") + ":" + (e.dataset.key || "")));
+  ok("menú de Administración: hay varias secciones", items.length >= 4, JSON.stringify(items));
+  await p.focus(".admin-item");
+  eq("menú: el foco arranca en la primera", await quien(), items[0]);
+  await p.keyboard.press("ArrowDown"); eq("menú: ↓ baja a la segunda", await quien(), items[1]);
+  await p.keyboard.press("End"); eq("menú: Fin va a la última", await quien(), items[items.length - 1]);
+  await p.keyboard.press("Home"); eq("menú: Inicio va a la primera", await quien(), items[0]);
+  eq("listas de Administración: sin errores en la consola", errores, []);
+  await p.close();
+}
+
+// ---------- 12. Buscador de arriba: ↓ ↑ Inicio Fin, Enter y Escape ----------
+{
+  const { p, errores } = await nueva(b);
+  await p.click("#globalSearchInput"); await p.keyboard.type("rosario"); await p.waitForTimeout(600);
+  const n = await p.$$eval("#globalResults .gs-item", l => l.length);
+  ok("buscador: «rosario» da varios resultados", n >= 3, String(n));
+  const donde = () => p.evaluate(() => { const e = document.activeElement; return e.id === "globalSearchInput" ? "campo" : [...document.querySelectorAll("#globalResults .gs-item")].indexOf(e); });
+  await p.keyboard.press("ArrowDown"); eq("buscador: ↓ desde el campo va al primer resultado", await donde(), 0);
+  await p.keyboard.press("ArrowDown"); eq("buscador: ↓ baja al segundo", await donde(), 1);
+  await p.keyboard.press("ArrowUp"); eq("buscador: ↑ vuelve al primero", await donde(), 0);
+  await p.keyboard.press("End"); eq("buscador: Fin va al último", await donde(), n - 1);
+  await p.keyboard.press("ArrowDown"); eq("buscador: ↓ en el último se queda ahí", await donde(), n - 1);
+  await p.keyboard.press("Home"); eq("buscador: Inicio va al primero", await donde(), 0);
+  await p.keyboard.press("ArrowUp"); eq("buscador: ↑ en el primero vuelve al campo", await donde(), "campo");
+  const posts = () => p.$$eval(".post[data-post-id]", l => l.length), antes = await posts();
+  await p.keyboard.press("Enter"); await p.waitForTimeout(600);
+  ok("buscador: Enter filtra el Inicio con lo escrito", (await posts()) < antes, `${antes} → ${await posts()}`);
+  eq("buscador: Enter cierra la lista de resultados", await p.$$eval("#globalResults:not([hidden])", l => l.length), 0);
+  await p.click("#globalSearchInput"); await p.keyboard.type("rosario"); await p.waitForTimeout(600);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  eq("buscador: Escape cierra la lista de resultados", await p.$$eval("#globalResults:not([hidden])", l => l.length), 0);
+  eq("buscador: sin errores en la consola", errores, []);
+  await p.close();
+}
+
+// ---------- 13. «Guardar este filtro»: Enter guarda, Escape cancela ----------
+{
+  const { p, errores } = await nueva(b);
+  const guardados = () => p.$$eval(".fs-saved .fs-link", l => l.map(e => e.innerText.trim()));
+  await p.click('[data-action="feed-quick"][data-key="mine"]'); await p.waitForTimeout(300);
+  await p.click('[data-action="feed-saved-start"]'); await p.waitForSelector("#savedFilterName"); await p.waitForTimeout(200);
+  eq("filtro guardado: al empezar, el foco está en el nombre", await foco(p), "savedFilterName");
+  await p.keyboard.type("Mis cosas");
+  eq("filtro guardado: escribir el nombre no lo cancela (cada letra sigue en el campo)", await p.inputValue("#savedFilterName"), "Mis cosas");
+  await p.keyboard.press("Enter"); await p.waitForTimeout(500);
+  eq("filtro guardado: Enter lo guarda con ese nombre", await guardados(), ["Mis cosas"]);
+  ok("filtro guardado: tras guardar, el campo se cierra", !(await p.$("#savedFilterName")));
+  await p.click('[data-action="feed-saved-start"]'); await p.waitForSelector("#savedFilterName"); await p.waitForTimeout(200);
+  await p.keyboard.type("otro"); await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  ok("filtro guardado: Escape cierra el campo", !(await p.$("#savedFilterName")));
+  eq("filtro guardado: Escape no guarda nada", await guardados(), ["Mis cosas"]);
+  await p.click('[data-action="feed-saved-start"]'); await p.waitForSelector("#savedFilterName"); await p.waitForTimeout(200);
+  await p.keyboard.press("Enter"); await p.waitForTimeout(300);
+  eq("filtro guardado: Enter con el nombre vacío no guarda nada", await guardados(), ["Mis cosas"]);
+  eq("filtro guardado: sin errores en la consola", errores, []);
   await p.close();
 }
 

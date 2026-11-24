@@ -10,12 +10,13 @@ cuando el usuario pide una, se arranca de acá (ver `METODO.md`).
 | `RECURRENTES.md` | Lo que ya falló más de una vez, por qué y la regla que lo evita |
 | `conocidos.json` | Hallazgos ya revisados y aceptados, con el porqué (no se vuelven a contar) |
 | `correr.sh` | Corre todo y arma el informe en `salida/<fecha>/informe.md` |
-| `herramientas/` | Una por tema: `textos`, `codigo`, `seguridad`, `github`, `pantallas`, `datos`, `carga`, `masa` (lo que solo se nota con poca o con mucha gente) e `informe` que junta todo |
+| `herramientas/` | Una por tema: `textos`, `codigo`, `seguridad`, `github`, `pantallas`, `datos`, `carga`, `masa` (lo que solo se nota con poca o con mucha gente), `mutaciones` (el rompe-código: ¿las pruebas se darían cuenta si el código se rompe? A pedido, no va en `correr.sh`) e `informe` que junta todo |
 
 ```
 ./herramientas/auditoria/correr.sh            # todo, unos 15 minutos
 RAPIDO=1 ./herramientas/auditoria/correr.sh   # unos 5 minutos
 node herramientas/auditoria/herramientas/datos.mjs        # una sola, con el resultado en pantalla
+node herramientas/auditoria/herramientas/mutaciones.mjs --desde 32934 --hasta 33094 --prueba teclado_autocompletar   # el rompe-código sobre un tramo (minutos)
 AUDITORIA_SEMILLA=777 node herramientas/auditoria/herramientas/datos.mjs   # repetir los mismos datos al azar
 ```
 

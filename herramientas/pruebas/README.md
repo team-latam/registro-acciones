@@ -74,6 +74,10 @@ INDEX=/tmp/roto.html ./herramientas/pruebas/correr.sh
   chico y celular en hebreo): ~135 s de trabajo, casi la mitad, sin sacar ni una comprobación (cada rotura de prueba que detectaba
   una de las cinco la sigue detectando). **Una revisión nueva de «todas las pantallas» se escribe como una fábrica más de
   `barrido.mjs`** (`{ paso(p, parada), fin(eq) }`), no como otra prueba con su propio `recorrerApp`.
+- **Cuánto vale una prueba que da verde (24/11/2026).** Una prueba nueva tiene que fallar contra el código roto (ver CLAUDE.md); para medirlo
+  en serio sobre un tramo, `node herramientas/auditoria/herramientas/mutaciones.mjs --desde N --hasta M --prueba nombre` (el rompe-código)
+  le hace roturas chicas al `index.html` y cuenta cuántas detecta la prueba; lo que sobrevive es una lista de lugares a mirar. Tarda
+  minutos (una corrida de la prueba por rotura): se usa a pedido, no en cada commit.
 - **Más rápido sin perder nada (24/11/2026).** Más de la mitad del tiempo de la suite era *dormir*. Ahora `entrar()` en
   `app_de_mentira.mjs` hace que **todo `p.waitForTimeout(ms)`** (hasta 1,5 s) sea una espera inteligente: se corta apenas la
   página no tiene nada en marcha (temporizadores de hasta 2 s, pedidos, animaciones que terminan, cambios en el DOM) y nunca

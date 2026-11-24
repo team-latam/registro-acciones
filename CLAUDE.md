@@ -150,7 +150,8 @@ la rama antes de empujar.
 
 - Las pruebas sacan el código del `index.html` real en cada corrida, nunca
   de una copia (ver `herramientas/pruebas/README.md`).
-- **Una prueba nueva tiene que fallar contra el código roto**, y para eso se
+- **Una prueba nueva tiene que fallar contra el código roto** (a pedido, el rompe-código
+  `herramientas/auditoria/herramientas/mutaciones.mjs` lo mide solo sobre un tramo), y para eso se
   corre SOLO esa: `INDEX=/ruta/a/copia/rota.html ./herramientas/pruebas/correr.sh nueva`
   (el corredor acepta nombres: `correr.sh agenda tour`). Mientras se trabaja,
   también se puede correr por nombre lo que se está tocando.
