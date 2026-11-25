@@ -192,14 +192,18 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
 ## Decidido el 25/11/2026 (sobre lo que quedaba de Brújula)
 
 - **El aviso a los admin sigue apagado: «por ahora no».** No se prende; si cambia de idea, es Administración › Correos › «Brújula: personas esperando acceso» › Prendido.
-- **«Hebreo» en los Scripts: sí.** Falta el código de cada Script: el usuario lo pega **entero** en el chat (Extensiones › Apps Script de cada planilla, sin contraseñas adentro) y
+- **«Hebreo» en los Scripts: sí — HECHO el 25/11/2026** (ver abajo). Antes de hacerlo faltaba el código de cada Script: el usuario lo pega **entero** en el chat (Extensiones › Apps Script de cada planilla, sin contraseñas adentro) y
   se le devuelve entero en un bloque con una línea de qué cambió. Nada de ese código va al repo. «Hebreo» en el menú de la columna D («Language») de la pestaña «Users» de las dos
   planillas lo agrega el usuario (Datos › Validación de datos); Claude solo tiene acceso de lectura a esas planillas. Hoy los dos menús dicen Español/Inglés/Portugués, estrictos; Toldot,
   al cargar a alguien en hebreo, escribe «Hebreo» y la celda aparece como inválida hasta que se agregue.
 - **El texto hebreo del mail ya lo revisó una persona que lee hebreo: está bien (el usuario lo contó el 25/11/2026, sin cambios).** Se le había mandado una imagen del mail con lo que
   dice cada línea en español. Con eso, el texto de `brAsunto`…`brPie` en hebreo (`supabase/functions/_compartido/correos.mjs`) queda aprobado y se puede usar en los Scripts.
 
+- **Hecho el mismo día:** el usuario pegó el código de los dos Scripts, se le devolvieron enteros con «Hebreo» (el texto revisado, de derecha a izquierda, con los mismos emojis que los otros
+  idiomas) y una función `probarCorreoHebreo` que manda el mail solo a quien la corre; él los pegó, los probó («ya funciona en ambos») y agregó «Hebreo» al menú «Language» de las dos
+  planillas (verificado en lectura: Español, Inglés, Portugués, Hebreo). **El código de los Scripts NO está en el repo** (lleva los IDs de las carpetas); vive solo en cada planilla. El Script
+  de la planilla grande dice «Compass Cloud» en portugués (error de traducción, ofrecido para corregir; el de CARE dice bien «Brújula Cloud»).
+
 ## Pendiente
 
 - Empezar con el usuario la parte de Google (APIs, cuenta de servicio, compartir carpetas y planillas): se hace de a un paso.
-- «Hebreo» en los menús de las planillas (el usuario) y en los Scripts (esperando su código; el texto hebreo ya está revisado; ver «Decidido el 25/11/2026»).
