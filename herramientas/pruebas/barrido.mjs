@@ -271,6 +271,9 @@ export const seleccion = (p, tam) => {
   const grupos = new Map();
   return {
     paso: async (p, pantalla) => {
+      // Un foco puesto por programa solo muestra el anillo (:focus-visible) si lo último que se usó fue el teclado: después de un clic del recorrido no (el GitHub del 25/11 lo
+      // mostró: 9 grupos «sin anillo»; acá pasaba porque el Chromium de esta máquina acepta focus({focusVisible}) y el de GitHub no). Se aprieta una tecla suelta (Shift, que la app no usa) antes de medir.
+      await p.keyboard.press("Shift");
       const r = await p.evaluate(() => { const out = [];
         for(const e of document.querySelectorAll('[aria-pressed], [role=radio][aria-checked], [role=tab][aria-selected]')){
           if(!e.offsetParent || e.closest("select")) continue;
@@ -280,7 +283,7 @@ export const seleccion = (p, tam) => {
           let f = e, fondo = c.backgroundColor; while(/rgba\(\d+, \d+, \d+, 0\)|transparent/.test(fondo) && f.parentElement){ f = f.parentElement; fondo = getComputedStyle(f).backgroundColor; }
           // El anillo del foco de lo elegido (25/11/2026): con el relleno celeste del modo oscuro (D29) el anillo, que también era celeste y va hacia adentro, no se veía.
           let anillo = null;
-          if(on){ try{ e.focus({ focusVisible: true, preventScroll: true }); const f = getComputedStyle(e);
+          if(on){ try{ e.focus({ preventScroll: true }); const f = getComputedStyle(e);
             anillo = { estilo: f.outlineStyle, color: f.outlineColor, desvio: parseFloat(f.outlineOffset) || 0, sombra: f.boxShadow, fondo: f.backgroundColor }; e.blur(); }catch(_){} }
           out.push({ g: (e.dataset.action || String(e.className).split(" ")[0] || e.tagName) + " (" + (e.parentElement ? String(e.parentElement.className).split(" ")[0] : "") + ")", k: e.dataset.action || "", on, bg: fondo, bo: c.borderTopColor, anillo });
         } return out; });
