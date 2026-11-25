@@ -110,6 +110,26 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
 5. Abrirlo a más personas (**hecho el 19/11**: abierto a todo el equipo, punto 14), y las estadísticas (**diseñadas el
    19/11**, con piloto y plano: ver «Estadísticas, rol Finanzas y análisis»; falta construirlas).
 
+### Etapa 2, la copia a Drive (se empezó el 25/11/2026; en la rama, sin subir a `main` hasta el OK del usuario)
+
+**Lo que eligió el usuario (25/11):**
+- Se empieza por la **copia a Drive**, antes que la carga al Sheet (etapa 3); la conexión con Google que se arma acá es la misma que va a usar el Sheet.
+- **Una cuenta de Google nueva, solo para Gastos** (`registro-gastos`, secreto `GOOGLE_CUENTA_GASTOS`), separada de la del Calendar y de la de Brújula:
+  si una llave se filtra, no queda expuesto lo otro. Se crea y se carga como las otras (`supabase/functions/LEEME.md`): la llave nunca pasa por el chat.
+- Las copias van **dentro de «Registro»** (la carpeta de siempre), no en una carpeta nueva. Se le avisó que así la cuenta puede tocar todo «Registro»
+  (la opción recomendada era una carpeta aparte); queda abierto si se comparte «Registro» entero o solo la carpeta del año en curso.
+
+**Diseño propuesto (a confirmar con el usuario antes de construir el destino de cada archivo):**
+- Una actividad que tiene carpeta («Registro › año › Visitas / Seminarios / Actividades / Reuniones › carpeta de la actividad »): el comprobante va a su
+  subcarpeta «Gastos», y adentro una por persona (lo ya acordado). La carpeta de la actividad **la vincula un admin una vez, eligiéndola de una lista**
+  (las del año); el sistema no adivina por el nombre. Si no hay, el sistema la crea con la convención de siempre («Lugar, País - d/m a d/m»).
+- La rutina del mes: «Registro › año › Control de Gastos › persona › mes» (como está armado hoy).
+- «Sin vincular»: no se copia hasta que tenga destino; queda en el sistema.
+- El archivo se llama `D-M-AAAA - Concepto - Actividad.pdf` (ya decidido arriba).
+- **Primero en el sistema, la copia sigue sola:** si Google falla, el comprobante no se pierde, queda «pendiente» y se reintenta; la pantalla lo dice.
+- La función de Supabase (como la de Brújula) pide la sesión, le pregunta a la base si esa persona puede ver ese comprobante y arma el destino **desde la base**,
+  nunca desde lo que mande el navegador. Los IDs de las carpetas viven en la base, no en el repo (es público).
+
 ### Etapa 1, por partes
 
 - [x] **Base de datos** (publicada el 15/11): `supabase/27-gastos.sql` — cuatro tablas (`gastos_rendiciones`,
