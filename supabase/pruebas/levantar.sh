@@ -21,9 +21,14 @@ R=/home/user/registro-acciones/supabase
 # aplicar.sh.
 # El laboratorio, también del repo: antes leía una copia guardada aparte
 # (/pglab/00-lab.sql) que nadie actualizaba.
+# DOS veces (25/11/2026), como el trabajo «Base de datos» de GitHub («Aplicarlo DE NUEVO») y como la base de verdad en cada despliegue:
+# 02-politicas.sql le da permisos de tabla a `authenticated` y los archivos de después (27-gastos.sql…) se los sacan con un «revoke», pero
+# solo si las tablas ya existían cuando corrió el 02, o sea, desde la segunda vez. Con una sola pasada, un «revoke» borrado no se notaba.
+for vuelta in 1 2; do
 for f in $R/pruebas/00-laboratorio.sql $R/[0-9][0-9]-*.sql; do
   [ -f "$f" ] || continue
   out=$(su postgres -c "$BIN/psql -h /var/run/postgresql -U postgres -d registro -q -v ON_ERROR_STOP=1 -f $f" 2>&1 | grep -i "error")
-  [ -n "$out" ] && { echo "FALLÓ $f"; echo "$out" | head -5; exit 1; }
+  [ -n "$out" ] && { echo "FALLÓ $f (vuelta $vuelta)"; echo "$out" | head -5; exit 1; }
+done
 done
 echo "base lista"

@@ -1,5 +1,10 @@
 # Gastos y rendiciones — el módulo nuevo (en construcción)
 
+> **25/11/2026 (pruebas de la base, sin tocar el esquema):** el rompe-código sobre `27-gastos.sql` pasó de 71 % a **95 %** de roturas detectadas con cuatro archivos
+> de prueba nuevos (`71-gastos-limites`, `71-gastos-quien-puede`, `71-gastos-funciones`, `71-gastos-avisos`: 562 comprobaciones; la base entera tiene 1.925). Detalle y qué
+> queda sin cubrir (todo equivalente) en `docs/AUDITORIA.md`, H11. Y dos hallazgos para cuando se siga con el módulo: `f.pendiente` de `cuentaDe` (en `index.html`) se calcula
+> y no se lee en ningún lado (código muerto: se saca con el OK del usuario en la próxima parte) y el lector `rendidoDe`/`sumarPorMoneda` ya tiene su medición (9 de 10).
+
 > **Estado (15/11/2026):** la **etapa de prueba** tiene la base (`supabase/27-gastos.sql`, 137 comprobaciones en
 > `supabase/pruebas/71-gastos.sql`) y las pantallas (`herramientas/pruebas/gastos_test.mjs`), **publicadas en
 > `main` el 15/11 con el OK del usuario y apagadas**: nadie las ve hasta que un admin prende el interruptor de

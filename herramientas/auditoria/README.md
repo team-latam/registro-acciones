@@ -17,6 +17,7 @@ cuando el usuario pide una, se arranca de acá (ver `METODO.md`).
 RAPIDO=1 ./herramientas/auditoria/correr.sh   # unos 5 minutos
 node herramientas/auditoria/herramientas/datos.mjs        # una sola, con el resultado en pantalla
 node herramientas/auditoria/herramientas/mutaciones.mjs --desde 32934 --hasta 33094 --prueba teclado_autocompletar   # el rompe-código sobre un tramo (minutos)
+bash supabase/pruebas/levantar.sh && node herramientas/auditoria/herramientas/mutaciones_sql.mjs --archivo supabase/27-gastos.sql --max 300   # lo mismo sobre el SQL de la base (corre todas las pruebas de SQL contra una copia por rotura)
 node herramientas/auditoria/herramientas/mutaciones.mjs --archivo supabase/functions/_compartido/brujula.mjs --desde 1 --hasta 470 --script supabase/functions/_pruebas/brujula.mjs   # sobre otro archivo (la función de Brújula)
 AUDITORIA_SEMILLA=777 node herramientas/auditoria/herramientas/datos.mjs   # repetir los mismos datos al azar
 ```

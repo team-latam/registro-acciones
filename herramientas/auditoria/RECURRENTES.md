@@ -217,6 +217,18 @@ cuenta como «gastado» y qué como «en revisión», lo histórico, un gasto si
 un dato que la hace entrar y otro que la deja afuera (otra moneda, otro estado, otra persona, sin monto, sin rendición, histórico), y el resultado se compara con el que se calculó **a mano** (no con lo que
 dio la pantalla). `gastos_cuenta_test.mjs` es el modelo.
 
+**Una prueba de permisos que pasa por la razón equivocada** (24–25/11/2026; docs/AUDITORIA.md, H11, SQL de Gastos). «Con Gastos cerrado, Ana no puede anotar un cambio de moneda» daba verde, pero no
+por la política de insertar: la frenaba otra (el disparador no encontraba la rendición, o la política de LEER impedía el `returning` de la propia sentencia de prueba). Se vio porque al romper la
+política de insertar a propósito la prueba seguía en verde. *Regla:* una prueba de «no puede escribir» (1) **no pide la fila de vuelta** (`returning`: eso prueba el permiso de leer), (2) cuenta las filas
+tocadas (`get diagnostics … row_count`: «0» es la política que dejó la fila afuera) y (3) cuando política y disparador frenan con el mismo código, **compara el mensaje** (qué `raise exception` fue). Además,
+cada «no» tiene su «sí» al lado (quien sí puede, con el mismo escenario): si ninguno puede, la prueba también pasaba.
+
+**El permiso que un `revoke` saca solo existe desde la segunda vez que se aplica el esquema** (25/11/2026). `02-politicas.sql` le da a `authenticated` todos los permisos de todas las tablas **que ya
+existen**, y los archivos de después los sacan; en una base armada una sola vez, las tablas de Gastos todavía no existían cuando corrió el 02, así que el `revoke all` de `27-gastos.sql` no cambiaba nada
+y borrarlo no hacía fallar ninguna prueba. GitHub aplica todo dos veces («Aplicarlo DE NUEVO») y la base de verdad, en cada despliegue; `levantar.sh` armaba la local una sola vez. *Regla:* la base
+de pruebas se arma **igual que la de verdad** (dos veces); si una prueba nueva depende de un permiso o de un orden de aplicación, se la prueba también con la base armada dos veces (`levantar.sh` ya lo hace).
+Y una prueba de SQL que se hace `\ir` de un archivo de la base no sirve para el rompe-código: lee el archivo de verdad, no la copia rota.
+
 ## GitHub
 
 **Las acciones de los workflows quedan viejas sin que nadie se entere.**
