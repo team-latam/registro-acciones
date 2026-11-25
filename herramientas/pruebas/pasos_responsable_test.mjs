@@ -174,6 +174,21 @@ const vp = { width: 1280, height: 900 };
     await p.close();
   }
 
+  /* Un desplazamiento que termina justo después de abrirla: la ventanita sigue al botón (25/11/2026) */
+  {
+    // Antes quedaba donde se había ubicado al abrir y el botón se movía: «queda pegada al botón» fallaba solo en GitHub (el reloj más lento), y dos veces se
+    // «arregló» la prueba en vez de la app.
+    const { p } = await entrar(b, ANA.email, ANA.name, { viewport: { width: 390, height: 844 }, lang: "es", base: larga() });
+    const pegada = () => p.evaluate(() => { const b = document.querySelector('.post[data-post-id="p1"] .rs-pasos li:first-child .rs-resp').getBoundingClientRect(), r = document.getElementById("respPop").getBoundingClientRect();
+      return [Math.abs(r.top - b.bottom) < 12 || Math.abs(b.top - r.bottom) < 12, Math.round(r.left), Math.round(innerWidth - r.right)]; });
+    await p.click(tarjeta + " .rs-pill"); await p.waitForSelector(tarjeta + " .rs-panel");
+    await p.evaluate(sel => { document.querySelector(sel).click(); window.scrollBy({ top: scrollY >= 30 ? -30 : 30, behavior: "instant" }); }, primero + " .rs-resp");
+    await p.waitForSelector("#respPop:popover-open");
+    { const fin = Date.now() + 3000; let v = await pegada(); while(JSON.stringify(v) !== "[true,12,12]" && Date.now() < fin){ await p.dormir(100); v = await pegada(); }
+      eq("celular: si la página se mueve justo después de abrirla, la ventanita sigue al botón (pegada, a lo ancho)", v, [true, 12, 12]); }
+    await p.close();
+  }
+
   /* Con el teclado: flechas y Enter (compu), y la ventanita pegada al botón */
   {
     const { p, errores } = await entrar(b, ANA.email, ANA.name, { viewport: vp, lang: "es", base: datos() });

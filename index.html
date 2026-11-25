@@ -17948,7 +17948,13 @@ document.addEventListener("pointerdown", e => {
   cerrarRespPop(false);
 }, true);
 // En la compu sigue al botón: si se mueve la página, se cierra (salvo un desplazamiento que venía de antes y termina justo después de abrirla).
-window.addEventListener("scroll", e => { if(respPopAbierto() && !respPopEl.contains(e.target) && Date.now() - respAbiertoEn > 400) cerrarRespPop(false); }, true);
+// Ese desplazamiento que venía de antes mueve el botón después de ubicarla: dentro de esos 400 ms la ventanita sigue al botón (si no, quedaba lejos de él; 25/11/2026,
+// pasos_responsable_test falló dos veces en GitHub, con el reloj más lento, por esto).
+window.addEventListener("scroll", e => {
+  if(!respPopAbierto() || respPopEl.contains(e.target)) return;
+  if(Date.now() - respAbiertoEn > 400) cerrarRespPop(false);
+  else if(respDisparador && respDisparador.isConnected) ubicarRespPop(respDisparador);
+}, true);
 // Al salir el teclado del celular la pantalla cambia de alto: no se cierra, se vuelve a ubicar.
 let respRevisar = null;
 const reubicarRespPop = () => {
