@@ -7,8 +7,8 @@
 > (lee, da y quita acceso, comprueba links y escribe en las planillas: `supabase/functions/_compartido/brujula.mjs`, 111
 > comprobaciones), el mail de bienvenida en cuatro idiomas, la pantalla (Administración › Brújula, `brujula_test.mjs`, 84
 > comprobaciones) y el aviso por correo de pendientes (`supabase/avisos/brujula.mjs`, 28). **Falta, y es del usuario:** la
-> parte de Google (`supabase/functions/LEEME.md`; hasta entonces la pantalla dice «Todavía no está conectado Google») y que
-> alguien que lea hebreo mire el mail. Subir a `main` aplica el SQL a la base real y publica la función.
+> parte de Google (`supabase/functions/LEEME.md`; hasta entonces la pantalla dice «Todavía no está conectado Google»); el texto
+> hebreo del mail ya lo revisó alguien (25/11/2026). Subir a `main` aplica el SQL a la base real y publica la función.
 
 **Qué es.** «Brújula» es la biblioteca de material de la organización: carpetas de Google Drive que se comparten, en
 modo lectura, con unas 450 personas de las comunidades. Hoy se les da acceso con dos planillas de Google y un
@@ -67,7 +67,7 @@ gente inventada (`@example.org`).
 8. **El mail de bienvenida sale de Toldot** (Resend), no de Drive, con el botón **directo a la carpeta** (sin
    acortador) y en **cuatro idiomas: español, inglés, portugués y hebreo** (este de derecha a izquierda, con la
    maquinaria de `supabase/functions/_compartido/correos.mjs`). **«Brújula» queda en letras latinas** dentro del
-   texto hebreo (decidido el 23/11). El texto hebreo de la maqueta **falta que lo lea una persona que sepa hebreo**.
+   texto hebreo (decidido el 23/11). El texto hebreo del mail **lo revisó una persona que sabe hebreo el 25/11/2026: está bien**.
    Antes de invitar, Toldot mira Drive: si la persona ya tiene carpetas, lo dice y **no manda otro mail**.
 9. **Cómo habla con Google:** una **cuenta de servicio nueva, solo para Brújula** (secreto `GOOGLE_CUENTA_BRUJULA`),
    distinta de la del Calendar (si una llave se filtra, no queda expuesto lo otro); **Editor** en las carpetas y en las
@@ -153,7 +153,7 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
 - **Las carpetas en portugués no se suman** al catálogo (hoy no las recibe nadie de afuera y así sigue).
 - **Aviso por correo al admin** cuando aparezcan pendientes nuevos en una planilla: **sí, y apagado por defecto.**
 - **«Hebreo» en las planillas y en los Scripts: sí, pero después** («vamos de a poco»): primero el módulo de Toldot.
-- **El texto hebreo del mail** lo revisa una persona que lea hebreo antes de que salga a alguien real (ok).
+- **El texto hebreo del mail** lo revisa una persona que lea hebreo antes de que salga a alguien real (ok; revisado y aprobado el 25/11/2026).
 - **Los «¿Cómo funciona?» de las otras secciones de Administración: por ahora no se tocan.**
 - «Primero hagamos esto» se tomó como el **visto bueno para empezar la etapa 1** (en la rama; a `main` solo con su OK y capturas).
 
@@ -196,11 +196,10 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
   se le devuelve entero en un bloque con una línea de qué cambió. Nada de ese código va al repo. «Hebreo» en el menú de la columna D («Language») de la pestaña «Users» de las dos
   planillas lo agrega el usuario (Datos › Validación de datos); Claude solo tiene acceso de lectura a esas planillas. Hoy los dos menús dicen Español/Inglés/Portugués, estrictos; Toldot,
   al cargar a alguien en hebreo, escribe «Hebreo» y la celda aparece como inválida hasta que se agregue.
-- **El texto hebreo del mail sigue sin revisar por una persona que lea hebreo.** El usuario no conoce a nadie ahora; verá si puede conseguirlo. Se le mandó una imagen del mail con lo que
-  dice cada línea en español. **Hasta entonces no se actualizan los Scripts con ese texto** (llegaría a personas de verdad).
+- **El texto hebreo del mail ya lo revisó una persona que lee hebreo: está bien (el usuario lo contó el 25/11/2026, sin cambios).** Se le había mandado una imagen del mail con lo que
+  dice cada línea en español. Con eso, el texto de `brAsunto`…`brPie` en hebreo (`supabase/functions/_compartido/correos.mjs`) queda aprobado y se puede usar en los Scripts.
 
 ## Pendiente
 
 - Empezar con el usuario la parte de Google (APIs, cuenta de servicio, compartir carpetas y planillas): se hace de a un paso.
-- Que alguien que lea hebreo mire el mail antes de la etapa 2.
-- «Hebreo» en los menús de las planillas (el usuario) y en los Scripts (esperando su código y la revisión del texto hebreo; ver «Decidido el 25/11/2026»).
+- «Hebreo» en los menús de las planillas (el usuario) y en los Scripts (esperando su código; el texto hebreo ya está revisado; ver «Decidido el 25/11/2026»).
