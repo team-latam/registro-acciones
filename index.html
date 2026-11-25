@@ -5323,6 +5323,10 @@
   html[data-theme="dark"] :is(.chip-toggle.active, .fl-chip.on, .ag-chip.on, .bj-tab.active, .bj-fchip.active, .place-seg-btn.active,
     .feed-solapas button.on, .rep-seg button.active, .um-segmented button.active, .bj-seg button.active, .gx-lvista button[aria-pressed="true"],
     .gx-opciones:not([data-sug]):not([data-duda]) .gx-opc[aria-pressed="true"]){ background:var(--celeste-dark); border-color:var(--celeste-dark); color:#06282b; box-shadow:none; }
+  /* El anillo del foco del teclado sobre lo elegido: el relleno es celeste y el anillo de siempre también (y va hacia adentro), así que no se veía (1 a 1; 25/11/2026). Ahora, oscuro como la letra. */
+  html[data-theme="dark"] :is(.chip-toggle.active, .fl-chip.on, .ag-chip.on, .bj-tab.active, .bj-fchip.active, .place-seg-btn.active,
+    .feed-solapas button.on, .rep-seg button.active, .um-segmented button.active, .bj-seg button.active, .gx-lvista button[aria-pressed="true"],
+    .gx-opciones:not([data-sug]):not([data-duda]) .gx-opc[aria-pressed="true"]):focus-visible{ outline-color:#06282b; }
   html[data-theme="dark"] .feed-solapas button.on .fs-n{ background:rgba(6,40,43,.18); color:#06282b; }
   html[data-theme="dark"] .bj-radio.active{ border-color:var(--celeste-dark); box-shadow:inset 0 0 0 1px var(--celeste-dark); }   /* las tarjetas «Todo Brújula / A medida»: el elegido, con borde celeste */
 

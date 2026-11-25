@@ -278,11 +278,24 @@ export const seleccion = (p, tam) => {
           const c = getComputedStyle(e);
           // Un botón sin relleno (transparente) se ve con el fondo de lo que tiene detrás: el del primer ancestro que tenga.
           let f = e, fondo = c.backgroundColor; while(/rgba\(\d+, \d+, \d+, 0\)|transparent/.test(fondo) && f.parentElement){ f = f.parentElement; fondo = getComputedStyle(f).backgroundColor; }
-          out.push({ g: (e.dataset.action || String(e.className).split(" ")[0] || e.tagName) + " (" + (e.parentElement ? String(e.parentElement.className).split(" ")[0] : "") + ")", k: e.dataset.action || "", on, bg: fondo, bo: c.borderTopColor });
+          // El anillo del foco de lo elegido (25/11/2026): con el relleno celeste del modo oscuro (D29) el anillo, que también era celeste y va hacia adentro, no se veía.
+          let anillo = null;
+          if(on){ try{ e.focus({ focusVisible: true, preventScroll: true }); const f = getComputedStyle(e);
+            anillo = { estilo: f.outlineStyle, color: f.outlineColor, desvio: parseFloat(f.outlineOffset) || 0, sombra: f.boxShadow, fondo: f.backgroundColor }; e.blur(); }catch(_){} }
+          out.push({ g: (e.dataset.action || String(e.className).split(" ")[0] || e.tagName) + " (" + (e.parentElement ? String(e.parentElement.className).split(" ")[0] : "") + ")", k: e.dataset.action || "", on, bg: fondo, bo: c.borderTopColor, anillo });
         } return out; });
       for(const x of r){ const g = grupos.get(x.g) || { pantalla, k: x.k }; const lado = x.on ? "on" : "off"; if(!g[lado]) g[lado] = x; grupos.set(x.g, g); }
     },
     fin: eq => {
+      // El foco del teclado, sobre lo elegido: un anillo hacia adentro tiene que distinguirse del relleno (3 a 1); hacia afuera se apoya en la página.
+      const sinAnillo = [];
+      for(const [k, g] of grupos){
+        const a = g.on && g.on.anillo; if(!a || EXCEPCIONES_DE_SELECCION[g.k]) continue;
+        const hay = a.estilo !== "none" && a.estilo !== "hidden", sombra = a.sombra && a.sombra !== "none";
+        const c = contraste(a.color, a.fondo);
+        if((!hay && !sombra) || (hay && a.desvio < 0 && (c === null || c < 3) && !sombra)) sinAnillo.push(`${k} — anillo ${hay ? a.color + " sobre " + a.fondo + " (" + (c === null ? "sin" : c.toFixed(2)) + ")" : "ninguno"} (${g.pantalla})`);
+      }
+      eq(`${tam}: lo elegido, con el foco del teclado, muestra un anillo que se ve contra su relleno (3 a 1)`, sinAnillo, []);
       const flojos = [];
       for(const [k, g] of grupos){
         if(!g.on || !g.off || EXCEPCIONES_DE_SELECCION[g.k]) continue;
