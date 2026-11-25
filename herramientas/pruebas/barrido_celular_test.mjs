@@ -18,7 +18,7 @@ const ok = (n, c, detalle) => { if(c) pass++; else { fail++; console.log(`✗ ${
 
 const b = await abrirNavegador();
 
-await barrer(b, { nombre: "celular", vp: { width: 390, height: 844 }, dark: true, revisiones: ["alcanzable", "arbol", "letra", "seleccion", "recortes", "selectores"],
+await barrer(b, { nombre: "celular", vp: { width: 390, height: 844 }, dark: true, revisiones: ["alcanzable", "ordenTab", "arbol", "letra", "seleccion", "recortes", "selectores"],
   // La Vista Año del celular: números y días legibles.
   despues: async p => {
     await p.evaluate(() => document.querySelector('.bn-item[data-view="calendario"]').click()); await p.waitForTimeout(400);

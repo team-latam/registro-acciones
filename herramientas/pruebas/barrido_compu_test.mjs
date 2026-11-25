@@ -60,7 +60,7 @@ ok("ninguna regla de CSS baja de su piso (texto 12 px, etiquetas y píldoras 11 
 const b = await abrirNavegador();
 
 // ---------- La compu, en español ----------
-await barrer(b, { nombre: "compu", vp: { width: 1280, height: 800 }, revisiones: ["cobertura", "alcanzable", "arbol", "letra", "recortes", "selectores"],
+await barrer(b, { nombre: "compu", vp: { width: 1280, height: 800 }, revisiones: ["cobertura", "alcanzable", "ordenTab", "arbol", "letra", "recortes", "selectores"],
   // En español no cambia nada con lo de hebreo: ahí los rótulos siguen en mayúsculas, chicos y con las letras separadas, como se pensaron.
   despues: async p => {
     await irAdmin(p);
@@ -69,7 +69,7 @@ await barrer(b, { nombre: "compu", vp: { width: 1280, height: 800 }, revisiones:
   } }, eq);
 
 // ---------- La compu, en hebreo ----------
-await barrer(b, { nombre: "compu he", vp: { width: 1360, height: 900 }, lang: "he", revisiones: ["hebreo"],
+await barrer(b, { nombre: "compu he", vp: { width: 1360, height: 900 }, lang: "he", revisiones: ["ordenTab", "hebreo"],
   despues: async (p, r) => {
     await irAdmin(p);
     for(const [v, k] of [["resumen"], ["personas"], ["preferencias", "brujula"], ["preferencias", "tipos"], ["preferencias", "correos"], ["preferencias", "gastos"]]){ await admin(p, v, k); await p.waitForTimeout(250); await r.hebreo.ver(p, "Administración " + (k || v)); }

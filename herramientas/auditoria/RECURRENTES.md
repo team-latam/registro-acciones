@@ -199,7 +199,23 @@ pantalla. *Se detecta:* `teclado_flujo_test` (cuántos Tab hacen falta, que lo c
 barridos (un control que solo responde al mouse). *Regla:* **lo que está siempre a mano en la pantalla (botón flotante, barra fija) va antes del contenido en el HTML**, y
 se acomoda a la vista con CSS (`column-reverse`, `position`); lo que se abre y se cierra se oculta con `visibility:hidden` (no solo con `opacity:0` y `pointer-events:none`,
 que lo dejan con Tab); al abrir con el teclado el foco entra al menú, al salir con Tab se cierra y al cerrar vuelve a quien lo abrió. Un control que se toca con el mouse y no
-tiene forma de usarse con el teclado se anota en `SOLO_MOUSE_CONOCIDO` de `barrido.mjs` **con el motivo** (hoy dos: `cal-new` y `fp-cerrar`), nunca en silencio.
+tiene forma de usarse con el teclado se anota en `SOLO_MOUSE_CONOCIDO` de `barrido.mjs` **con el motivo** (hoy dos: `cal-new` y `fp-cerrar`), nunca en silencio. Y lo que se acomoda con CSS en una ventana (`order`, `row-reverse`, posiciones) no cambia el orden del Tab: la revisión `ordenTab` falla si, dentro de una ventana, el siguiente control queda entero por encima del anterior o del lado de donde se viene; hoy ninguna ventana la dispara (el «+ Otro…» de la Agenda y el ✕ de la esquina están anotados a propósito).
+
+**Un botón que da o quita algo afuera y que ninguna prueba aprieta** (24/11/2026; docs/AUDITORIA.md, H11). En Brújula, «Agregar carpeta» y «Quitar de una carpeta» a varias personas, «Reenviar el mail» y
+«Sacar a todos» estaban «probados» solo hasta que el botón se prende; el rompe-código cambió «dar» por «quitar» y ninguna prueba se enteró. *Por qué:* probar que un botón se prende o dice lo correcto es fácil;
+apretarlo obliga a armar la respuesta del servidor y mirar el pedido que sale (qué acción, a quién, con qué carpeta). *Se detecta:* el rompe-código (`mutaciones.mjs`), no la lectura. *Regla:* todo botón que
+**da o quita acceso, o mueve plata**, tiene una prueba que lo **aprieta** y comprueba (1) el pedido que sale —acción, a quién, con qué datos— y (2) lo que la pantalla cuenta después; y si tiene una versión
+«forzada» (un borde que la pantalla ya apaga: subir la primera carpeta), también se prueba que la función se niega aunque se lo fuerce.
+
+**Un botón que depende de lo escrito y se calcula solo al dibujar** (24/11/2026; H11). En los formularios de Brújula, «Agregar» y «Guardar» (carpeta, paquete) se prendían o apagaban cuando se dibujaba la
+pantalla, no al escribir (porque escribir no la vuelve a dibujar: así no se pierde el cursor); con el nombre borrado seguían prendidos y la base rechazaba el pedido con un mensaje que no era el motivo.
+*Se detecta:* un `eq` sobre `disabled` después de **vaciar** el campo (no solo después de llenarlo); la prueba que solo llenaba nunca lo vio. *Regla:* si un campo manda en un botón, el manejador de `input`
+actualiza ese botón **en el lugar**, y la prueba vacía el campo. Y el manejador del botón tampoco confía: rechaza lo que el botón ya debería haber apagado.
+
+**Una suma de plata probada con un solo juego de datos «feliz»** (24/11/2026; H11). `cuentaDe` (la cuenta corriente de Gastos) se miraba con un caso con todo en orden: 7 de 27 roturas sobrevivían (qué
+cuenta como «gastado» y qué como «en revisión», lo histórico, un gasto sin monto, el tipo de lo anotado sin confirmar). *Regla:* una cuenta se prueba **renglón por renglón**: cada condición de la suma tiene
+un dato que la hace entrar y otro que la deja afuera (otra moneda, otro estado, otra persona, sin monto, sin rendición, histórico), y el resultado se compara con el que se calculó **a mano** (no con lo que
+dio la pantalla). `gastos_cuenta_test.mjs` es el modelo.
 
 ## GitHub
 

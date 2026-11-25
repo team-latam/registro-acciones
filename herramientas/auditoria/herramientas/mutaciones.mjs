@@ -24,6 +24,8 @@
    --semilla           para repetir la misma elección (de fábrica 1)
    --paralelo          cuántas corridas a la vez (de fábrica 4)
    --lista             solo muestra las roturas posibles, sin correr nada
+   --lineas 10,25      solo las roturas de esas líneas (todas): para volver a mirar a los sobrevivientes de una corrida anterior
+   ETIQUETA=nombre     (variable de entorno) suma ese nombre al del informe, para no pisar el de otra corrida del mismo día
 
    Un archivo que no es index.html (por ejemplo, la función que da y quita permisos en Drive) se rompe igual:
      node herramientas/auditoria/herramientas/mutaciones.mjs --archivo supabase/functions/_compartido/brujula.mjs --desde 1 --hasta 470 \
@@ -104,8 +106,10 @@ function candidatos(){
 }
 // Azar con semilla (mulberry32), para poder repetir la misma elección.
 const azar = (() => { let a = SEMILLA >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();
-const todos = candidatos();
-const elegidos = [...todos].sort(() => azar() - 0.5).slice(0, MAX).sort((a, b) => a.n - b.n);
+// --lineas 30913,31054: solo las roturas de esas líneas, todas (para volver a mirar a los sobrevivientes de una corrida anterior).
+const LINEAS = new Set(String(arg("lineas", "")).split(",").filter(Boolean).map(Number));
+const todos = candidatos().filter(c => !LINEAS.size || LINEAS.has(c.n));
+const elegidos = [...todos].sort(() => azar() - 0.5).slice(0, LINEAS.size ? todos.length : MAX).sort((a, b) => a.n - b.n);
 console.log(`${esHtml ? "index.html" : archivoRel}, líneas ${desde}–${hasta}: ${todos.length} roturas posibles; se prueban ${elegidos.length} (semilla ${SEMILLA}).`);
 if(SOLO_LISTA){ for(const c of todos) console.log(`  l.${c.n}  ${c.op}   ${c.antes}`); process.exit(0); }
 

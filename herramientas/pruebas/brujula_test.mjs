@@ -650,7 +650,8 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
 {
   // «Sacar a todos»: se aprieta de verdad (antes solo se probaba que el botón se prendiera con el nombre).
   let n = 0;
-  const guion = { "sacar-todos": () => ++n === 1 ? { quitados: 3, heredados: 1, errores: 1, editores: 0 } : n === 2 ? { quitados: 1 } : { estado: 403, cuerpo: { error: "no-admin" } } };
+  const respuestas = [{ quitados: 3, heredados: 1, errores: 1, editores: 0 }, { quitados: 1 }, { quitados: 2, heredados: 1 }, { quitados: 2, errores: 2 }, { estado: 403, cuerpo: { error: "no-admin" } }];
+  const guion = { "sacar-todos": () => respuestas[n++] };
   const { p, pedidos } = await abrir({ guion });
   await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
   await clic(p, `[data-action="bj-carpeta-editar"][data-id="${C3}"]`);
@@ -667,9 +668,16 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
   await clic(p, "#bjSacarTodos", 700);
   eq("con una sola persona, en singular y sin «No se pudo»", await textos(p, "#confirmMessage"), ["Listo: se quitó el acceso a 1 persona."]);
   await confirmar(p);
+  for(const [esperado, que] of [["Listo: se quitó el acceso a 2 personas. No se pudo con 1.", "solo heredados"], ["Listo: se quitó el acceso a 2 personas. No se pudo con 2.", "solo errores"]]){
+    await p.fill("#bjConfirmar", "Archivo 2025");
+    await clic(p, "#bjSacarTodos", 700);
+    eq(`con ${que}, también cuenta lo que no se pudo`, await textos(p, "#confirmMessage"), [esperado]);
+    await confirmar(p);
+  }
   await p.fill("#bjConfirmar", "Archivo 2025");
-  await clic(p, "#bjSacarTodos", 700);
-  eq("si la función dice que no, la pantalla lo dice con palabras y no anota nada", [await textos(p, "#confirmMessage"), (await tabla(p, "audit_log")).filter(x => x.type === "brujula_quito").length], [["Solo un admin puede ver esto."], 2]);
+  await p.dblclick("#bjSacarTodos"); await p.waitForTimeout(700);
+  eq("si la función dice que no, la pantalla lo dice con palabras y no anota nada", [await textos(p, "#confirmMessage"), (await tabla(p, "audit_log")).filter(x => x.type === "brujula_quito").length], [["Solo un admin puede ver esto."], 4]);
+  eq("…y aunque se apriete dos veces seguidas, se le pide una sola vez a la función", pedidos.filter(x => x.accion === "sacar-todos").length, 5);
   await p.close();
 }
 {
@@ -692,13 +700,17 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
   const orden = async () => (await tabla(p, "brujula_carpetas")).sort((a, c) => a.orden - c.orden).map(c => c.id);
   const arriba = `[data-action="bj-mover"][data-id="${C1}"][data-d="-1"]`, abajo = `[data-action="bj-mover"][data-id="${C3}"][data-d="1"]`;
   eq("el botón de subir la primera y el de bajar la última están apagados", [await p.$eval(arriba, e => e.disabled), await p.$eval(abajo, e => e.disabled)], [true, true]);
+  const escrituras = () => p.evaluate(() => window.__sb.escrituras.filter(e => e[1] === "brujula_carpetas").length);
+  const antes = await escrituras();
   for(const sel of [arriba, abajo]){ await p.$eval(sel, e => { e.disabled = false; e.click(); }); await p.waitForTimeout(500); }
-  eq("…y aunque se los fuerce, el orden guardado no cambia", await orden(), [C1, C2, C3]);
+  eq("…y aunque se los fuerce, el orden guardado no cambia y no se le escribe nada a la base", [await orden(), await escrituras() - antes], [[C1, C2, C3], 0]);
+  await clic(p, `[data-action="bj-mover"][data-id="${C2}"][data-d="-1"]`, 700);
+  eq("subir la segunda la pone primera", await orden(), [C2, C1, C3]);
   await p.close();
 }
 {
   // Agregar una carpeta que ya está en el catálogo: la base la rechaza y la pantalla lo dice.
-  const { p, pedidos } = await abrir({ guion: { comprobar: () => ({ caso: "ok", id: C1, nombre: "Brújula Cloud" }) } });
+  const { p, pedidos } = await abrir({ guion: { comprobar: c => /folders\/x$/.test(c.link) ? { caso: "nocarpeta" } : /nueva$/.test(c.link) ? { caso: "ok", id: "CarpetaNuevaXyZwVuTs", nombre: "Otra nueva" } : { caso: "ok", id: C1, nombre: "Brújula Cloud" } } });
   await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
   await p.fill("#bjLinkCarpeta", "https://drive.google.com/drive/folders/" + C1);
   await clic(p, '[data-action="bj-carpeta-nueva"]', 800);
@@ -706,15 +718,28 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
   eq("sin nombre no se puede agregar la carpeta", await p.$eval('[data-action="bj-carpeta-guardar"]', e => e.disabled), true);
   await p.fill('[data-bj="f.nombre"]', "Otra vez"); await p.waitForTimeout(400);
   eq("…con nombre sí", await p.$eval('[data-action="bj-carpeta-guardar"]', e => e.disabled), false);
+  await p.fill('[data-bj="linkCarpeta"]', "https://drive.google.com/drive/folders/x"); await p.waitForTimeout(150);
+  await clic(p, '[data-action="bj-comprobar"]', 700);
+  eq("si se vuelve a comprobar con otro link y esa carpeta no se encuentra, «Agregar» se apaga (aunque el nombre de la anterior siga escrito)", await p.$eval('[data-action="bj-carpeta-guardar"]', e => e.disabled), true);
+  await p.fill('[data-bj="linkCarpeta"]', "https://drive.google.com/drive/folders/" + C1); await p.waitForTimeout(150);
+  await clic(p, '[data-action="bj-comprobar"]', 700);
   await p.fill('[data-bj="f.nombre"]', "   "); await p.waitForTimeout(300);
   eq("…y con solo espacios, no", await p.$eval('[data-action="bj-carpeta-guardar"]', e => e.disabled), true);
   await p.$eval('[data-action="bj-carpeta-guardar"]', e => { e.disabled = false; e.click(); }); await p.waitForTimeout(600);
-  eq("…ni forzando el botón se manda una carpeta sin nombre", [pedidos.filter(x => x.accion === "comprobar").length, (await tabla(p, "brujula_carpetas")).length], [1, 3]);
+  eq("…ni forzando el botón se manda una carpeta sin nombre", [pedidos.filter(x => x.accion === "comprobar").length, (await tabla(p, "brujula_carpetas")).length], [3, 3]);
   await p.fill('[data-bj="f.nombre"]', "Otra vez"); await p.waitForTimeout(300);
   await clic(p, '[data-action="bj-carpeta-guardar"]', 800);
   eq("agregar una carpeta repetida: dice «Esa carpeta ya está.» y no se duplica", [await textos(p, ".bj-aviso"), (await tabla(p, "brujula_carpetas")).filter(c => c.id === C1).length], [["Esa carpeta ya está."], 1]);
-  // Editar una carpeta y guardar un paquete: «Guardar» se apaga con el nombre vacío (antes seguía prendido y la base lo rechazaba).
+  // Agregar una carpeta nueva apretando dos veces seguidas: se agrega una sola vez.
   await clic(p, '[data-action="bj-volver"]');
+  await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  await p.fill("#bjLinkCarpeta", "https://drive.google.com/drive/folders/nueva");
+  await clic(p, '[data-action="bj-carpeta-nueva"]', 800);
+  const inserts = () => p.evaluate(() => window.__sb.escrituras.filter(e => e[0] === "insert" && e[1] === "brujula_carpetas").length);
+  const antesIns = await inserts();
+  await p.dblclick('[data-action="bj-carpeta-guardar"]'); await p.waitForTimeout(900);
+  eq("apretar «Agregar» dos veces seguidas la agrega una sola vez", [await inserts() - antesIns, (await tabla(p, "brujula_carpetas")).length], [1, 4]);
+  // Editar una carpeta y guardar un paquete: «Guardar» se apaga con el nombre vacío (antes seguía prendido y la base lo rechazaba).
   await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
   await clic(p, `[data-action="bj-carpeta-editar"][data-id="${C2}"]`);
   await p.fill('[data-bj="f.nombre"]', ""); await p.waitForTimeout(300);
@@ -731,6 +756,38 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
   await p.close();
 }
 {
+  // Comprobar una carpeta cuando Google no contesta: se dice con palabras (lo que la función explica, y si no, un mensaje general).
+  const guion = { comprobar: c => /caido/.test(c.link) ? { estado: 503, cuerpo: { error: "sin-configurar" } } : { estado: 500, cuerpo: {} } };
+  const { p } = await abrir({ guion });
+  for(const [link, texto] of [["caido", "Todavía no está conectado Google."], ["roto", "No se pudo leer Drive."]]){
+    await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+    await p.fill("#bjLinkCarpeta", "https://drive.google.com/drive/folders/" + link);
+    await clic(p, '[data-action="bj-carpeta-nueva"]', 800);
+    eq(`al comprobar una carpeta con Google caído («${link}»): lo dice con palabras y no deja agregar`, [await textos(p, ".bj-aviso"), await p.$eval('[data-action="bj-carpeta-guardar"]', e => e.disabled)], [[texto], true]);
+    await clic(p, '[data-action="bj-volver"]');
+  }
+  await p.close();
+}
+{
+  // Editar una carpeta: sus paquetes (se suma a los que se tildan, se saca de los que se destildan) y «Guardar» apretado dos veces.
+  const baseDos = () => { const b = base(); b.brujula_paquetes.push({ id: "paq-otro", nombre: "Solo Cloud", orden: 2 }); b.brujula_paquete_carpetas.push({ id: "pc3", paquete: "paq-otro", carpeta: C2 }); return b; };
+  const { p } = await abrir({ baseFn: baseDos });
+  await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  await clic(p, `[data-action="bj-carpeta-editar"][data-id="${C1}"]`);
+  eq("editar una carpeta: los paquetes en que está salen tildados", await p.$$eval('[data-action="bj-marca-paquete"]', l => l.map(e => [e.dataset.id, e.checked])), [["paq-todo", true], ["paq-otro", false]]);
+  await p.uncheck('[data-action="bj-marca-paquete"][data-id="paq-todo"]');
+  await p.check('[data-action="bj-marca-paquete"][data-id="paq-otro"]');
+  const updates = () => p.evaluate(() => window.__sb.escrituras.filter(e => e[0] === "update" && e[1] === "brujula_carpetas").length);
+  const antesUp = await updates();
+  await p.dblclick('[data-action="bj-carpeta-cambiar"]'); await p.waitForTimeout(900);
+  eq("al guardar: se le suma el paquete que se tildó, se le saca el que se destildó, y las demás carpetas siguen donde estaban",
+     (await tabla(p, "brujula_paquete_carpetas")).map(x => [x.paquete, x.carpeta]).sort((a, c) => (a[0] + a[1]).localeCompare(c[0] + c[1])),
+     [["paq-otro", C2], ["paq-otro", C1], ["paq-todo", C2]]);
+  eq("apretar «Guardar» dos veces seguidas guarda una sola vez", await updates() - antesUp, 1);
+  eq("vuelve a la lista de carpetas", await textos(p, ".bj-tab.active").then(l => l[0].split(" ")[0]), "Carpetas");
+  await p.close();
+}
+{
   // Los botones de cada pantalla dicen qué está elegido (clase y aria-pressed), y confirmar un quitar sale en rojo.
   const { p } = await abrir();
   const solapas = () => p.$$eval(".bj-tab", l => l.map(e => [e.innerText.split(" ")[0], e.classList.contains("active"), e.getAttribute("aria-pressed")]));
@@ -739,7 +796,10 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
   eq("el filtro elegido queda marcado y los otros no", await p.$$eval(".bj-fchip", l => l.map(e => [e.getAttribute("data-key"), e.classList.contains("active"), e.getAttribute("aria-pressed")])
        .filter(x => x[1] || x[2] === "true")), [["pend", true, "true"]]);
   await clic(p, '[data-action="bj-filtro"][data-key="todas"]');
-  eq("los dibujos de las carpetas y de las personas no se leen en voz alta", await p.$$eval(".bj-c-ic, .bj-av", l => l.length > 0 && l.every(e => e.getAttribute("aria-hidden") === "true")), true);
+  eq("los dibujos de las carpetas y de las personas, y el nombre repetido de cada columna, no se leen en voz alta (la columna ya tiene su nombre)", await p.$$eval(".bj-c-ic, .bj-c-n, .bj-av", l => l.length > 0 && l.every(e => e.getAttribute("aria-hidden") === "true")), true);
+  await clic(p, '[data-action="bj-tab"][data-key="carpetas"]');
+  eq("en la lista de carpetas, el dibujo de cada una tampoco", await p.$$eval(".bj-ic", l => l.length > 0 && l.every(e => e.getAttribute("aria-hidden") === "true")), true);
+  await clic(p, '[data-action="bj-tab"][data-key="personas"]');
   await clic(p, '[data-action="bj-persona"][data-correo="camila@example.org"]');
   eq("en la ficha, el dibujo de la persona y el de cada carpeta tampoco", await p.$$eval(".bj-av, .bj-ic", l => l.length > 0 && l.every(e => e.getAttribute("aria-hidden") === "true")), true);
   await clic(p, '[data-action="bj-quitar-todo"]');
@@ -752,6 +812,14 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
   eq("«Sacar de la lista» también sale en rojo", await p.$eval("#confirmOk", e => [e.classList.contains("danger"), e.innerText]), [true, "Sacar"]);
   await clic(p, "#confirmCancel");
   await clic(p, '[data-action="bj-volver"]');
+  await clic(p, '[data-action="bj-persona"][data-correo="camila@example.org"]');
+  await clic(p, '[data-action="bj-volver"]');
+  await p.check('[data-action="bj-sel"][data-correo="camila@example.org"]'); await p.waitForTimeout(200);
+  await p.check('[data-action="bj-sel"][data-correo="valeria@example.org"]'); await p.waitForTimeout(200);
+  await clic(p, '[data-action="bj-quitar-todo-varios"]');
+  eq("«Quitar todo el acceso» a varias personas también sale en rojo", [await textos(p, "#confirmMessage"), await p.$eval("#confirmOk", e => e.classList.contains("danger"))], [["¿Quitarles todo el acceso a 2 personas? Dejan de ver las carpetas."], true]);
+  await clic(p, "#confirmCancel");
+  await clic(p, '[data-action="bj-limpiar"]');
   await clic(p, '[data-action="bj-persona"][data-correo="camila@example.org"]');
   await clic(p, '[data-action="bj-quitar-una"]');
   eq("quitar una sola carpeta pregunta con el nombre de la carpeta y de la persona, en rojo", [await textos(p, "#confirmMessage"), await p.$eval("#confirmOk", e => e.classList.contains("danger"))], [["¿Quitarle Brújula Cloud a Camila Ortega?"], true]);
@@ -771,6 +839,7 @@ for(const [lang, titulo] of [["en", "Invite people"], ["pt", "Convidar pessoas"]
   // Con las flechas, la opción resaltada es la que dice aria-selected (y solo una).
   await p.fill("#bjComunidad", ""); await p.click("#bjComunidad"); await p.keyboard.type("san"); await p.waitForTimeout(200);
   const resaltada = async () => (await p.$$eval(".bj-combo .autocomplete-option", l => l.map(e => [e.classList.contains("active"), e.getAttribute("aria-selected")]))).map(x => x[0] === (x[1] === "true") ? (x[0] ? "elegida" : "no") : "NO COINCIDE");
+  eq("el dibujo de cada lugar ofrecido no se lee en voz alta", await p.$$eval(".bj-combo .autocomplete-option > span", l => l.length > 0 && l.every(e => e.getAttribute("aria-hidden") === "true")), true);
   const antes = await resaltada();
   eq("al escribir hay varias opciones y la primera es la resaltada (la clase y aria-selected dicen lo mismo)", [antes.length > 2, antes[0], antes.slice(1).every(x => x === "no")], [true, "elegida", true]);
   await p.keyboard.press("ArrowDown"); await p.waitForTimeout(150);

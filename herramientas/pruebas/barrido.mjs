@@ -323,6 +323,47 @@ export const alcanzable = (p, tam) => {
   };
 };
 
+// ---------- El Tab sigue el orden en que se lee cada ventana (24/11/2026, docs/AUDITORIA.md, H10) ----------
+// En una ventana (role=dialog), recorrer los controles con Tab no tiene que mandar el foco para atrás: de un control al siguiente, el siguiente no puede quedar entero por
+// encima del anterior y en su misma columna, ni del lado de donde se viene en su misma fila (en un diseño de dos columnas sí puede pasar del final de una a lo alto de la
+// otra). Además, ningún control con tabindex positivo (ese número reordena el Tab de toda la página y se rompe con cada cambio). Lo que está pegado a la pantalla (sticky,
+// fixed) solo se compara con otro pegado (la barra de botones de abajo), y solo de izquierda a derecha: su altura depende de cuánto se desplazó. Excepción anotada: el «+ Otro/a …» que va a la altura del rótulo del campo y después del campo en el Tab (a
+// propósito: primero el campo, después sumar otro).
+const ORDEN_CONOCIDO = ".ag-conlink > .ag-link";
+// El ✕ de la esquina: va primero en el Tab y se ve al final de la fila del título (la costumbre de todas las ventanas).
+const CIERRE_DE_ESQUINA = "button.close";
+export const ordenTab = (p, tam) => {
+  const saltos = new Map();
+  return {
+    paso: async (p, pantalla) => {
+      const r = await p.evaluate(([conocido, CIERRE_DE_ESQUINA, detalle]) => { const out = [];
+        const rtl = getComputedStyle(document.documentElement).direction === "rtl";
+        const quien = e => e.tagName.toLowerCase() + (e.id ? "#" + e.id : e.dataset.action ? "[" + e.dataset.action + "]" : typeof e.className === "string" && e.className.trim() ? "." + e.className.trim().split(/\s+/)[0] : "");
+        const pegado = e => { for(let x = e; x && x !== document.body; x = x.parentElement){ const pos = getComputedStyle(x).position; if(pos === "fixed" || pos === "sticky") return true; } return false; };
+        for(const d of document.querySelectorAll('[role=dialog]')){
+          const ov = d.closest(".modal-overlay"); if((ov && ov.hidden) || d.hidden || !d.getClientRects().length) continue;
+          const lista = [...d.querySelectorAll('button, a[href], input:not([type=hidden]), select, textarea, [tabindex]')]
+            .filter(e => !e.disabled && e.tabIndex >= 0 && e.getClientRects().length && getComputedStyle(e).visibility !== "hidden" && !e.closest("[inert], [hidden]"));
+          const dlg = d.id || (typeof d.className === "string" ? d.className.split(/\s+/)[0] : "dialog");
+          lista.filter(e => e.tabIndex > 0).forEach(e => out.push({ dlg, que: "tabindex positivo en " + quien(e) }));
+          for(let i = 1; i < lista.length; i++){
+            const ea = lista[i - 1], eb = lista[i];
+            const pa = pegado(ea), pb = pegado(eb);
+            if(eb.matches(conocido) || ea.matches(CIERRE_DE_ESQUINA) || pa !== pb) continue;     // uno pegado y otro no: su lugar relativo depende de cuánto se desplazó
+            const a = ea.getBoundingClientRect(), b = eb.getBoundingClientRect();
+            const arriba = !pa && b.bottom <= a.top - 4;        // entre dos pegados (la barra de botones de abajo) solo se mira de izquierda a derecha
+            const mismaColumna = rtl ? b.right >= a.left + 4 : b.left <= a.right - 4;
+            const mismaFila = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > Math.min(a.height, b.height) / 2;
+            const atras = rtl ? b.left >= a.right - 1 : b.right <= a.left + 1;
+            if((arriba && mismaColumna) || (mismaFila && atras)) out.push({ dlg, que: quien(ea) + " → " + quien(eb) + (detalle ? ` [a: ${Math.round(a.left)},${Math.round(a.top)} ${Math.round(a.width)}x${Math.round(a.height)}; b: ${Math.round(b.left)},${Math.round(b.top)} ${Math.round(b.width)}x${Math.round(b.height)}]` : "") });
+          }
+        } return out; }, [ORDEN_CONOCIDO, CIERRE_DE_ESQUINA, process.env.ORDEN_DETALLE === "1"]);
+      for(const x of r){ const k = x.dlg + ": " + x.que; if(!saltos.has(k)) saltos.set(k, pantalla); }
+    },
+    fin: eq => eq(`${tam}: en cada ventana el Tab sigue el orden en que se lee (no salta hacia atrás ni usa tabindex positivo)`, [...saltos].map(([k, v]) => `${k} — ${v}`), []),
+  };
+};
+
 // ---------- Todo el menú de Administración tiene su parada (24/11/2026) ----------
 // La regla «una pantalla nueva se suma a recorrerApp» (README de las pruebas) no se cumplió con Brújula el 23/11: ningún recorrido la visitaba y nadie lo notó hasta
 // el 24/11 (docs/AUDITORIA.md, H9). Acá se compara el menú de Administración con las paradas: cada sección del menú tiene que tener la suya («Admin <clave>»).
@@ -346,8 +387,8 @@ export const cobertura = (p, tam) => {
 // Las revisiones corren en cada parada en este orden: las que solo miran, después recortes (que pasa
 // el foco por cada control) y al final selectores (que abre y elige). `despues(p, r)` es lo que una
 // configuración hace a mano al terminar el recorrido (Año del celular, secciones de hebreo, etc.).
-const ORDEN = ["cobertura", "alcanzable", "arbol", "letra", "hebreo", "seleccion", "recortes", "selectores"];
-const FABRICAS = { cobertura, alcanzable, arbol, letra, hebreo, seleccion, recortes, selectores };
+const ORDEN = ["cobertura", "alcanzable", "ordenTab", "arbol", "letra", "hebreo", "seleccion", "recortes", "selectores"];
+const FABRICAS = { cobertura, alcanzable, ordenTab, arbol, letra, hebreo, seleccion, recortes, selectores };
 export async function barrer(b, cfg, eq){
   const { nombre, vp, lang = "", dark = false, ancha = false, revisiones, despues } = cfg;
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, lang, dark });

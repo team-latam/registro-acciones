@@ -18,7 +18,7 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
 const b = await abrirNavegador();
 await barrer(b, { nombre: "celular chico 320x640", vp: { width: 320, height: 640 }, revisiones: ["recortes"] }, eq);
 await barrer(b, { nombre: "celular chico 320x640, letra ancha", vp: { width: 320, height: 640 }, ancha: true, revisiones: ["recortes"] }, eq);
-await barrer(b, { nombre: "celular he", vp: { width: 390, height: 844 }, lang: "he", revisiones: ["recortes", "hebreo"] }, eq);
+await barrer(b, { nombre: "celular he", vp: { width: 390, height: 844 }, lang: "he", revisiones: ["ordenTab", "recortes", "hebreo"] }, eq);
 await b.close();
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
