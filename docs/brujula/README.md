@@ -202,7 +202,7 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
 - **Hecho el mismo día:** el usuario pegó el código de los dos Scripts, se le devolvieron enteros con «Hebreo» (el texto revisado, de derecha a izquierda, con los mismos emojis que los otros
   idiomas) y una función `probarCorreoHebreo` que manda el mail solo a quien la corre; él los pegó, los probó («ya funciona en ambos») y agregó «Hebreo» al menú «Language» de las dos
   planillas (verificado en lectura: Español, Inglés, Portugués, Hebreo). **El código de los Scripts NO está en el repo** (lleva los IDs de las carpetas); vive solo en cada planilla. El Script
-  de la planilla grande dice «Compass Cloud» en portugués (error de traducción, ofrecido para corregir; el de CARE dice bien «Brújula Cloud»).
+  de la planilla grande decía «Compass Cloud» en portugués (error de traducción): **corregido a «Brújula Cloud» el 25/11/2026**, el usuario lo pegó; ahora los dos Scripts dicen igual.
 
 ## Pendiente
 
