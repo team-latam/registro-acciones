@@ -189,8 +189,18 @@ lo hace el usuario o Toldot la primera vez que se conecte, **solo con su OK** (e
 - **Una prueba que dependía de la fecha** (`gastos_analisis_test`, un evento «dentro de 40 días» que desde fines de noviembre
   cae en 2027) se arregló de paso.
 
+## Decidido el 25/11/2026 (sobre lo que quedaba de Brújula)
+
+- **El aviso a los admin sigue apagado: «por ahora no».** No se prende; si cambia de idea, es Administración › Correos › «Brújula: personas esperando acceso» › Prendido.
+- **«Hebreo» en los Scripts: sí.** Falta el código de cada Script: el usuario lo pega **entero** en el chat (Extensiones › Apps Script de cada planilla, sin contraseñas adentro) y
+  se le devuelve entero en un bloque con una línea de qué cambió. Nada de ese código va al repo. «Hebreo» en el menú de la columna D («Language») de la pestaña «Users» de las dos
+  planillas lo agrega el usuario (Datos › Validación de datos); Claude solo tiene acceso de lectura a esas planillas. Hoy los dos menús dicen Español/Inglés/Portugués, estrictos; Toldot,
+  al cargar a alguien en hebreo, escribe «Hebreo» y la celda aparece como inválida hasta que se agregue.
+- **El texto hebreo del mail sigue sin revisar por una persona que lea hebreo.** El usuario no conoce a nadie ahora; verá si puede conseguirlo. Se le mandó una imagen del mail con lo que
+  dice cada línea en español. **Hasta entonces no se actualizan los Scripts con ese texto** (llegaría a personas de verdad).
+
 ## Pendiente
 
 - Empezar con el usuario la parte de Google (APIs, cuenta de servicio, compartir carpetas y planillas): se hace de a un paso.
 - Que alguien que lea hebreo mire el mail antes de la etapa 2.
-- «Hebreo» en los menús de las planillas y en los Scripts (después del módulo).
+- «Hebreo» en los menús de las planillas (el usuario) y en los Scripts (esperando su código y la revisión del texto hebreo; ver «Decidido el 25/11/2026»).

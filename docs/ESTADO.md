@@ -76,7 +76,8 @@ Administración › Brújula: invitar, dar y quitar acceso a las carpetas de Dri
 servicio de Brújula, cargar su llave como `GOOGLE_CUENTA_BRUJULA` y compartirle las carpetas y las dos planillas como Editor; pasos en
 `supabase/functions/LEEME.md`), la pantalla dice «Todavía no está conectado Google». Falta además que alguien que lea hebreo revise el
 mail de bienvenida, y el aviso por correo de pendientes viene **apagado** (Administración › Correos). Lo de «Hebreo» en los menús de
-las planillas y en los Scripts de los lunes se dejó para después.
+las planillas y en los Scripts de los lunes: el usuario dijo que sí (25/11/2026), pero falta que pegue el código de cada Script y que alguien que lea hebreo revise el texto; el aviso a los admin
+sigue apagado («por ahora no»). Detalle en `docs/brujula/README.md`.
 
 ## El video de presentación
 
